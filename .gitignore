@@ -1,0 +1,14 @@
+# FNIRSI firmware (stock or patched) and per-unit calibration dumps must never be committed.
+*.bin
+/APP_*.json
+
+# Build and test leftovers
+*.elf
+*.o
+*.map
+build/
+captures/
+__pycache__/
+*.pyc
+venv/
+.venv/
