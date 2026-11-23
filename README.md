@@ -11,12 +11,16 @@ that can stream what it measures.
 | Multimeter: every frame of the meter chip, as it arrives (~6 per second) | yes |
 | Oscilloscope: each channel's 1024-sample record plus the scope state | yes |
 
-**Status: verified in emulation only. It has not run on hardware yet.**
+**Status: runs on one unit.** On 2026-11-23 both images were flashed on a retail 2C53T
+through the factory IAP drive. The flash read back identical to the image, the settings and
+calibration page was read out, and the multimeter and both scope channels streamed live.
+The record is in [`docs/hardware_results_2026-11-23.md`](docs/hardware_results_2026-11-23.md),
+including what was not assessed (acquisition timing, noise, Windows, Android).
 
-> **Do not flash this expecting it to work.** Every claim below comes from static analysis
-> and from running the image's code in an emulator. Until this note is removed, treat the
-> repository as a record of work in progress. If you flash it anyway, read
-> [Safety](#safety) first and keep the official `APP_2C53T_V1.2.0_251015.bin` at hand.
+> **One unit is not a guarantee.** The board revision of that unit is unknown and nothing
+> has been tried on another. If you flash this, read [Safety](#safety) first and keep the
+> official `APP_2C53T_V1.2.0_251015.bin` at hand: the factory bootloader is untouched, so the
+> official image can always be put back.
 
 ## What the patch changes
 
@@ -69,7 +73,13 @@ No patched image is distributed: it contains FNIRSI's firmware.
 ```bash
 python3 -m pip install unicorn
 python3 test/test_link_emu.py --stock APP_2C53T_V1.2.0_251015.bin --image APP_2C53T_V1.2.0_link.bin
+python3 test/test_decode.py
 ```
+
+`test/test_decode.py` needs nothing but Python: it decodes the real captures in `test/data/`
+(the eight functions of the multimeter's key cycle on known inputs, and the instrument's own
+generator on the scope)
+and compares them with what the instrument showed.
 
 `test/usbemu.py` runs the image's real code in Unicorn against register-level models of the
 USB device peripheral, USART2 and SPI3, with a minimal USB host:
@@ -97,9 +107,11 @@ python fnlink.py meter                           # live display digits, function
 python fnlink.py scope captures/                 # one file per record: 56 state bytes + 1024 samples
 ```
 
-`meter` decodes the display digits, sign and decimal point (checked against frames with
-known readings from OpenScope's tests). The unit prefix is not decoded yet. Scope records
-are saved raw; turning them into volts and seconds needs captures from a real unit.
+`meter` prints the reading with its unit (`9.827 kOhm`); a `~` marks the frame or two around
+a change of function, when the display and stock's own unit do not agree yet. `scope` saves
+each record raw and prints its settings and measurements
+(`500mV/div X1  200us/div  Vpp 3.04V  1kHz`). The byte layouts behind both, and how each
+field was established, are in [`docs/formats.md`](docs/formats.md).
 
 ## Protocol v1
 
@@ -125,6 +137,8 @@ Requests and responses pair up strictly; events may arrive ahead of a response.
 - `0xA0` scope record header: channel, tick, 56 bytes of scope state (`state[0x00..0x37]`).
 - `0xA1` scope record data: channel, offset, up to 56 samples. 20 reports per record.
 
+What is inside a meter frame and a scope record: [`docs/formats.md`](docs/formats.md).
+
 USB ids default to `1209:0001`, the pid.codes test PID, which is for private testing only
 (`--vid/--pid` change them).
 
@@ -132,7 +146,11 @@ USB ids default to `1209:0001`, the pid.codes test PID, which is for private tes
 
 - V1.2.0 only.
 - The link is connected in every measurement mode, cable or not.
-- A scope record takes 20 ms on the wire, so at most ~25 records per second in total.
+- The link leaves the bus at every mode change and is back one to two seconds later: stock
+  disconnects USB whenever it enters a mode. A host has to reopen the device.
+- A scope record is 20 reports. Measured: about 33 records per second with one channel on,
+  10 pairs per second with both at 2 ms per division; acquisitions that do not fit are
+  skipped whole.
 - `SET_REPORT` over the control endpoint is not implemented; hosts must use the interrupt
   OUT endpoint.
 - Going back to stock: flash `APP_2C53T_V1.2.0_251015.bin` through the factory IAP drive.
