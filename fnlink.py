@@ -41,7 +41,7 @@ STATUS = {0: "ok", 1: "unknown command", 2: "address range not readable", 3: "ba
 APP_BASE = 0x08007000
 CAL_ADDR, CAL_LEN = 0x08006000, 0x1000
 SCOPE_RECORD_LEN = 1024
-MODES = {1: "measurement mode 1", 2: "measurement mode 2", 3: "measurement mode 3", 7: "USB Sharing"}
+MODES = {1: "multimeter", 2: "oscilloscope", 3: "signal generator", 7: "USB Sharing"}
 
 # Command word stock last sent to the meter chip (docs/board_revisions.md in OpenScope).
 METER_FUNCTIONS = {
@@ -71,8 +71,8 @@ def decode_meter_frame(frame: bytes) -> dict:
     Bytes 2..6 carry four seven-segment digits, each split across two bytes (high nibble of
     one, low nibble of the next). Byte 2 bit 4 is the minus sign and bit 3 a leading "1".
     Bit 4 of digits 2..4 is the decimal point in front of that digit. With no explicit point,
-    byte 8 bit 7 marks the lowest range, shown as x.xxxx. The unit (mV/V, ohm/kohm...) depends
-    on the function and range bytes and is not decoded here."""
+    byte 8 bit 7 marks the lowest range, shown as x.xxxx. The unit comes from the annunciator
+    bits (see frame_unit)."""
     if len(frame) < 12 or frame[0] != 0x5A or frame[1] != 0xA5:
         raise LinkError("not a meter data frame: %s" % frame.hex())
     masks = [(frame[2 + i] & 0xF0) | (frame[3 + i] & 0x0F) for i in range(4)]
@@ -87,13 +87,127 @@ def decode_meter_frame(frame: bytes) -> dict:
         body = "1" + body
     text = ("-" if negative else "") + body
     value = None
-    if numeric:
+    if "".join(digits).strip().isdigit():               # blank leading digits are fine ("  23")
         try:
             value = float(text)
         except ValueError:
             value = None
+    unit, prefix, continuity, unknown = frame_unit(frame)
     return {"text": text, "value": value, "digits": "".join(digits), "masks": masks, "negative": negative,
-            "leading_one": leading_one, "flags": frame[7], "range": frame[8], "tail": frame[9:12]}
+            "leading_one": leading_one, "flags": frame[7], "range": frame[8], "tail": frame[9:12],
+            "unit": unit, "prefix": prefix, "continuity": continuity, "unknown_bits": unknown}
+
+
+# Annunciators of the display frame, established on a real unit (docs/formats.md): the high
+# nibble of byte 6 and bytes 7 and 8. Anything else lit is reported as unknown.
+_B6_KNOWN, _B7_KNOWN, _B8_KNOWN = 0x60, 0x3D, 0xA3
+
+
+def frame_unit(frame: bytes) -> tuple:
+    """(unit, prefix, continuity, unknown bits lit) from a display frame's annunciators.
+
+    Units are ASCII: "V", "A", "Ohm", "F", "degC" or "" when none is lit."""
+    b6, b7, b8 = frame[6] & 0xF0, frame[7], frame[8]
+    unknown = bool(b6 & ~_B6_KNOWN & 0xFF) or bool(b7 & ~_B7_KNOWN & 0xFF) or bool(b8 & ~_B8_KNOWN & 0xFF)
+    unit = "V" if b8 & 0x02 else "A" if b8 & 0x01 else "Ohm" if b7 & 0x20 else "F" if b7 & 0x10 else \
+        "degC" if b8 & 0x20 else ""
+    prefix = "k" if b6 & 0x40 else "n" if b6 & 0x20 else "M" if b7 & 0x04 else "m" if b7 & 0x01 else ""
+    return unit, prefix, bool(b7 & 0x08), unknown
+
+
+# Unit code in stock's own meter state (state[16], i.e. 0x20001030), seen on a real unit.
+FIRMWARE_UNITS = {1: ("V", ""), 2: ("Ohm", ""), 3: ("Ohm", "k"), 4: ("Ohm", "M"), 5: ("F", "n"),
+                  9: ("degC", ""), 11: ("A", "m"), 12: ("A", "")}
+PREFIX_SCALE = {"": 1.0, "n": 1e-9, "u": 1e-6, "m": 1e-3, "k": 1e3, "M": 1e6}
+
+
+def decode_meter_event(frame: bytes, state: bytes) -> dict:
+    """A display frame plus the 40 state bytes that travel with it.
+
+    Adds "si" (the reading in base units, or None) and "consistent": the frame's annunciators
+    and stock's own unit code agree and no unknown annunciator is lit. Around a change of
+    function one of the two is still the old one for a frame or two; such readings should not
+    be trusted."""
+    d = decode_meter_frame(frame)
+    firmware = FIRMWARE_UNITS.get(state[16]) if len(state) > 16 else None
+    d["firmware_unit_code"] = state[16] if len(state) > 16 else None
+    d["consistent"] = bool(d["unit"]) and not d["unknown_bits"] and firmware == (d["unit"], d["prefix"])
+    d["si"] = d["value"] * PREFIX_SCALE[d["prefix"]] if d["value"] is not None and d["unit"] else None
+    return d
+
+
+# ---------------------------------------------------------------- oscilloscope records
+
+COUNTS_PER_DIV = 25         # sample counts per vertical division
+SAMPLES_PER_DIV = 25        # samples per horizontal division (checked from 50 us to 2 ms per division)
+_STEPS = (1, 2, 5)
+
+
+def volts_per_div(index: int):
+    """Input sensitivity of index 0..9: 10 mV, 20 mV, 50 mV ... 10 V. None outside."""
+    return _STEPS[index % 3] * 10 ** (index // 3) * 0.01 if 0 <= index <= 9 else None
+
+
+def seconds_per_div(index: int):
+    """Time base of index 0..: 10 ns, 20 ns, 50 ns ... None for an absurd index."""
+    return _STEPS[index % 3] * 10 ** (index // 3) * 10e-9 if 0 <= index <= 32 else None
+
+
+def scope_settings(state: bytes):
+    """The 56 scope state bytes of a record header decoded (docs/formats.md), or None.
+
+    Per channel: enabled, volts per division as displayed (probe setting applied), probe
+    factor and the sample value of zero volts. CH2's position and probe bytes are assumed to
+    mirror CH1's, which is the one checked on hardware."""
+    t = seconds_per_div(state[45])
+    v = [volts_per_div(state[2]), volts_per_div(state[3])]
+    if t is None or None in v:
+        return None
+    channels = []
+    for ch in (0, 1):
+        probe = 10 if state[6 + ch] == 1 else 1
+        position = state[4 + ch] - 256 if state[4 + ch] > 127 else state[4 + ch]
+        channels.append({"enabled": bool(state[20] & (1 << ch)), "volts_per_div": v[ch] * probe,
+                         "probe": probe, "zero": 128 + position})
+    level = int.from_bytes(state[28:30], "little", signed=True)
+    return {"channels": channels, "seconds_per_div": t, "sample_period": t / SAMPLES_PER_DIV,
+            "time_base_checked": 11 <= state[45] <= 16, "trigger_level": 128 + level}
+
+
+def measure_record(settings: dict, channel: int, data: bytes) -> dict:
+    """Peak-to-peak volts and frequency of a record, the way the instrument's screen reports them.
+
+    The first sample of a record is a filler byte and is ignored. The frequency comes from the
+    rising crossings of the middle level (None with fewer than two whole periods)."""
+    samples = data[1:]
+    lo, hi = min(samples), max(samples)
+    ch = settings["channels"][channel]
+    to_volts = lambda m: (m - ch["zero"]) / COUNTS_PER_DIV * ch["volts_per_div"]
+    frequency = None
+    if hi - lo >= 8:
+        mid, hyst = (hi + lo) / 2, max(2, (hi - lo) / 8)
+        rising, below = [], False
+        for i, m in enumerate(samples):
+            if m <= mid - hyst:
+                below = True
+            elif below and m >= mid + hyst:
+                below = False
+                rising.append(i)
+        if len(rising) >= 3:
+            period = (rising[-1] - rising[0]) / (len(rising) - 1)
+            frequency = 1.0 / (period * settings["sample_period"])
+    return {"min": to_volts(lo), "max": to_volts(hi), "vpp": to_volts(hi) - to_volts(lo),
+            "frequency": frequency, "clipped": lo <= 5 or hi >= 244}
+
+
+def _eng(value: float, unit: str) -> str:
+    """1234.5 -> '1.23k', 0.0002 -> '200u' (three significant figures) followed by the unit."""
+    if value == 0:
+        return "0" + unit
+    for scale, prefix in ((1e6, "M"), (1e3, "k"), (1.0, ""), (1e-3, "m"), (1e-6, "u"), (1e-9, "n")):
+        if abs(value) >= scale * 0.9995:
+            return "%.3g%s%s" % (value / scale, prefix, unit)
+    return "%.3g%s" % (value, unit)
 
 
 class HidTransport:
@@ -298,9 +412,12 @@ def cmd_meter(link: Link, args) -> int:
             frame, func = rs[8:20], rs[20]
             tick = struct.unpack_from("<I", rs, 4)[0]
             if rs[2] == 1:
-                d = decode_meter_frame(frame)
-                print("%9.3f s  %-7s %-10s raw %s  state %s" % (
-                    tick / 1000.0, d["text"], METER_FUNCTIONS.get(func, "func 0x%02X" % func),
+                d = decode_meter_event(frame, rs[24:64])
+                unit = (d["prefix"] + d["unit"]) if d["unit"] else ""
+                # '~' marks a reading whose unit the frame and stock's state do not agree on
+                shown = "%s%s%s" % (d["text"], " " + unit if unit else "", "" if d["consistent"] or not unit else " ~")
+                print("%9.3f s  %-14s %-10s raw %s  state %s" % (
+                    tick / 1000.0, shown, METER_FUNCTIONS.get(func, "func 0x%02X" % func),
                     frame.hex(" "), rs[24:64].hex()))
             else:
                 print("%9.3f s  echo    %-10s raw %s" % (
@@ -331,8 +448,16 @@ def cmd_scope(link: Link, args) -> int:
             name = args.outdir / ("scope_%06d_ch%d_t%d.bin" % (count, rec["channel"] + 1, rec["tick"]))
             name.write_bytes(rec["state"] + rec["data"])
             d = rec["data"]
-            print("%9.3f s  CH%d  seq %3d  min %3d  max %3d  -> %s" % (
-                rec["tick"] / 1000.0, rec["channel"] + 1, rec["seq"], min(d), max(d), name.name))
+            s = scope_settings(rec["state"])
+            if s is None:
+                summary = "settings not understood"
+            else:
+                m, ch = measure_record(s, rec["channel"], d), s["channels"][rec["channel"]]
+                summary = "%s/div X%d  %s/div  Vpp %s%s%s" % (
+                    _eng(ch["volts_per_div"], "V"), ch["probe"], _eng(s["seconds_per_div"], "s"), _eng(m["vpp"], "V"),
+                    "  " + _eng(m["frequency"], "Hz") if m["frequency"] else "", "  CLIPPED" if m["clipped"] else "")
+            print("%9.3f s  CH%d  seq %3d  min %3d  max %3d  %s  -> %s" % (
+                rec["tick"] / 1000.0, rec["channel"] + 1, rec["seq"], min(d[1:]), max(d[1:]), summary, name.name))
             count += 1
             if args.count and count >= args.count:
                 break

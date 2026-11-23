@@ -10,7 +10,10 @@ Evidence labels:
 - **emu**: exercised by running the image's own code in the Unicorn harness (`test/`).
 - **unit**: seen on one retail unit, from the host side, without writing to it.
 
-Nothing here has been confirmed with the patch running on hardware.
+Since 2026-11-23 the patch has run on one unit; what that showed is in
+[`hardware_results_2026-11-23.md`](hardware_results_2026-11-23.md), and the decoded meter and
+scope formats are in [`formats.md`](formats.md). The labels below are as they were when
+each fact was established.
 
 ## Image
 
@@ -32,8 +35,10 @@ One byte at `0x20001060` (state base `0x200000F8` + `0xF68`). (code)
 
 | Value | Meaning |
 |---|---|
-| 1, 2, 3 | Measurement modes. Mode 1 enables USART2 (multimeter). |
-| 4 | Probably settings. |
+| 1 | Multimeter (enables USART2). Seen on the unit: meter frames flow in mode 1. |
+| 2 | Oscilloscope. Seen on the unit: scope records flow in mode 2. |
+| 3 | Signal generator (per OpenScope-2C53T's notes; not checked here). |
+| 4 | Settings (per OpenScope-2C53T's notes). |
 | 7 | USB Sharing: full-screen image `3:/System file/87.jpg`, mass storage, no measuring. |
 
 USB Sharing is modal. On the unit, the drive exists only while that image is shown, and
@@ -103,7 +108,7 @@ Frames with known readings (from OpenScope's tests), used as decoder vectors:
 | `5AA5A5ADED9F0F0002000031` | 228.3 |
 | `5AA5E42E6325070000000000` | "Auto" |
 
-Not decoded yet: unit and prefix.
+Unit and prefix: decoded on hardware, see [`formats.md`](formats.md).
 
 ## Oscilloscope
 
@@ -118,7 +123,8 @@ Not decoded yet: unit and prefix.
   `Screenshot simple file/1.bin` (607 B) is 301 CH1 points, about 300 CH2 points and 6
   trailing bytes. (unit, code)
 
-Not established yet: scaling of the 1024-sample records to volts and seconds.
+Scaling of the 1024-sample records to volts and seconds: established on hardware, see
+[`formats.md`](formats.md).
 
 ## FreeRTOS
 
@@ -153,16 +159,12 @@ What Windows shows on the unit:
 | Disk | `AT32 Msc iap`, 8,386,560 B, 2048-byte sectors | `AT32 Disk0`, 14,680,064 B, 4096-byte sectors |
 | Volume | FAT, label `IAP`, file `Ready.TXT` | FAT, no label |
 
-## First run on hardware: plan
+## First run on hardware
 
-1. Flash the `--without-scope-hook` image through the factory IAP drive.
-2. `fnlink.py info`, then `fnlink.py dump-cal` before touching any setting, then
-   `fnlink.py verify` against the image.
-3. Check the multimeter stream against a reference meter.
-4. Flash the full image and repeat, then look at the scope stream.
-5. Going back: flash the official image the same way.
+Done on 2026-11-23, in this order: the unmodified stock image as a rehearsal, the
+`--without-scope-hook` image (`fnlink.py info`, `dump-cal` before touching any setting,
+`verify`), then the full image. See
+[`hardware_results_2026-11-23.md`](hardware_results_2026-11-23.md).
 
-Still to find out on hardware: unit and prefix of the meter frames, scope scaling, the
-cost of the 1 KB copy in the acquisition loop, whether a connected USB transceiver adds
-noise, behaviour across mode changes (the device re-enumerates), Android cabling, and the
-macOS path for output reports.
+Still to find out: the cost of the 1 KB copy in the acquisition loop, whether a connected
+USB link adds noise, Windows with hidapi, Android, and anything on a second unit.
