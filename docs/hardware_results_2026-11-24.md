@@ -86,9 +86,22 @@ emulator, and then flashed on the same unit over patch 2.
 The generator's duty cycle had only been seen at 50 %; here it is 40 (`0x28`) and the scope
 measures 40.00 %. CH2 was off again: its block carries a frequency of noise and zeros.
 
-Not done: the copy of the settings/calibration page meant to be taken just before the update
-was skipped, so the page read afterwards has only the 2026-11-23 copy to be compared with,
-and stock has saved settings since then.
+The copy of the settings/calibration page meant to be taken just before the update was
+skipped, so the page read afterwards has only the 2026-11-23 copy to be compared with, and
+stock has saved settings since then. Compared by region (`fnlink.py cal-info`, written for
+this):
+
+| Region of the page | 2026-11-23 against after patch 3 |
+|---|---|
+| `0x000`-`0x037` settings | differ within `0x003`-`0x016` and `0x025`-`0x02E` |
+| `0x038`-`0x12F` calibration table | identical |
+| `0x130`-`0x1FF` after the structure | differ within `0x140`-`0x1E7` (168 bytes): `0xFF` before, zeros and RGB565 values now |
+| the rest, and the bootloader flag page | identical |
+
+The 168 bytes are not calibration and not written by the update: stock programs 512 bytes from
+a staging buffer of which its structure fills 304, and the same 168 bytes were found in RAM at
+`0x2002AD40`, inside that buffer (`stock_v120_notes.md`). 186 bytes differ in all, none of
+them in the calibration table: it is the same on 2026-11-23 and after the update to patch 3.
 
 ## Corrections to the first session's notes
 

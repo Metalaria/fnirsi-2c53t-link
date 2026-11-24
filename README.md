@@ -112,6 +112,7 @@ extra copy on acquisition timing, and whether a connected USB transceiver adds n
 python -m pip install hidapi
 python fnlink.py info
 python fnlink.py dump-cal cal_0x08006000.bin     # 4 KB settings/calibration page, read twice
+python fnlink.py cal-info before.bin after.bin   # where two such dumps differ (no device needed)
 python fnlink.py verify APP_2C53T_V1.2.0_link.bin
 python fnlink.py read 0x20001060 16
 python fnlink.py status                          # generator settings, scope measurements, meter MAX/MEAN/MIN
