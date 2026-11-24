@@ -574,20 +574,82 @@ def cmd_status(link: Link, args) -> int:
         return 0
 
 
+# The 4 KB that dump-cal saves, by what stock keeps where (docs/stock_v120_notes.md). Only the
+# calibration table is the unit's own and constant: stock rewrites the settings whenever it saves
+# them, and programs 512 bytes each time although its structure is 304, so what follows the table
+# is whatever its scratch buffer held.
+CAL_REGIONS = (("settings", 0x000, 0x038), ("calibration table", 0x038, 0x130), ("scratch after the table", 0x130, 0x200),
+               ("never programmed", 0x200, 0x800), ("bootloader flag page", 0x800, 0x1000))
+CAL_TABLE = slice(0x038, 0x130)
+
+
+def cal_table_sha256(page: bytes) -> str:
+    """sha256 of the calibration table alone: the fingerprint to compare two dumps of one unit by.
+
+    The sha256 of the whole page changes every time stock saves a setting."""
+    if len(page) != CAL_LEN:
+        raise LinkError("a settings/calibration page is %d bytes, this is %d" % (CAL_LEN, len(page)))
+    return hashlib.sha256(page[CAL_TABLE]).hexdigest()
+
+
+def cal_differences(a: bytes, b: bytes) -> list:
+    """[(region name, bytes that differ)] for two dumps of the page, regions with a difference only."""
+    if len(a) != CAL_LEN or len(b) != CAL_LEN:
+        raise LinkError("a settings/calibration page is %d bytes" % CAL_LEN)
+    out = []
+    for name, start, end in CAL_REGIONS:
+        n = sum(1 for i in range(start, end) if a[i] != b[i])
+        if n:
+            out.append((name, n))
+    return out
+
+
+def _cal_summary(page: bytes) -> bool:
+    """Print what identifies a dump; False when the calibration table reads as erased."""
+    table = page[CAL_TABLE]
+    blank = all(x == 0xFF for x in table)
+    print("crc32    %08X" % zlib.crc32(page))
+    print("sha256   %s  (whole page: changes whenever stock saves a setting)" % hashlib.sha256(page).hexdigest())
+    print("table    %s  (calibration table alone, 0x038-0x12F: compare dumps by this)" % cal_table_sha256(page))
+    print("non-FF   %d bytes in the page, %d of %d in the table, first byte 0x%02X" % (
+        sum(1 for x in page if x != 0xFF), sum(1 for x in table if x != 0xFF), len(table), page[0]))
+    if blank:
+        print("WARNING  the calibration table reads as erased: this is not a usable calibration backup")
+    return not blank
+
+
 def cmd_dump_cal(link: Link, args) -> int:
     if args.out.exists():
         raise LinkError("%s already exists: refusing to overwrite a calibration backup" % args.out)
     page = link.read_twice(CAL_ADDR, CAL_LEN, _progress)
-    used = sum(1 for b in page if b != 0xFF)
     args.out.write_bytes(page)
     print("saved    %s (%d bytes)" % (args.out, len(page)))
-    print("crc32    %08X" % zlib.crc32(page))
-    print("sha256   %s" % hashlib.sha256(page).hexdigest())
-    print("non-FF   %d bytes, first byte 0x%02X" % (used, page[0]))
-    if used == 0:
-        print("WARNING  the page reads as erased: this is not a usable calibration backup")
-        return 1
-    return 0
+    return 0 if _cal_summary(page) else 1
+
+
+def cmd_cal_info(args) -> int:
+    """Describe a saved dump of the page or, given two, say where they differ. No device needed."""
+    pages = [p.read_bytes() for p in args.files]
+    for path, page in zip(args.files, pages):
+        print(path)
+        if len(page) != CAL_LEN:
+            raise LinkError("%s is %d bytes, not a %d-byte page" % (path, len(page), CAL_LEN))
+        _cal_summary(page)
+    if len(pages) == 1:
+        return 0
+    if len(pages) != 2:
+        raise LinkError("give one dump to describe or two to compare")
+    differences = cal_differences(pages[0], pages[1])
+    same_table = all(name != "calibration table" for name, _ in differences)
+    for name, n in differences:
+        print("differ   %-24s %d bytes" % (name, n))
+    if not differences:
+        print("SAME     the two dumps are identical")
+    elif same_table:
+        print("SAME     the calibration table is identical in both; what differs is outside it")
+    else:
+        print("DIFFERS  the calibration tables are not the same")
+    return 0 if same_table else 1
 
 
 def cmd_verify(link: Link, args) -> int:
@@ -703,6 +765,9 @@ def main(argv=None, transport=None) -> int:
     p = sub.add_parser("dump-cal", help="save the 4 KB settings/calibration page (0x08006000)")
     p.add_argument("out", type=Path)
     p.set_defaults(fn=cmd_dump_cal)
+    p = sub.add_parser("cal-info", help="describe a saved dump-cal file, or compare two (no device needed)")
+    p.add_argument("files", type=Path, nargs="+", metavar="FILE")
+    p.set_defaults(fn=cmd_cal_info, offline=True)
     p = sub.add_parser("verify", help="compare the MCU flash with an image file")
     p.add_argument("image", type=Path)
     p.set_defaults(fn=cmd_verify)
@@ -716,6 +781,8 @@ def main(argv=None, transport=None) -> int:
         p.set_defaults(fn=fn)
     args = ap.parse_args(argv)
     try:
+        if getattr(args, "offline", False):
+            return args.fn(args)
         t = transport or HidTransport()
         try:
             return args.fn(Link(t), args)

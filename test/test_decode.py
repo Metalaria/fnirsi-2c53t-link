@@ -299,6 +299,48 @@ text = "\n".join(lines)
 check("status: says what it read", "STOP" in text and "Full Wave (index 4), 35kHz, duty 50 %, 2.0 V" in text
       and "CH1 shown   40.2kHz" in text and "Vpp 114mV" in text and "MAX empty" in text, text)
 
+# ---------------------------------------------------------------- the settings/calibration page
+# Made-up pages only: a real one holds a unit's calibration and has no place in a repository.
+
+def made_up_page(settings=0x11, table=0x22, scratch=0xFF):
+    page = bytearray([0xFF]) * 4096
+    page[0x000:0x038] = bytes([settings]) * 0x38
+    page[0x038:0x130] = bytes([table]) * 0xF8
+    page[0x130:0x200] = bytes([scratch]) * 0xD0
+    page[0x800:0x804] = b"flag"
+    return bytes(page)
+
+first = made_up_page()
+later = made_up_page(settings=0x33, scratch=0x00)             # stock saved settings in between
+check("cal table: 248 bytes at 0x038", len(first[fnlink.CAL_TABLE]) == 248 and fnlink.CAL_TABLE.start == 0x38)
+check("cal table: same fingerprint although settings and scratch changed",
+      fnlink.cal_table_sha256(first) == fnlink.cal_table_sha256(later) and first != later)
+check("cal differences: settings and scratch, not the table",
+      fnlink.cal_differences(first, later) == [("settings", 0x38), ("scratch after the table", 0xD0)], str(fnlink.cal_differences(first, later)))
+other = made_up_page(table=0x23)
+check("cal differences: a changed table is named", fnlink.cal_differences(first, other) == [("calibration table", 248)]
+      and fnlink.cal_table_sha256(first) != fnlink.cal_table_sha256(other))
+check("cal differences: identical pages", fnlink.cal_differences(first, first) == [])
+check("cal regions cover the page once", [r[1] for r in fnlink.CAL_REGIONS] + [0x1000] == [0] + [r[2] for r in fnlink.CAL_REGIONS])
+try:
+    fnlink.cal_table_sha256(first[:100])
+    check("cal table: a file of another size is refused", False)
+except fnlink.LinkError:
+    check("cal table: a file of another size is refused", True)
+import io, contextlib, tempfile
+with tempfile.TemporaryDirectory() as tmp:
+    fa, fb, fc = (Path(tmp) / n for n in ("a.bin", "b.bin", "c.bin"))
+    fa.write_bytes(first); fb.write_bytes(later); fc.write_bytes(other)
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        rc_same = fnlink.main(["cal-info", str(fa), str(fb)])
+        rc_diff = fnlink.main(["cal-info", str(fa), str(fc)])
+        rc_one = fnlink.main(["cal-info", str(fa)])
+    text = out.getvalue()
+    check("cal-info: runs without a device and says where two dumps differ",
+          (rc_same, rc_diff, rc_one) == (0, 1, 0) and "the calibration table is identical in both" in text
+          and "the calibration tables are not the same" in text and "scratch after the table" in text, text[-400:])
+
 # ---------------------------------------------------------------- oscilloscope
 
 state, data = scope_record("scope_ch1_1khz_square.hex")

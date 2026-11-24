@@ -77,7 +77,29 @@ them back otherwise.
   `0x20000358`-`0x2000044A`. (code)
 - The factory bootloader's update path does not touch it (see below). (code)
 
-The patch never writes flash. `fnlink.py dump-cal` reads this page out over the link.
+The patch never writes flash. `fnlink.py dump-cal` reads this page out over the link, with
+the bootloader's flag page after it (4 KB in all).
+
+What is where in those 4 KB. The structure is OpenScope-2C53T's reading of stock's code
+(`reverse_engineering/analysis_v120/factory_cal_truth_2026-08-14.md`): 304 bytes, a signature
+and the user settings first, the calibration table from `0x38`. What this unit adds (unit),
+from two dumps a day apart with stock saving settings in between:
+
+| Offset | Content | Between the two dumps |
+|---|---|---|
+| `0x000`-`0x037` | signature and user settings | changed within `0x003`-`0x016` and `0x025`-`0x02E` (scope and generator settings had been changed) |
+| `0x038`-`0x12F` | calibration table | identical |
+| `0x130`-`0x1FF` | not part of the structure | `0x140`-`0x1E7` (168 bytes) went from `0xFF` to zeros and a few RGB565 pixel values |
+| `0x200`-`0x7FF` | never programmed | `0xFF` |
+| `0x800`-`0xFFF` | bootloader flag page | identical |
+
+Stock programs 512 bytes on every save although its structure is 304: the rest is whatever
+its staging buffer holds. OpenScope's analysis puts that buffer at `0x2002AC00`, in a region
+stock also uses for graphics, and this unit agrees (ram: the 168 bytes were found, all of
+them, at `0x2002AD40`, which is the buffer plus `0x140`). The structure ends before them, so
+they carry nothing, but they make the sha256 of the page useless as a
+fingerprint of a unit's calibration. `fnlink.py dump-cal` therefore also prints the sha256 of
+the table alone, and `fnlink.py cal-info A B` says in which of these regions two dumps differ.
 
 ## Multimeter
 
