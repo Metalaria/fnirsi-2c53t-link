@@ -248,10 +248,21 @@ check("meter_text: hold", fnlink.meter_text(event("DC V", hold[30][2], hold[30][
 
 g = fnlink.decode_generator(bytes.fromhex("01010000983a0000321e"))
 check("generator: Square, 15 kHz, 50 %, 3.0 V", (g["waveform"], g["frequency_hz"], g["duty_percent"], g["amplitude_v"])
-      == ("Square", 15000, 50, 3.0), str(g))
+      == ("Square Wave", 15000, 50, 3.0), str(g))
 g = fnlink.decode_generator(bytes.fromhex("01040000b88800003214"))
 check("generator: Full Wave, 35 kHz, 2.0 V", (g["waveform"], g["frequency_hz"], g["amplitude_v"]) == ("Full Wave", 35000, 2.0), str(g))
-check("generator: an index not seen has no name", fnlink.decode_generator(bytes.fromhex("01070000e8030000321e"))["waveform"] is None)
+check("generator: an entry of the menu that was not photographed has no name",
+      fnlink.decode_generator(bytes.fromhex("01070000e8030000321e"))["waveform"] is None)
+g = fnlink.decode_generator(bytes.fromhex("0102000050c300003214"))
+check("generator: the triangle on the scope was entry 2, 50 kHz, 2.0 V", (g["waveform_index"], g["waveform"], g["frequency_hz"], g["amplitude_v"])
+      == (2, "Sawtooth wave", 50000, 2.0), str(g))
+
+# a second stopped screen, a 50 kHz triangle: 50.18KHz, 50.50%, 220.0mV. Its Vmin is below zero.
+TRIANGLE = struct.pack("<6I6i", 50176, 19929, 5050, 4950, 10065, 9864, 210000, -10000, 220000, 218000, 118000, 100000)
+check("scope measurements: read from the unit as unsigned words, Vmin was 4294957296", struct.unpack_from("<I", TRIANGLE, 28)[0] == 4294957296)
+m = fnlink.decode_scope_measurements(TRIANGLE)
+check("scope measurements: 50176 Hz, 50.50 %, 220.0 mV, Vmin -10 mV", m["frequency_hz"] == 50176 and abs(m["duty_positive_percent"] - 50.5) < 1e-9
+      and abs(m["vpp"] - 0.22) < 1e-9 and abs(m["vmin"] + 0.01) < 1e-9 and abs(m["vmax"] - m["vmin"] - m["vpp"]) < 1e-9, str(m))
 
 # the stopped screen read 40.23KHz, 64.51% and 114.0mV
 STOPPED = bytes.fromhex("289d00001761000033190000dd0d0000a33e000074220000b02403006067010050bd010080b5010070880200d0780200"

@@ -187,8 +187,11 @@ SCOPE_STATE_ADDR, SCOPE_STATE_LEN = 0x200000F8, 56
 SCOPE_MEASURED_ADDR = 0x20000208            # what the screen shows; 12 words for CH1, then 12 for CH2
 SCOPE_MEASURED_WORDS = 12
 GENERATOR_ADDR, GENERATOR_LEN = 0x20000F50, 10
-# Index of the generator's waveform menu. Only these two were seen on hardware.
-GENERATOR_WAVEFORMS = {1: "Square", 4: "Full Wave"}
+# The generator's waveform, as its position in the menu (0 to 12). Names as the menu shows them; 1 and 4
+# were checked on their own, 2 by its shape on the scope, 3, 5 and 6 follow from the menu's order. The
+# first entry and the last six were not photographed.
+GENERATOR_WAVEFORMS = {1: "Square Wave", 2: "Sawtooth wave", 3: "Half-wave", 4: "Full Wave", 5: "Step Wave",
+                       6: "Reverse Step Wave"}
 # Unit code of the MAX / MEAN / MIN boxes. 1 was seen with volts; 0 with a value in millivolts (assumed mV).
 STATS_UNITS = {1: "V", 0: "mV?"}
 
@@ -196,7 +199,8 @@ STATS_UNITS = {1: "V", 0: "mV?"}
 def decode_generator(block: bytes) -> dict:
     """The signal generator's settings from the 10 bytes at GENERATOR_ADDR.
 
-    "flag0" was 1 in every dump taken; whether it is the output switch is not established."""
+    "flag0" is 0 or 1 and changes while the generator screen is being operated; what it means is not
+    established."""
     if len(block) < GENERATOR_LEN:
         raise LinkError("generator block too short")
     return {"flag0": block[0], "waveform_index": block[1], "waveform": GENERATOR_WAVEFORMS.get(block[1]),
@@ -212,7 +216,7 @@ def decode_scope_measurements(words: bytes) -> dict:
     seen with the channel off (a frequency and its period, the rest zero)."""
     if len(words) < 4 * SCOPE_MEASURED_WORDS:
         raise LinkError("measurement block too short")
-    w = struct.unpack_from("<12I", words)
+    w = struct.unpack_from("<6I6i", words)             # the voltages are signed: Vmin goes below zero
     return {"frequency_hz": w[0], "period_s": w[1] * 1e-9, "duty_positive_percent": w[2] / 100.0,
             "duty_negative_percent": w[3] / 100.0, "width_positive_s": w[4] * 1e-9, "width_negative_s": w[5] * 1e-9,
             "vmax": w[6] * 1e-6, "vmin": w[7] * 1e-6, "vpp": w[8] * 1e-6, "extra": [x * 1e-6 for x in w[9:12]]}
@@ -486,7 +490,7 @@ def status_lines(mode: int, meter: bytes, scope: bytes, measured: bytes, generat
             ch + 1, _eng(m["frequency_hz"], "Hz"), _eng(m["period_s"], "s"), m["duty_positive_percent"],
             m["duty_negative_percent"], _eng(m["width_positive_s"], "s"), _eng(m["width_negative_s"], "s"),
             _eng(m["vmax"], "V"), _eng(m["vmin"], "V"), _eng(m["vpp"], "V")))
-        out.append("     words    %s" % " ".join(str(x) for x in struct.unpack_from("<12I", block)))
+        out.append("     words    %s" % " ".join(str(x) for x in struct.unpack_from("<6I6i", block)))
     held = held_screen(meter)
     out.append("meter        menu %d, measuring %d, screen byte %d, unit code %d, HOLD %s%s" % (
         meter[5], meter[6], meter[13], meter[16], "on" if meter[20] == 1 else "off",

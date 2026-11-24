@@ -148,15 +148,17 @@ by twelve for CH2, in the units the screen's measurement boxes are computed from
 | 1 | period | ns |
 | 2, 3 | positive and negative duty cycle | 0.01 % |
 | 4, 5 | positive and negative pulse width | ns |
-| 6, 7, 8 | Vmax, Vmin, Vpp | µV |
+| 6, 7, 8 | Vmax, Vmin, Vpp | µV, signed (Vmin goes below zero) |
 | 9 | a second amplitude, a few mV under Vpp (top to base?) | µV |
 | 10, 11 | not identified | µV |
 
-Compared with a photograph of the stopped screen: 40232 with "40.23KHz", 6451 with "64.51%",
-114000 with "114.0mV". The running flag is scope state `+46` (`0x20000126`). CH2's twelve
-words were only seen with the channel off: a frequency (50 to 88 Hz) and exactly its period,
-the rest zero. That they are CH2's is assumed from the layout. Outside the oscilloscope mode
-the shown block is all zeros.
+Compared with photographs of two stopped screens: 40232 with "40.23KHz", 6451 with "64.51%",
+114000 with "114.0mV"; and, on another day's wave, 50176 with "50.18KHz", 5050 with
+"50.50%", 220000 with "220.0mV". While stopped the shown block does not change. The running
+flag is scope state `+46` (`0x20000126`). CH2's twelve words were only seen with the channel
+off: a frequency (tens of Hz, or about 1.7 MHz) and exactly its period, the rest zero. That
+they are CH2's is assumed from the layout. Outside the oscilloscope mode the shown block is
+all zeros.
 
 ## Signal generator
 
@@ -165,8 +167,8 @@ photographs of the generator screen):
 
 | Offset | Content |
 |---|---|
-| 0 | 1 in every dump (output on? not established) |
-| 1 | waveform as the menu's index: 1 Square, 4 Full Wave seen |
+| 0 | 0 or 1; it changes while the generator screen is operated. Not established |
+| 1 | waveform as its position in the menu, 0 to 12: 1 Square Wave, 2 Sawtooth wave (a triangle at 50 % duty), 3 Half-wave, 4 Full Wave, 5 Step Wave, 6 Reverse Step Wave. 1 and 4 were checked on their own and 2 by its shape on the scope; 3, 5 and 6 follow from the menu's order. The first entry and the last six were not photographed |
 | 4–7 | frequency in Hz, 32 bits (1000, 15000, 35000, 50000 seen) |
 | 8 | duty cycle in % (50 seen) |
 | 9 | amplitude in tenths of a volt (30 and 20 seen for 3.0 V and 2.0 V) |
