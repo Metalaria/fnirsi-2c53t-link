@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later
  *
- * stock-link v1 -- a PC/tablet link that rides inside FNIRSI 2C53T stock firmware V1.2.0.
+ * stock-link -- a PC/tablet link that rides inside FNIRSI 2C53T stock firmware V1.2.0.
  *
  * Built by build_link_image.py into a code cave appended to the user's own stock APP image
  * and entered from TWO hooks:
@@ -21,7 +21,8 @@
  *
  *   The HID class carries 64-byte reports:
  *     requests   INFO, READ (MCU flash / SRAM, read-only, range checked), STREAM (subscribe);
- *     events     meter frames and oscilloscope records, only after the host subscribed.
+ *     events     meter frames, oscilloscope records and status blocks, only after the host
+ *                subscribed to each.
  *
  *   Meter: the class's SOF callback (1 kHz while a host is attached) watches stock's USART2
  *   receive index. When it wraps after a complete frame, the 12 bytes are still untouched --
@@ -31,6 +32,12 @@
  *   0x04 / 0x05) and corrects it in place. link_fpga_tail() runs in that same task right
  *   after a command finishes, so a copy taken there is a complete record by construction.
  *   It only copies while the host is subscribed.
+ *
+ *   Status (patch 3): a few things stock keeps in SRAM and shows on its screen but that are in
+ *   neither stream -- the generator's settings, the scope's own measurements with its
+ *   run/stop flag, the rest of the meter's state. Every STATUS_PERIOD_TICKS the SOF callback
+ *   queues the next block that applies to the current mode; it is copied when the report is
+ *   built, in the USB interrupt, so each block is one instant. Nothing is hooked for this.
  *
  * What it writes
  *   - its own SRAM block at LINK_RAM (above stock's stack top, below the IAP RAM magic);
@@ -68,6 +75,11 @@
 #define SCOPE_CH2_BUF        ((const volatile uint8_t *)0x20000AA8u)   /* state[0x9B0]         */
 #define SCOPE_RECORD_LEN     1024u
 #define SCOPE_HDR_LEN        56u                           /* state[0x00..0x37]               */
+#define SCOPE_RUN_FLAG       (*(volatile uint8_t *)0x20000126u)   /* state[0x2E]: 1 run, 0 stop */
+#define SCOPE_MEASURED       ((const volatile uint8_t *)0x20000208u)  /* shown: CH1 then CH2     */
+#define SCOPE_MEASURED_LEN   48u                           /* twelve words per channel        */
+#define GENERATOR_STATE      ((const volatile uint8_t *)0x20000F50u)  /* state[0xE58]            */
+#define GENERATOR_STATE_LEN  10u                           /* wave, frequency, duty, amplitude */
 #define FPGA_OP_READ_CH1     4u
 #define FPGA_OP_READ_CH2     5u
 
@@ -110,8 +122,9 @@ typedef void (*ept_send_fn)(void *udev, uint32_t ept_addr, const uint8_t *buf, u
 #define LINK_RAM             0x20037000u
 #define LINK_RAM_LIMIT       0x20037FE0u                   /* factory IAP keeps a magic here   */
 #define LINK_MAGIC           0x4B4E4C33u                   /* "3LNK"                           */
-#define LINK_PROTO_VERSION   1u
-#define LINK_PATCH_VERSION   2u
+#define LINK_PROTO_VERSION   1u                            /* v1 requests and events unchanged */
+#define LINK_PATCH_VERSION   3u
+#define LINK_FEATURES        0x01u                         /* INFO: bit 0 = the status stream  */
 #define LINK_BOOT_HOLDOFF    3000u                         /* ticks after boot: hands off      */
 #define LINK_SETTLE_TICKS    1000u                         /* bus must stay idle this long     */
 
@@ -126,6 +139,7 @@ typedef void (*ept_send_fn)(void *udev, uint32_t ept_addr, const uint8_t *buf, u
 #define EVT_METER            0x90u
 #define EVT_SCOPE_HEADER     0xA0u
 #define EVT_SCOPE_DATA       0xA1u
+#define EVT_STATUS           0xB0u
 #define ST_OK                0u
 #define ST_BAD_CMD           1u
 #define ST_BAD_RANGE         2u
@@ -133,6 +147,19 @@ typedef void (*ept_send_fn)(void *udev, uint32_t ept_addr, const uint8_t *buf, u
 
 #define STREAM_METER         0x01u
 #define STREAM_SCOPE         0x02u
+#define STREAM_STATUS        0x04u
+#define STREAM_ALL           (STREAM_METER | STREAM_SCOPE | STREAM_STATUS)
+#define STATUS_PERIOD_TICKS  100u                          /* one status block every 100 ms    */
+#define STATUS_GENERATOR     1u                            /* 10 bytes of GENERATOR_STATE      */
+#define STATUS_SCOPE_CH1     2u                            /* 48 bytes of measurements + run   */
+#define STATUS_SCOPE_CH2     3u
+#define STATUS_METER         4u                            /* meter state bytes 40..55         */
+#define STATUS_KINDS         4u
+#define STATUS_METER_OFFSET  40u
+#define STATUS_METER_LEN     16u
+#define MODE_METER           1u
+#define MODE_SCOPE           2u
+#define MODE_GENERATOR       3u
 #define METER_KIND_DATA      1u                            /* 5A A5 ..., 12 bytes              */
 #define METER_KIND_ECHO      2u                            /* AA 55 ..., 10 bytes              */
 #define TX_NONE              0u
@@ -183,7 +210,10 @@ typedef struct {
     uint8_t  cur_ch;            /* scope record being sent, or NO_CHANNEL */
     uint16_t cur_off;
     uint8_t  next_ch;
-    uint8_t  rsvd[3];
+    uint8_t  status_pending;    /* STATUS_* waiting to go out, or 0 */
+    uint8_t  status_last;       /* STATUS_* queued last: the round starts after it */
+    uint8_t  status_seq;
+    uint32_t status_due;        /* tick at which the next status block is queued */
     uint32_t meter_tick;
     uint8_t  meter_frame[METER_FRAME_LEN];
     uint8_t  rx[REPORT_LEN];
@@ -332,6 +362,9 @@ static void clear_report(uint8_t *p) {
 static void stream_reset(uint32_t mask) {
     S->stream = (uint8_t)mask;
     S->meter_pending = 0u;
+    S->status_pending = 0u;
+    S->status_last = 0u;
+    S->status_due = X_TICK_COUNT;
     S->cur_ch = NO_CHANNEL;
     S->rec[0].sending = 0u;
     S->rec[1].sending = 0u;
@@ -413,7 +446,8 @@ static void handle_request(uint32_t rx_len) {
         put32(rs + 32, S->n_meter);
         put32(rs + 36, S->n_scope);
         put32(rs + 40, S->n_scope_skipped);
-        n = 36u;
+        rs[44] = LINK_FEATURES;
+        n = 40u;
     } else if (rq[0] == CMD_READ) {
         n = rq[2];
         if (n == 0u || n > PAYLOAD_MAX) {
@@ -426,7 +460,7 @@ static void handle_request(uint32_t rx_len) {
             copy_bytes(rs + 8, (const volatile uint8_t *)addr, n);
         }
     } else if (rq[0] == CMD_STREAM) {
-        if (rq[2] & ~(STREAM_METER | STREAM_SCOPE)) {
+        if (rq[2] & ~STREAM_ALL) {
             status = ST_BAD_LEN;
         } else {
             stream_reset(rq[2]);
@@ -471,6 +505,68 @@ static void meter_poll(void) {
         S->meter_seq = (uint8_t)(S->meter_seq + 1u);
         S->meter_pending = (uint8_t)kind;          /* a newer frame replaces an unsent one */
     }
+}
+
+/* Which status blocks mean something in which mode. Stock only keeps a block up to date in
+ * its own mode: the scope's measurements are zeros elsewhere, the meter's state is stale. */
+static uint32_t status_applies(uint32_t kind, uint32_t mode) {
+    if (kind == STATUS_GENERATOR) {
+        return mode == MODE_SCOPE || mode == MODE_GENERATOR;
+    }
+    if (kind == STATUS_METER) {
+        return mode == MODE_METER;
+    }
+    return mode == MODE_SCOPE;                      /* STATUS_SCOPE_CH1, STATUS_SCOPE_CH2 */
+}
+
+/* Called every millisecond. When the period is up and the last status block has gone out,
+ * queues the next kind that applies, round robin. The data is copied when the report is built. */
+static void status_poll(void) {
+    uint32_t now = X_TICK_COUNT;
+    uint32_t mode = SYSTEM_MODE;
+    uint32_t i, kind;
+
+    if (!(S->stream & STREAM_STATUS) || S->status_pending) {
+        return;
+    }
+    if ((uint32_t)(now - S->status_due) >= 0x80000000u) {
+        return;                                     /* not due yet (wrap-safe) */
+    }
+    S->status_due = now + STATUS_PERIOD_TICKS;
+    kind = S->status_last;
+    for (i = 0; i < STATUS_KINDS; ++i) {
+        kind = (kind >= STATUS_KINDS) ? 1u : kind + 1u;
+        if (status_applies(kind, mode)) {
+            S->status_last = (uint8_t)kind;
+            S->status_pending = (uint8_t)kind;
+            return;
+        }
+    }
+}
+
+static void build_status_event(uint8_t *rs) {
+    uint32_t kind = S->status_pending;
+    uint32_t n;
+
+    clear_report(rs);
+    S->status_seq = (uint8_t)(S->status_seq + 1u);
+    rs[0] = EVT_STATUS;
+    rs[1] = S->status_seq;
+    rs[2] = (uint8_t)kind;
+    put32(rs + 4, X_TICK_COUNT);
+    if (kind == STATUS_GENERATOR) {
+        n = GENERATOR_STATE_LEN;
+        copy_bytes(rs + 8, GENERATOR_STATE, n);
+    } else if (kind == STATUS_METER) {
+        n = STATUS_METER_LEN;
+        copy_bytes(rs + 8, METER_STATE + STATUS_METER_OFFSET, n);
+    } else {
+        n = SCOPE_MEASURED_LEN;
+        copy_bytes(rs + 8, SCOPE_MEASURED + (kind == STATUS_SCOPE_CH2 ? SCOPE_MEASURED_LEN : 0u), n);
+        rs[8u + n] = SCOPE_RUN_FLAG;
+        n += 1u;
+    }
+    rs[3] = (uint8_t)n;
 }
 
 static void build_meter_event(uint8_t *rs) {
@@ -539,8 +635,8 @@ static uint32_t build_scope_event(uint8_t *rs) {
     return 1u;
 }
 
-/* Send the next report if the IN endpoint is free: responses first, then the meter (small
- * and rare), then scope chunks. */
+/* Send the next report if the IN endpoint is free: responses first, then the meter and the
+ * status blocks (small and rare), then scope chunks. */
 static void pump(void *udev) {
     const uint8_t *buf = S->tx;
     uint32_t kind = TX_EVENT;
@@ -555,6 +651,9 @@ static void pump(void *udev) {
     } else if ((S->stream & STREAM_METER) && S->meter_pending) {
         build_meter_event(S->tx);
         S->meter_pending = 0u;
+    } else if ((S->stream & STREAM_STATUS) && S->status_pending) {
+        build_status_event(S->tx);
+        S->status_pending = 0u;
     } else if (!(S->stream & STREAM_SCOPE) || !build_scope_event(S->tx)) {
         return;
     }
@@ -656,6 +755,7 @@ static uint32_t link_sof(void *udev) {
         return 0u;
     }
     meter_poll();
+    status_poll();
     pump(udev);
     return 0u;
 }
