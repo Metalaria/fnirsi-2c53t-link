@@ -93,15 +93,17 @@ this):
 
 | Region of the page | 2026-11-23 against after patch 3 |
 |---|---|
-| `0x000`-`0x037` settings | differ within `0x003`-`0x016` and `0x025`-`0x02E` |
+| `0x000`-`0x037` settings | 18 bytes differ, within `0x003`-`0x016` and `0x025`-`0x02E` |
 | `0x038`-`0x12F` calibration table | identical |
-| `0x130`-`0x1FF` after the structure | differ within `0x140`-`0x1E7` (168 bytes): `0xFF` before, zeros and RGB565 values now |
+| `0x130`-`0x1FF` after the structure | 168 bytes differ, all of `0x140`-`0x1E7`: `0xFF` before, zeros and RGB565 values now |
 | the rest, and the bootloader flag page | identical |
 
 The 168 bytes are not calibration and not written by the update: stock programs 512 bytes from
 a staging buffer of which its structure fills 304, and the same 168 bytes were found in RAM at
 `0x2002AD40`, inside that buffer (`stock_v120_notes.md`). 186 bytes differ in all, none of
 them in the calibration table: it is the same on 2026-11-23 and after the update to patch 3.
+A third dump taken later the same afternoon has the same table again, and a third sha256 for
+the page.
 
 ## Corrections to the first session's notes
 
