@@ -21,10 +21,12 @@ session the next day, with the same image, settled the rest of the multimeter (A
 HOLD, the AC frequency) and located the generator's settings and the scope's own
 measurements in RAM: [`docs/hardware_results_2026-11-24.md`](docs/hardware_results_2026-11-24.md).
 
-**Patch 3 has not run on hardware yet.** What ran on the unit is patch 2 (commit `3893584`).
-Patch 3 adds the status stream and nothing else: same two hooks, same stock bytes changed, no
-new write to stock's SRAM. It passes the emulator suite (`test/test_link_emu.py`, 149 checks)
-and that is all the evidence there is for it.
+**Patch 3 runs on the same unit** since the afternoon of 2026-11-24. It adds the status
+stream and nothing else: same two hooks, same stock bytes changed, no new write to stock's
+SRAM. Flashed over patch 2 through the factory IAP drive, the flash read back identical to
+the image, the status blocks arrived in every mode with the values on the instrument's
+screen, and what worked with patch 2 still does. The record is at the end of
+[`docs/hardware_results_2026-11-24.md`](docs/hardware_results_2026-11-24.md).
 
 > **One unit is not a guarantee.** The board revision of that unit is unknown and nothing
 > has been tried on another. If you flash this, read [Safety](#safety) first and keep the

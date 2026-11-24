@@ -63,6 +63,33 @@ Details and addresses in [`stock_v120_notes.md`](stock_v120_notes.md).
   the image already on the unit. `fnlink.py status` does it in four requests. This session
   read about 500 blocks a second that way for 39 s without an error.
 
+## Patch 3 on the unit, the same afternoon
+
+The status stream (README, "Protocol") was written after the sessions above, checked in the
+emulator, and then flashed on the same unit over patch 2.
+
+| | |
+|---|---|
+| Image | built twice (Ubuntu 24.04 under WSL, `gcc-arm-none-eabi 15:13.2.rel1-2`; and on the bench machine by applying the ten changed bytes and the cave to the official image), same sha256 `6bdff04c…30f1`, as in `reference/` |
+| Emulator suite on the builder's machine | 149 checks, 0 failed |
+| Flashing | `scripts/iap_flash.py flash` of OpenScope-2C53T from macOS, through the factory IAP drive: fourth update of this unit that way, fourth success |
+| `fnlink.py info` | protocol 1, patch 3, "status streamed" |
+| `fnlink.py verify` | 754,064 bytes read back in 27 s, identical to the image |
+| Status stream, meter mode | kind 4 only; the MIN box empty (not a number) with the meter idle in Auto |
+| Status stream, scope mode | kinds 1, 2 and 3. Generator `01 01 00 00 40 9C 00 00 28 0F`: Square Wave, 40 kHz, 40 %, 1.5 V, as set. CH1: 39996 Hz, 40.00 %, Vpp 171.8 mV, run byte 1 |
+| …after pressing STOP | CH1: 40004 Hz, 38.70 %, Vpp 170.0 mV, run byte 0 |
+| Status stream, generator mode | kind 1 only, the same ten bytes |
+| Meter stream | unchanged, a frame every ~165 ms |
+| The companion app, written against patch 2 | works unchanged: it subscribes with mask 3 and reads the rest with `READ` |
+| USB Sharing, settings across a power cycle | as before |
+
+The generator's duty cycle had only been seen at 50 %; here it is 40 (`0x28`) and the scope
+measures 40.00 %. CH2 was off again: its block carries a frequency of noise and zeros.
+
+Not done: the copy of the settings/calibration page meant to be taken just before the update
+was skipped, so the page read afterwards has only the 2026-11-23 copy to be compared with,
+and stock has saved settings since then.
+
 ## Corrections to the first session's notes
 
 - `formats.md` said state bytes 32–39 "look like maximum and minimum". They are MAX and MEAN.
