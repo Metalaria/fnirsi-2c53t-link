@@ -10,6 +10,7 @@ that can stream what it measures.
 | Identification, read-only access to MCU flash and SRAM | yes |
 | Multimeter: every frame of the meter chip, as it arrives (~6 per second) | yes |
 | Oscilloscope: each channel's 1024-sample record plus the scope state | yes |
+| Status (patch 3): the generator's settings, the scope's own measurements with RUN/STOP, the rest of the meter's state | yes |
 
 **Status: runs on one unit.** On 2026-11-23 both images were flashed on a retail 2C53T
 through the factory IAP drive. The flash read back identical to the image, the settings and
@@ -19,6 +20,11 @@ including what was not assessed (acquisition timing, noise, Windows, Android). A
 session the next day, with the same image, settled the rest of the multimeter (AC, µF, diode,
 HOLD, the AC frequency) and located the generator's settings and the scope's own
 measurements in RAM: [`docs/hardware_results_2026-11-24.md`](docs/hardware_results_2026-11-24.md).
+
+**Patch 3 has not run on hardware yet.** What ran on the unit is patch 2 (commit `3893584`).
+Patch 3 adds the status stream and nothing else: same two hooks, same stock bytes changed, no
+new write to stock's SRAM. It passes the emulator suite (`test/test_link_emu.py`, 149 checks)
+and that is all the evidence there is for it.
 
 > **One unit is not a guarantee.** The board revision of that unit is unknown and nothing
 > has been tried on another. If you flash this, read [Safety](#safety) first and keep the
@@ -30,8 +36,8 @@ measurements in RAM: [`docs/hardware_results_2026-11-24.md`](docs/hardware_resul
 | | |
 |---|---|
 | Stock bytes changed | 10: 6 at `0x0802A994` (SysTick handler) and 4 at `0x0803E49A` (tail of the `fpga` task loop), each a `b.w` into the cave |
-| Code added | ~2.4 KB at `0x080BE700`, after the stock image |
-| SRAM used | `0x20037000`–`0x20037983`, above stock's stack top and below the factory IAP's RAM magic |
+| Code added | ~2.7 KB at `0x080BE700`, after the stock image |
+| SRAM used | `0x20037000`–`0x20037987`, above stock's stack top and below the factory IAP's RAM magic |
 | Stock SRAM written | the USB core's class and descriptor pointers (`0x20002B28`, `0x20002B2C`) and the endpoint bookkeeping the stock class itself writes |
 | Flash written at run time | none |
 
@@ -107,6 +113,7 @@ python fnlink.py dump-cal cal_0x08006000.bin     # 4 KB settings/calibration pag
 python fnlink.py verify APP_2C53T_V1.2.0_link.bin
 python fnlink.py read 0x20001060 16
 python fnlink.py status                          # generator settings, scope measurements, meter MAX/MEAN/MIN
+python fnlink.py status --events                 # the same from the status stream (patch 3)
 python fnlink.py meter                           # live display digits, function, raw frame
 python fnlink.py scope captures/                 # one file per record: 56 state bytes + 1024 samples
 ```
@@ -123,8 +130,13 @@ field was established, are in [`docs/formats.md`](docs/formats.md).
 settings, the oscilloscope's own measurements with its RUN/STOP state, and the multimeter's
 MAX / MEAN / MIN boxes. It needs no other firmware than the one with the link: it is four
 `READ` requests. `status --watch 0.25` keeps reading and prints again when something changes.
+From patch 3 the link also sends these blocks by itself to a host that subscribes to them
+(`status --events`); `fnlink.py info` says whether the link on the unit does.
 
-## Protocol v1
+## Protocol
+
+Version 1. Patch 3 adds to it without changing anything a patch 2 host relies on: one more
+subscription bit, one more event type, and four more bytes at the end of INFO.
 
 One 64-byte report each way, no report id.
 
@@ -138,15 +150,22 @@ Requests and responses pair up strictly; events may arrive ahead of a response.
 
 - `0x01` INFO: `"2C53LINK"`, protocol, patch, system mode, stream mask, tick count, link
   count, request count, meter frames seen, scope records captured, scope records skipped.
+  From patch 3, a feature byte follows (payload byte 36): bit 0 = the link has the status
+  stream. A shorter INFO means no features.
 - `0x02` READ: up to 56 bytes from `0x08000000`–`0x080FFFFF` or `0x20000000`–`0x20037FFF`.
-- `0x03` STREAM: byte 2 is the subscription mask (1 meter, 2 scope). Every session starts
-  unsubscribed.
+- `0x03` STREAM: byte 2 is the subscription mask (1 meter, 2 scope, 4 status from patch 3;
+  a link that does not know a bit answers status 3). Every session starts unsubscribed.
 - Status: 0 ok, 1 unknown command, 2 range refused, 3 bad length.
 - `0x90` meter event: kind 1 (12-byte `5A A5` frame) or 2 (10-byte `AA 55` echo); payload =
   frame (12), last function word sent to the meter chip, system mode, 2 spare, 40 bytes of
   stock's meter state from `0x20001020`.
 - `0xA0` scope record header: channel, tick, 56 bytes of scope state (`state[0x00..0x37]`).
 - `0xA1` scope record data: channel, offset, up to 56 samples. 20 reports per record.
+- `0xB0` status event (patch 3): one block of stock's SRAM every 100 ms, the ones that apply
+  to the current mode in turn. Byte 2 says which: 1 the generator's 10 settings bytes (scope
+  and generator modes); 2 and 3 the scope's own measurements of CH1 and CH2, 48 bytes, with
+  the run/stop byte after them (scope mode); 4 meter state bytes 40 to 55, the ones a meter
+  event has no room for (meter mode). Bytes 4–7 are the tick.
 
 What is inside a meter frame and a scope record: [`docs/formats.md`](docs/formats.md).
 
@@ -164,9 +183,10 @@ USB ids default to `1209:0001`, the pid.codes test PID, which is for private tes
   skipped whole.
 - `SET_REPORT` over the control endpoint is not implemented; hosts must use the interrupt
   OUT endpoint.
-- Not in the stream: the meter's MIN box, the generator's settings and the scope's own
-  measurements. They are located in RAM and a host reads them with `READ` when it wants them
-  (`fnlink.py status`); part of their layout is still assumed, see `docs/stock_v120_notes.md`.
+- The meter's MIN box, the generator's settings and the scope's own measurements are not in
+  the meter and scope streams. A host reads them with `READ` (`fnlink.py status`) or, from
+  patch 3, subscribes to the status stream. Part of their layout is still assumed, see
+  `docs/stock_v120_notes.md`.
 - Going back to stock: flash `APP_2C53T_V1.2.0_251015.bin` through the factory IAP drive.
 
 ## Safety

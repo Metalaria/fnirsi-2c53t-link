@@ -33,9 +33,12 @@ VID, PID = 0x1209, 0x0001
 REPORT_LEN = 64
 PAYLOAD_MAX = 56
 CMD_INFO, CMD_READ, CMD_STREAM = 0x01, 0x02, 0x03
-EVT_METER, EVT_SCOPE_HEADER, EVT_SCOPE_DATA = 0x90, 0xA0, 0xA1
-EVENTS = (EVT_METER, EVT_SCOPE_HEADER, EVT_SCOPE_DATA)
-STREAM_METER, STREAM_SCOPE = 0x01, 0x02
+EVT_METER, EVT_SCOPE_HEADER, EVT_SCOPE_DATA, EVT_STATUS = 0x90, 0xA0, 0xA1, 0xB0
+EVENTS = (EVT_METER, EVT_SCOPE_HEADER, EVT_SCOPE_DATA, EVT_STATUS)
+STREAM_METER, STREAM_SCOPE, STREAM_STATUS = 0x01, 0x02, 0x04
+FEATURE_STATUS = 0x01                   # INFO feature bit: the link has the status stream (patch 3)
+# Sub-kinds of a status event: which block of stock's SRAM it carries.
+STATUS_GENERATOR, STATUS_SCOPE_CH1, STATUS_SCOPE_CH2, STATUS_METER = 1, 2, 3, 4
 STATUS = {0: "ok", 1: "unknown command", 2: "address range not readable", 3: "bad length"}
 
 APP_BASE = 0x08007000
@@ -375,6 +378,7 @@ class Link:
              "ticks": ticks, "links": links, "requests": requests}
         if len(p) >= 36:
             d["meter_frames"], d["scope_records"], d["scope_skipped"] = struct.unpack_from("<III", p, 24)
+        d["features"] = p[36] if len(p) >= 37 else 0
         return d
 
     def read(self, addr: int, length: int, progress=None) -> bytes:
@@ -455,6 +459,8 @@ def cmd_info(link: Link, args) -> int:
     if "meter_frames" in i:
         print("seen         %d meter frames, %d scope records (%d skipped)"
               % (i["meter_frames"], i["scope_records"], i["scope_skipped"]))
+    print("status       %s" % ("streamed (subscribe with bit 2)" if i["features"] & FEATURE_STATUS
+                               else "not streamed by this patch: read on request"))
     return 0
 
 
@@ -503,10 +509,52 @@ def status_lines(mode: int, meter: bytes, scope: bytes, measured: bytes, generat
     return out
 
 
+def status_from_events(link: Link, mode: int, timeout_ms: int) -> dict:
+    """One status event of each kind the link sends in this mode, by sub-kind.
+
+    The generator and scope kinds come in the scope mode, the generator alone in the generator
+    mode, the meter kind in the meter mode."""
+    wanted = {1: {STATUS_METER}, 2: {STATUS_GENERATOR, STATUS_SCOPE_CH1, STATUS_SCOPE_CH2},
+              3: {STATUS_GENERATOR}}.get(mode, set())
+    got = {}
+    link.stream(STREAM_STATUS)
+    try:
+        deadline = time.monotonic() + timeout_ms / 1000.0
+        for rs in link.events(timeout_ms):
+            if rs[0] == EVT_STATUS:
+                got[rs[2]] = rs[8:8 + rs[3]]
+            if wanted <= set(got) or time.monotonic() > deadline:
+                break
+    finally:
+        link.stream(0)
+    return got
+
+
 def cmd_status(link: Link, args) -> int:
     """Read and print the generator's settings, the scope's own measurements and the meter's
-    statistics boxes: the things stock keeps in RAM and the stream does not carry."""
+    statistics boxes: the things stock keeps in RAM and neither stream carries. With --events it
+    takes what it can from the status stream (patch 3) instead of reading it on request."""
     shown = None
+    if args.events:
+        info = link.info()
+        if not info["features"] & FEATURE_STATUS:
+            raise LinkError("this patch (%d) has no status stream: run without --events" % info["patch"])
+        ev = status_from_events(link, info["mode"], 2000)
+        for kind, name in ((STATUS_GENERATOR, "generator"), (STATUS_SCOPE_CH1, "scope CH1"),
+                           (STATUS_SCOPE_CH2, "scope CH2"), (STATUS_METER, "meter state 40..55")):
+            if kind in ev:
+                print("status event %d  %-18s %s" % (kind, name, ev[kind].hex()))
+        if STATUS_GENERATOR in ev:
+            g = decode_generator(ev[STATUS_GENERATOR])
+            print("generator    %s (index %d), %s, duty %d %%, %.1f V" % (
+                g["waveform"] or "?", g["waveform_index"], _eng(g["frequency_hz"], "Hz"), g["duty_percent"], g["amplitude_v"]))
+        for ch, kind in ((1, STATUS_SCOPE_CH1), (2, STATUS_SCOPE_CH2)):
+            if kind in ev:
+                m = decode_scope_measurements(ev[kind])
+                print("  CH%d shown   %s, duty +%.2f %%, Vmax %s, Vmin %s, Vpp %s, %s" % (
+                    ch, _eng(m["frequency_hz"], "Hz"), m["duty_positive_percent"], _eng(m["vmax"], "V"),
+                    _eng(m["vmin"], "V"), _eng(m["vpp"], "V"), "RUN" if ev[kind][48] == 1 else "STOP"))
+        return 0 if ev else 1
     try:
         while True:
             mode = link.info()["mode"]
@@ -649,6 +697,8 @@ def main(argv=None, transport=None) -> int:
                                       "MAX/MEAN/MIN, read from stock's RAM")
     p.add_argument("--watch", type=float, default=0, metavar="SECONDS",
                    help="keep reading at this interval and print again whenever something changes")
+    p.add_argument("--events", action="store_true",
+                   help="take the blocks from the link's status stream (patch 3) instead of reading them")
     p.set_defaults(fn=cmd_status)
     p = sub.add_parser("dump-cal", help="save the 4 KB settings/calibration page (0x08006000)")
     p.add_argument("out", type=Path)

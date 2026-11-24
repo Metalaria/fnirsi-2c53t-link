@@ -34,12 +34,12 @@ STATE_BASE = 0x200000F8
 CH1_BUF, CH2_BUF = 0x200006A8, 0x20000AA8
 METER_TX_BUF = 0x20000005
 TASK_STACK_TOP = 0x20035F00
-EVENTS = (0x90, 0xA0, 0xA1)
+EVENTS = (0x90, 0xA0, 0xA1, 0xB0)
 STOCK_CLASS, STOCK_DESC = 0x20000030, 0x20000058
 CAVE_ADDR = 0x080BE700
 BOOT_HOLDOFF, SETTLE = 3000, 1000
 
-STREAM_METER, STREAM_SCOPE = 1, 2
+STREAM_METER, STREAM_SCOPE, STREAM_STATUS = 1, 2, 4
 REPORT_DESC = bytes.fromhex("0600ff0901a101150026ff00750895400901810295400901910 2c0".replace(" ", ""))
 
 results = []
@@ -217,8 +217,8 @@ def main() -> int:
 
     # INFO
     rs = request(e, 0x01, seq=0x5A)
-    check("INFO: header", rs[0] == 0x81 and rs[1] == 0x5A and rs[2] == 0 and rs[3] == 36, rs[:8].hex())
-    check("INFO: tag 2C53LINK, proto 1, patch 2", rs[8:16] == b"2C53LINK" and rs[16] == 1 and rs[17] == 2)
+    check("INFO: header", rs[0] == 0x81 and rs[1] == 0x5A and rs[2] == 0 and rs[3] == 40, rs[:8].hex())
+    check("INFO: tag 2C53LINK, proto 1, patch 3", rs[8:16] == b"2C53LINK" and rs[16] == 1 and rs[17] == 3)
     check("INFO: reports system mode, not subscribed", rs[18] == 2 and rs[19] == 0)
     check("INFO: reports tick count", struct.unpack_from("<I", rs, 20)[0] == e.r32(X_TICK_COUNT))
 
@@ -328,6 +328,95 @@ def main() -> int:
     request(e, 0x03, 9, 0)
     feed_meter(e, f_5v)
     check("meter: silent again after unsubscribing", drain(e) == [])
+
+    # ---- status stream: blocks of stock's SRAM that are in neither stream -------------------
+    GENERATOR, MEASURED, RUN_FLAG, METER_EXT = 0x20000F50, 0x20000208, 0x20000126, 0x20001048
+    gen_block = bytes.fromhex("0102000050c300003214")          # entry 2, 50 kHz, 50 %, 2.0 V
+    meas_ch1 = struct.pack("<6I6i", 50176, 19929, 5050, 4950, 10065, 9864, 210000, -10000, 220000, 218000, 118000, 100000)
+    meas_ch2 = struct.pack("<12I", 76, 13157894, *([0] * 10))
+    meter_ext = bytes.fromhex("662616c4040402010100010100000000")
+    e.audit = False
+    e.mu.mem_write(GENERATOR, gen_block)
+    e.mu.mem_write(MEASURED, meas_ch1 + meas_ch2)
+    e.mu.mem_write(METER_EXT, meter_ext)
+    e.w8(RUN_FLAG, 1)
+    e.audit = True
+
+    def status_events(ms):
+        """Run the bus for `ms` milliseconds with the tick counter moving; the status events seen."""
+        out = []
+        for _ in range(ms):
+            e.audit = False
+            e.w32(X_TICK_COUNT, e.r32(X_TICK_COUNT) + 1)
+            e.audit = True
+            rs = poll_in(e)
+            if rs is not None and rs[0] == 0xB0:
+                out.append(rs)
+        return out
+
+    check("INFO: 40 bytes, feature bit 0 says the status stream exists", (lambda r: r[3] == 40 and r[44] == 1 and r[16] == 1 and r[17] == 3)(request(e, 1, 0x60)))
+    check("status: nothing is sent before the host subscribes", status_events(350) == [])
+    rs = request(e, 0x03, 0x61, STREAM_STATUS)
+    check("STREAM: subscribe to the status blocks", rs[2] == 0 and rs[8] == STREAM_STATUS)
+    check("STREAM: all three streams accepted, a fourth bit refused", request(e, 0x03, 0x62, 7)[8] == 7 and request(e, 0x03, 0x63, 8)[2] == 3)
+    request(e, 0x03, 0x64, STREAM_STATUS)
+    ev = status_events(650)                                    # system mode 2: generator, CH1, CH2 in turn
+    kinds = [x[2] for x in ev]
+    check("status, scope mode: one block every 100 ms, generator / CH1 / CH2 in turn",
+          6 <= len(ev) <= 7 and kinds[:6] in ([1, 2, 3, 1, 2, 3], [2, 3, 1, 2, 3, 1], [3, 1, 2, 3, 1, 2]), str(kinds))
+    by_kind = {x[2]: x for x in ev}
+    check("status: the generator block is stock's ten bytes", by_kind[1][3] == 10 and by_kind[1][8:18] == gen_block and by_kind[1][18:] == bytes(46))
+    check("status: CH1's measurements with the run flag after them", by_kind[2][3] == 49 and by_kind[2][8:56] == meas_ch1 and by_kind[2][56] == 1)
+    check("status: CH2's measurements with the run flag after them", by_kind[3][3] == 49 and by_kind[3][8:56] == meas_ch2 and by_kind[3][56] == 1)
+    check("status: sequence numbers count up, ticks ride along",
+          [x[1] for x in ev] == [(ev[0][1] + i) & 0xFF for i in range(len(ev))]
+          and all(0 < struct.unpack_from("<I", b, 4)[0] - struct.unpack_from("<I", a, 4)[0] <= 110 for a, b in zip(ev, ev[1:])))
+    e.audit = False
+    e.w8(RUN_FLAG, 0)                                          # the user presses STOP
+    e.audit = True
+    ev = status_events(350)
+    check("status: a stopped scope is reported as stopped", [x[56] for x in ev if x[2] in (2, 3)] and all(x[56] == 0 for x in ev if x[2] in (2, 3)))
+    e.audit = False
+    e.w8(SYSTEM_MODE, 3)                                       # (the mode byte alone: the link stays up)
+    e.audit = True
+    ev = status_events(350)
+    check("status, generator mode: only the generator block", len(ev) >= 3 and {x[2] for x in ev} == {1}, str([x[2] for x in ev]))
+    e.audit = False
+    e.w8(SYSTEM_MODE, 1)
+    e.audit = True
+    ev = status_events(350)
+    check("status, meter mode: only the rest of the meter's state", len(ev) >= 3 and {x[2] for x in ev} == {4}
+          and ev[0][3] == 16 and ev[0][8:24] == meter_ext, str([x[2] for x in ev]))
+    e.audit = False
+    e.w8(SYSTEM_MODE, 2)
+    e.audit = True
+    request(e, 0x03, 0x65, STREAM_METER | STREAM_STATUS)       # both small streams together
+    seen = []
+    for i, b in enumerate(f_5v * 3):
+        e.uart_byte(b)
+        e.audit = False
+        e.w32(X_TICK_COUNT, e.r32(X_TICK_COUNT) + 10)
+        e.audit = True
+        rs = poll_in(e)
+        if rs is not None:
+            seen.append(rs[0])
+    seen += [x[0] for x in drain(e)]
+    check("status and meter together: three meter events and status blocks between them",
+          seen.count(0x90) == 3 and seen.count(0xB0) >= 3, str([hex(x) for x in seen]))
+    ahead = []
+    rs = request(e, 0x02, 0x66, 10, GENERATOR, events=ahead)
+    check("status: a READ is still answered while it streams", rs[1] == 0x66 and rs[8:18] == gen_block)
+    e.audit = False
+    e.w32(X_TICK_COUNT, 0xFFFFFFC0)                            # the tick counter about to wrap (49.7 days)
+    e.audit = True
+    request(e, 0x03, 0x67, STREAM_STATUS)
+    ev = status_events(400)
+    check("status: keeps its pace across the tick counter's wrap", 3 <= len(ev) <= 5, str(len(ev)))
+    request(e, 0x03, 0x68, 0)
+    check("status: silent again after unsubscribing", status_events(350) == [])
+    e.audit = False
+    e.w32(X_TICK_COUNT, 20000)
+    e.audit = True
 
     # ---- oscilloscope stream: stock's real fpga task, fed by a model of the FPGA ---------------
     def run_task(emu, ops, key):
@@ -531,6 +620,19 @@ def main() -> int:
         other = Path(tmp) / "stock.bin"
         other.write_bytes(stock)
         check("fnlink verify: a different image is reported", fnlink.main(["verify", str(other)], transport=tr) == 1)
+
+        def moving_clock(emu):
+            emu.audit = False
+            emu.w32(X_TICK_COUNT, emu.r32(X_TICK_COUNT) + 1)
+            emu.audit = True
+
+        tr_status = EmuTransport(e, moving_clock)
+        check("fnlink status: the four blocks by READ", fnlink.main(["status"], transport=tr_status) == 0)
+        check("fnlink status --events: the same from the status stream", fnlink.main(["status", "--events"], transport=tr_status) == 0)
+        got = fnlink.status_from_events(fnlink.Link(tr_status), 2, 2000)
+        check("fnlink status_from_events: generator and both channels in scope mode",
+              set(got) == {1, 2, 3} and got[1] == gen_block and got[2][:48] == meas_ch1 and got[2][48] == e.r8(RUN_FLAG), str(sorted(got)))
+        check("fnlink: the link is left unsubscribed afterwards", request(e, 0x01, 0x70)[19] == 0)
 
         wire = list(f_5v + f_mains + f_low)
         tr_meter = EmuTransport(e, lambda emu: emu.uart_byte(wire.pop(0)) if wire else None)

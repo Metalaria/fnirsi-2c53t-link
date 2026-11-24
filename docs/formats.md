@@ -116,6 +116,25 @@ is 2 in every overload frame and in no other. In a capture with HOLD pressed hal
 (`test/data/meter_hold.txt`) the state stays at -0.0005 V for 23 frames while the frame
 moves between -0.0003 and 0.0005 V; the instrument's screen showed the frozen value.
 
+## Status blocks (patch 3)
+
+Event `0xB0` carries one block of stock's SRAM as it was when the report was built. Byte 2 of
+the event is the kind; the layouts are in [`stock_v120_notes.md`](stock_v120_notes.md) and
+`fnlink.py` decodes them (`decode_generator`, `decode_scope_measurements`,
+`decode_meter_stats`).
+
+| Kind | Sent in | Payload |
+|---|---|---|
+| 1 | scope and generator modes | 10 bytes from `0x20000F50`: the generator's settings |
+| 2 | scope mode | 48 bytes from `0x20000208` (CH1's measurements as shown), then the byte at `0x20000126` (1 running, 0 stopped) |
+| 3 | scope mode | 48 bytes from `0x20000238` (CH2's), then the same byte |
+| 4 | meter mode | 16 bytes from `0x20001048`: meter state 40 to 55, i.e. the MIN box, the decimals and unit codes of the three boxes |
+
+One event goes out every 100 ms, the kinds of the current mode in turn, so each block is
+refreshed every 100 to 300 ms. A stopped oscilloscope sends no records; kinds 2 and 3 are how
+a host tells that from silence. The same blocks can be read on request with `READ`, which is
+all patch 2 offers.
+
 ## Oscilloscope
 
 A record is one acquisition of one channel as stock has it after applying its calibration:

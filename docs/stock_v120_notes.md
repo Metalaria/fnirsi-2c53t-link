@@ -188,7 +188,7 @@ SysTick handler `0x0802A994`, `xTaskIncrementTick` `0x0804278C`, `xTickCount`
 | | |
 |---|---|
 | Code cave | from `0x080BE700`, first 0x100-aligned address after the image |
-| RAM | `0x20037000`-`0x20037983`, above stock's stack top (`0x20036F90`) and below the factory bootloader's RAM magic at `0x20037FE0` |
+| RAM | `0x20037000`-`0x20037987`, above stock's stack top (`0x20036F90`) and below the factory bootloader's RAM magic at `0x20037FE0` |
 
 ## Factory bootloader
 
