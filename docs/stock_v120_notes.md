@@ -87,9 +87,9 @@ from two dumps a day apart with stock saving settings in between:
 
 | Offset | Content | Between the two dumps |
 |---|---|---|
-| `0x000`-`0x037` | signature and user settings | changed within `0x003`-`0x016` and `0x025`-`0x02E` (scope and generator settings had been changed) |
+| `0x000`-`0x037` | signature and user settings | 18 bytes changed, within `0x003`-`0x016` and `0x025`-`0x02E` (scope and generator settings had been changed) |
 | `0x038`-`0x12F` | calibration table | identical |
-| `0x130`-`0x1FF` | not part of the structure | `0x140`-`0x1E7` (168 bytes) went from `0xFF` to zeros and a few RGB565 pixel values |
+| `0x130`-`0x1FF` | not part of the structure | all 168 bytes of `0x140`-`0x1E7` went from `0xFF` to zeros and a few RGB565 pixel values |
 | `0x200`-`0x7FF` | never programmed | `0xFF` |
 | `0x800`-`0xFFF` | bootloader flag page | identical |
 
