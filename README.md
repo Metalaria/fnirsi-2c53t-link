@@ -15,7 +15,10 @@ that can stream what it measures.
 through the factory IAP drive. The flash read back identical to the image, the settings and
 calibration page was read out, and the multimeter and both scope channels streamed live.
 The record is in [`docs/hardware_results_2026-11-23.md`](docs/hardware_results_2026-11-23.md),
-including what was not assessed (acquisition timing, noise, Windows, Android).
+including what was not assessed (acquisition timing, noise, Windows, Android). A second
+session the next day, with the same image, settled the rest of the multimeter (AC, µF, diode,
+HOLD, the AC frequency) and located the generator's settings and the scope's own
+measurements in RAM: [`docs/hardware_results_2026-11-24.md`](docs/hardware_results_2026-11-24.md).
 
 > **One unit is not a guarantee.** The board revision of that unit is unknown and nothing
 > has been tried on another. If you flash this, read [Safety](#safety) first and keep the
@@ -103,15 +106,23 @@ python fnlink.py info
 python fnlink.py dump-cal cal_0x08006000.bin     # 4 KB settings/calibration page, read twice
 python fnlink.py verify APP_2C53T_V1.2.0_link.bin
 python fnlink.py read 0x20001060 16
+python fnlink.py status                          # generator settings, scope measurements, meter MAX/MEAN/MIN
 python fnlink.py meter                           # live display digits, function, raw frame
 python fnlink.py scope captures/                 # one file per record: 56 state bytes + 1024 samples
 ```
 
-`meter` prints the reading with its unit (`9.827 kOhm`); a `~` marks the frame or two around
-a change of function, when the display and stock's own unit do not agree yet. `scope` saves
+`meter` prints the reading with its unit (`9.827 kOhm`, `1.028 uF`), in AC V the frequency
+stock shows (`2.349 V 49Hz`) and, while HOLD is on, what the instrument's frozen screen shows
+next to the live reading (`0.0003 V HOLD:-0.0005V`). A `~` marks the frame or two around a
+change of function or of range, when the display and stock's own unit do not agree yet. `scope` saves
 each record raw and prints its settings and measurements
 (`500mV/div X1  200us/div  Vpp 3.04V  1kHz`). The byte layouts behind both, and how each
 field was established, are in [`docs/formats.md`](docs/formats.md).
+
+`status` reads what stock keeps in RAM and the stream does not carry: the signal generator's
+settings, the oscilloscope's own measurements with its RUN/STOP state, and the multimeter's
+MAX / MEAN / MIN boxes. It needs no other firmware than the one with the link: it is four
+`READ` requests. `status --watch 0.25` keeps reading and prints again when something changes.
 
 ## Protocol v1
 
@@ -153,6 +164,9 @@ USB ids default to `1209:0001`, the pid.codes test PID, which is for private tes
   skipped whole.
 - `SET_REPORT` over the control endpoint is not implemented; hosts must use the interrupt
   OUT endpoint.
+- Not in the stream: the meter's MIN box, the generator's settings and the scope's own
+  measurements. They are located in RAM and a host reads them with `READ` when it wants them
+  (`fnlink.py status`); part of their layout is still assumed, see `docs/stock_v120_notes.md`.
 - Going back to stock: flash `APP_2C53T_V1.2.0_251015.bin` through the factory IAP drive.
 
 ## Safety

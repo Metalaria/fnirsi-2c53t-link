@@ -1,8 +1,8 @@
 # What the stream carries: meter frames and scope records
 
 How to turn the link's events into readings, volts and seconds. Everything here was
-established on one retail unit (stock V1.2.0 + stock-link v1, 2026-11-23) by comparing the
-bytes with what the instrument's own screen showed. `fnlink.py` implements it and
+established on one retail unit (stock V1.2.0 + stock-link v1, 2026-11-23 and 24) by comparing
+the bytes with what the instrument's own screen showed. `fnlink.py` implements it and
 `test/test_decode.py` checks it against the captures in `test/data/`.
 
 Evidence labels: **checked** (compared with the screen or with a known input), **assumed**
@@ -28,10 +28,10 @@ kind 1, with these bytes:
 | 0–1 | `5A A5` |
 | 2–6 | four seven-segment digits, each split across two bytes: digit *i* (0–3) is the high nibble of byte 2+*i* and the low nibble of byte 3+*i* |
 | 2, low nibble side | `0x10` minus sign, `0x08` a leading "1" (4½ digits) |
-| 6, high nibble | `0x40` k, `0x20` n |
+| 6, high nibble | `0x80` the diode function, `0x40` k, `0x20` n, `0x10` µ |
 | 7 | `0x20` Ω, `0x10` F, `0x08` continuity, `0x04` M, `0x01` m |
 | 8 | `0x02` V, `0x01` A, `0x20` °C, `0x80` lowest range (see below) |
-| 9–11 | not understood; byte 11 drifts slowly and is not a checksum of the frame |
+| 9–11 | in AC V, byte 11 is the frequency in Hz that stock shows above the reading (seen up to 79; whether bytes 9–10 extend it is not known). In the other functions not understood: byte 11 drifts slowly and is not a checksum of the frame |
 
 Digit segments: a `0x80`, f `0x40`, e `0x20`, b `0x08`, g `0x04`, c `0x02`, d `0x01`. Bit
 `0x10` of digits 2 to 4 is the decimal point in front of that digit. When no point bit is
@@ -40,12 +40,20 @@ set and byte 8 bit 7 is, the reading is `x.xxxx` with the leading "1" bit as its
 
 Readings seen: `9.827` kΩ on a 10 kΩ resistor, `9.201` V on a 9 V battery, `1.0255` MΩ
 across fingers, `-0.006` mA, `23` °C, `0.L` / `.0L` for overload, `Auto` when the smart mode
-detects nothing.
+detects nothing, `0.000` nF with open leads, `1.02` to `1.045` µF on a 1 µF capacitor,
+`1.811` V across a LED in the diode function.
 
-Not seen lit, so not decoded: the AC annunciator, µ, °F, diode, and capacitance prefixes
-other than n. The n prefix itself was only seen with open leads (`0.000`) and was not
-compared with the screen. A frame with a bit outside the table should be treated as not
-understood.
+**AC has no annunciator.** In AC V, AC mA and AC A the frame's bytes are those of the DC
+function; what says "alternating" is the function word. Seen: `0.0000` V with the probes
+shorted, `0.008` mA and `0.0007` A with nothing in the current sockets, and 2.2 to 2.4 V of
+mains hum with the open probes held in the hand. No AC source of known value was measured:
+what is checked is the decoding, not the instrument's accuracy.
+
+**Blank display.** While the range changes the display is empty for a frame or two, or shows
+its decimal point alone (seen in capacitance). `fnlink` reports both as `blank`.
+
+Not seen lit, so not decoded: °F, and capacitance prefixes other than n and µ. A frame with a
+bit outside the table should be treated as not understood.
 
 ### Function word (checked)
 
@@ -54,12 +62,13 @@ understood.
 | `0x00` | none sent yet: the chip powers up in Auto | `0x0A` | capacitance |
 | `0x14` | Auto | `0x12` | temperature |
 | `0x0C` | DC V | `0x11` | DC mA |
+| `0x0D` | AC V | `0x16` | AC mA |
 | `0x0B` | resistance | `0x10` | DC A |
-| `0x17` | continuity | | |
+| `0x17` | continuity | `0x15` | AC A |
+| `0x0E` | diode | | |
 
-`0x0D` AC V, `0x0E` diode, `0x16` AC mA and `0x15` AC A are the codes OpenScope-2C53T
-documents; they were not reached in these captures. Every key press also produces a kind 2
-event: the chip's 10-byte echo (`AA 55` …) of the order.
+Every key press also produces a kind 2 event: the chip's 10-byte echo (`AA 55` …) of the
+order.
 
 The function word is the order stock has just sent, so it changes one frame ahead of the
 display.
@@ -70,17 +79,42 @@ Offsets are into the 40 state bytes (add `0x20001020` for the address).
 
 | Offset | Content |
 |---|---|
-| 5 | selected function as an index: 0 Auto, 1 DC V, 2 continuity, 3 resistance, 4 capacitance, 5 temperature, 6 DC mA, 7 DC A |
-| 6 | what is being measured: 1 voltage, 3 continuity, 5 resistance, 6 capacitance, 7 temperature, 8 mA, 10 A (in Auto: what was detected) |
+| 5 | position in the function menu: 0 Auto, 1 voltage, 2 continuity and diode, 3 resistance, 4 capacitance, 5 temperature, 6 mA, 7 A |
+| 6 | what is being measured: 1 DC voltage, 2 AC voltage, 3 continuity, 4 diode, 5 resistance, 6 capacitance, 7 temperature, 8 DC mA, 9 AC mA, 10 DC A, 11 AC A (in Auto: what was detected) |
 | 8–11 | the reading as a `float`. While stock converts it, this briefly holds the raw count (9827.0) instead of the scaled value (9.827) |
 | 12 | decimals shown |
-| 16 | unit code: 1 V, 2 Ω, 3 kΩ, 4 MΩ, 5 capacitance, 9 °C, 11 mA, 12 A; `0xFF` none |
-| 32–39 | two more floats that track the reading (looks like maximum and minimum; assumed) |
+| 13 | what the screen shows: 0 a number, 1 "Auto" waiting, 2 overload, 3 blank |
+| 16 | unit code: 1 V, 2 Ω, 3 kΩ, 4 MΩ, 5 nF, 6 µF, 9 °C, 11 mA, 12 A; `0xFF` none |
+| 18–19 | in AC V: the frequency in Hz, 16 bits, a frame behind the frame's byte 11. Stale in the other functions |
+| 20 | 1 while HOLD is on |
+| 32–35, 36–39 | the MAX and MEAN boxes of the screen, as floats. MEAN is (MAX + MIN) / 2, not an average |
+
+The MIN box is the next float, at offset 40: outside the 40 bytes the link sends (read it
+with `fnlink.py read 0x20001048 4`). The three boxes scale on their own (9.193 V, 4.2962 V
+and -600.60 mV at the same time); their decimals are at offsets 44–46 and their unit codes at
+47–49, also outside. Their unit codes were seen as 1 (V) and 0 (with a value in millivolts);
+that 0 means mV is assumed.
 
 The frame's annunciators and the unit code at offset 16 come from different places. They
-agree on more than 98% of frames; the exceptions are the frame or two around a change of
-function. `fnlink.decode_meter_event` reports a reading as `consistent` only when they agree,
-and takes the digits from the frame, which arrives whole, never from the float.
+agree on more than 98% of frames that show something; the exceptions are the frame or two
+around a change of function or of range. `fnlink.decode_meter_event` reports a reading as
+`consistent` only when they agree, and takes the digits from the frame, which arrives whole,
+never from the float.
+
+### HOLD (checked)
+
+HOLD does not reach the meter chip. Its frames go on with the live reading; stock stops
+updating its state, and its screen keeps showing that frozen state. So while offset 20 is 1:
+
+- the frame is the live reading, which the instrument's screen is **not** showing;
+- the screen shows the state: the value at 8–11 written with the decimals at 12 and the unit
+  at 16, or an overload when offset 13 is 2. `fnlink.held_screen` builds it.
+
+Out of HOLD, the float written with those decimals is the display's text in every reading
+where the two can be compared (455 across the captures of the second session), and offset 13
+is 2 in every overload frame and in no other. In a capture with HOLD pressed half way
+(`test/data/meter_hold.txt`) the state stays at -0.0005 V for 23 frames while the frame
+moves between -0.0003 and 0.0005 V; the instrument's screen showed the frozen value.
 
 ## Oscilloscope
 
@@ -98,7 +132,8 @@ from `0x200000F8`) followed by 19 `0xA1` data events.
 | 20 | channels on: bit 0 CH1, bit 1 CH2 | checked (1 and 3) |
 | 21 | trigger source: 1 CH1, 2 CH2 | assumed |
 | 28–29 | trigger level, signed 16 bits, in counts from the middle (128) | inferred: it changed by 2 when an arrow key was pressed with the arrows not on the scales |
-| 45 | time per division as an index: 0 = 10 ns, then 1-2-5 steps | checked at 13 (200 µs); 11 and 16 fit 50 µs and 2 ms |
+| 45 | time per division as an index: 0 = 10 ns, then 1-2-5 steps | checked at 8 (5 µs, photograph of the screen) and 13 (200 µs); 11 and 16 fit 50 µs and 2 ms |
+| 46 | 1 running, 0 stopped (the RUN/STOP key) | checked: three RAM dumps running, one stopped |
 
 ### Scales
 
@@ -119,3 +154,5 @@ from `0x200000F8`) followed by 19 `0xA1` data events.
 - A wave that leaves the converter's range sits exactly on 5 and 244.
 - With both channels on, each acquisition gives a CH1 record and a CH2 record 1–2 ms apart.
 - Coupling and trigger edge are somewhere in the state bytes and have not been located.
+- Stock computes its own measurements (frequency, duty, Vmax, Vmin, Vpp) and keeps them in
+  RAM just after the scope state. The link does not send them; see `stock_v120_notes.md`.

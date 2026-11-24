@@ -9,9 +9,12 @@ Evidence labels:
 - **code**: read from the disassembly of the image.
 - **emu**: exercised by running the image's own code in the Unicorn harness (`test/`).
 - **unit**: seen on one retail unit, from the host side, without writing to it.
+- **ram**: read out of the unit's RAM over the link (`fnlink.py read`) and compared with a
+  photograph of its screen at that moment, or with a setting changed between two readings.
 
 Since 2026-11-23 the patch has run on one unit; what that showed is in
-[`hardware_results_2026-11-23.md`](hardware_results_2026-11-23.md), and the decoded meter and
+[`hardware_results_2026-11-23.md`](hardware_results_2026-11-23.md) and
+[`hardware_results_2026-11-24.md`](hardware_results_2026-11-24.md), and the decoded meter and
 scope formats are in [`formats.md`](formats.md). The labels below are as they were when
 each fact was established.
 
@@ -85,6 +88,10 @@ Meter chip on USART2, 9600 8N1. (code, emu)
 - Transmit buffer `0x20000005` (function word at `0x20000008`), meter mode `0x20001025`,
   value `0x20001028`, semaphore `0x20002D7C`, task entry `0x0803DAC0`.
 
+Meter state, from `0x20001020` (unit; details in `formats.md`): screen status `+13`, unit code
+`+16`, AC frequency `+18`, HOLD flag `+20` (`0x20001034`), MAX / MEAN / MIN floats `+32`, `+36`,
+`+40`, their decimals `+44..46` and unit codes `+47..49`.
+
 Display digits: bytes 2 to 6 carry four 7-segment digits, each split across two bytes.
 Digit `i` (0 to 3) is the high nibble of byte `2+i` together with the low nibble of byte
 `3+i`. Within that 8-bit mask:
@@ -125,6 +132,48 @@ Unit and prefix: decoded on hardware, see [`formats.md`](formats.md).
 
 Scaling of the 1024-sample records to volts and seconds: established on hardware, see
 [`formats.md`](formats.md).
+
+Stock's own measurements (ram). Three blocks, each with twelve 32-bit words for CH1 followed
+by twelve for CH2, in the units the screen's measurement boxes are computed from:
+
+| Block | Address | Content |
+|---|---|---|
+| last acquisition | `0x20000148` | as measured on the newest record |
+| averaged | `0x200001A8` | a running average of the block above |
+| shown | `0x20000208` | what the screen shows: the averaged block while running, the last acquisition once stopped |
+
+| Word | Content | Unit |
+|---|---|---|
+| 0 | frequency | Hz |
+| 1 | period | ns |
+| 2, 3 | positive and negative duty cycle | 0.01 % |
+| 4, 5 | positive and negative pulse width | ns |
+| 6, 7, 8 | Vmax, Vmin, Vpp | µV |
+| 9 | a second amplitude, a few mV under Vpp (top to base?) | µV |
+| 10, 11 | not identified | µV |
+
+Compared with a photograph of the stopped screen: 40232 with "40.23KHz", 6451 with "64.51%",
+114000 with "114.0mV". The running flag is scope state `+46` (`0x20000126`). CH2's twelve
+words were only seen with the channel off: a frequency (50 to 88 Hz) and exactly its period,
+the rest zero. That they are CH2's is assumed from the layout. Outside the oscilloscope mode
+the shown block is all zeros.
+
+## Signal generator
+
+Settings from `0x20000F50` (ram: five dumps, one setting changed between each, compared with
+photographs of the generator screen):
+
+| Offset | Content |
+|---|---|
+| 0 | 1 in every dump (output on? not established) |
+| 1 | waveform as the menu's index: 1 Square, 4 Full Wave seen |
+| 4–7 | frequency in Hz, 32 bits (1000, 15000, 35000, 50000 seen) |
+| 8 | duty cycle in % (50 seen) |
+| 9 | amplitude in tenths of a volt (30 and 20 seen for 3.0 V and 2.0 V) |
+| 10–209 | one period of the wave as 100 16-bit DAC values |
+
+The sample table follows the waveform and the amplitude: 20 to 3742 for a 3.0 V square,
+1880 to 3742 for a 3.0 V full wave, 1260 to 2501 at 2.0 V.
 
 ## FreeRTOS
 

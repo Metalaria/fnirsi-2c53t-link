@@ -93,47 +93,140 @@ def decode_meter_frame(frame: bytes) -> dict:
         except ValueError:
             value = None
     unit, prefix, continuity, unknown = frame_unit(frame)
-    return {"text": text, "value": value, "digits": "".join(digits), "masks": masks, "negative": negative,
+    # While the range changes the display can be empty, or show its decimal point alone.
+    blank = not text.strip(" .-")
+    return {"text": text, "value": value, "blank": blank, "digits": "".join(digits), "masks": masks, "negative": negative,
             "leading_one": leading_one, "flags": frame[7], "range": frame[8], "tail": frame[9:12],
             "unit": unit, "prefix": prefix, "continuity": continuity, "unknown_bits": unknown}
 
 
 # Annunciators of the display frame, established on a real unit (docs/formats.md): the high
 # nibble of byte 6 and bytes 7 and 8. Anything else lit is reported as unknown.
-_B6_KNOWN, _B7_KNOWN, _B8_KNOWN = 0x60, 0x3D, 0xA3
+_B6_KNOWN, _B7_KNOWN, _B8_KNOWN = 0xF0, 0x3D, 0xA3
 
 
 def frame_unit(frame: bytes) -> tuple:
     """(unit, prefix, continuity, unknown bits lit) from a display frame's annunciators.
 
-    Units are ASCII: "V", "A", "Ohm", "F", "degC" or "" when none is lit."""
+    Units are ASCII: "V", "A", "Ohm", "F", "degC" or "" when none is lit; the micro prefix is
+    "u". Byte 6 bit 7 is lit in the diode function and carries no unit of its own (the reading
+    is in volts)."""
     b6, b7, b8 = frame[6] & 0xF0, frame[7], frame[8]
     unknown = bool(b6 & ~_B6_KNOWN & 0xFF) or bool(b7 & ~_B7_KNOWN & 0xFF) or bool(b8 & ~_B8_KNOWN & 0xFF)
     unit = "V" if b8 & 0x02 else "A" if b8 & 0x01 else "Ohm" if b7 & 0x20 else "F" if b7 & 0x10 else \
         "degC" if b8 & 0x20 else ""
-    prefix = "k" if b6 & 0x40 else "n" if b6 & 0x20 else "M" if b7 & 0x04 else "m" if b7 & 0x01 else ""
+    prefix = "k" if b6 & 0x40 else "n" if b6 & 0x20 else "u" if b6 & 0x10 else "M" if b7 & 0x04 else \
+        "m" if b7 & 0x01 else ""
     return unit, prefix, bool(b7 & 0x08), unknown
 
 
 # Unit code in stock's own meter state (state[16], i.e. 0x20001030), seen on a real unit.
-FIRMWARE_UNITS = {1: ("V", ""), 2: ("Ohm", ""), 3: ("Ohm", "k"), 4: ("Ohm", "M"), 5: ("F", "n"),
+FIRMWARE_UNITS = {1: ("V", ""), 2: ("Ohm", ""), 3: ("Ohm", "k"), 4: ("Ohm", "M"), 5: ("F", "n"), 6: ("F", "u"),
                   9: ("degC", ""), 11: ("A", "m"), 12: ("A", "")}
 PREFIX_SCALE = {"": 1.0, "n": 1e-9, "u": 1e-6, "m": 1e-3, "k": 1e3, "M": 1e6}
+FUNCTION_AC_V = 0x0D
+DISPLAY_COUNTS = 19999      # the display holds 4 1/2 digits
+# state[13]: what stock's own screen is showing
+SCREEN_NUMBER, SCREEN_OVERLOAD = 0, 2
 
 
-def decode_meter_event(frame: bytes, state: bytes) -> dict:
-    """A display frame plus the 40 state bytes that travel with it.
+def held_screen(state: bytes):
+    """What stock's screen shows while HOLD is on, from the 40 state bytes: a number or an
+    overload in a known unit, as {"text", "value", "unit", "prefix", "overload", "si"}.
 
-    Adds "si" (the reading in base units, or None) and "consistent": the frame's annunciators
-    and stock's own unit code agree and no unknown annunciator is lit. Around a change of
-    function one of the two is still the old one for a frame or two; such readings should not
-    be trusted."""
+    HOLD does not reach the meter chip: its frames go on with the live reading while stock stops
+    updating its state, and the screen keeps showing that frozen state. None when the state is
+    not a plain number or an overload (a blank display, "Auto", a value the display cannot hold)."""
+    if len(state) < 21 or state[16] not in FIRMWARE_UNITS or state[13] not in (SCREEN_NUMBER, SCREEN_OVERLOAD):
+        return None
+    unit, prefix = FIRMWARE_UNITS[state[16]]
+    if state[13] == SCREEN_OVERLOAD:
+        return {"text": "OL", "value": None, "unit": unit, "prefix": prefix, "overload": True, "si": None}
+    decimals = state[12]
+    value = struct.unpack_from("<f", state, 8)[0]
+    if decimals > 4 or value != value or abs(value) * 10 ** decimals > DISPLAY_COUNTS + 0.5:
+        return None
+    text = "%.*f" % (decimals, value)
+    return {"text": text, "value": float(text), "unit": unit, "prefix": prefix, "overload": False,
+            "si": float(text) * PREFIX_SCALE[prefix]}
+
+
+def decode_meter_event(frame: bytes, state: bytes, function: int | None = None) -> dict:
+    """A display frame plus the 40 state bytes that travel with it, and optionally the function
+    word of the same event.
+
+    Adds:
+      "si"            the reading in base units, or None
+      "consistent"    the frame's annunciators and stock's own unit code agree, no unknown
+                      annunciator is lit and the display is not blank. Around a change of function
+                      or of range one of the two is still the old one for a frame or two; such
+                      readings should not be trusted.
+      "hold"          HOLD is on: the frame is the live reading, the instrument's screen is frozen
+      "held"          what that frozen screen shows (see held_screen), or None
+      "frequency_hz"  in AC V (function 0x0D) the frequency stock shows above the reading; None
+                      in any other function, where the state's number is stale."""
     d = decode_meter_frame(frame)
     firmware = FIRMWARE_UNITS.get(state[16]) if len(state) > 16 else None
     d["firmware_unit_code"] = state[16] if len(state) > 16 else None
-    d["consistent"] = bool(d["unit"]) and not d["unknown_bits"] and firmware == (d["unit"], d["prefix"])
+    d["consistent"] = (bool(d["unit"]) and not d["unknown_bits"] and not d["blank"]
+                       and firmware == (d["unit"], d["prefix"]))
     d["si"] = d["value"] * PREFIX_SCALE[d["prefix"]] if d["value"] is not None and d["unit"] else None
+    d["hold"] = len(state) > 20 and state[20] == 1
+    d["held"] = held_screen(state) if d["hold"] else None
+    d["frequency_hz"] = (state[18] | state[19] << 8) if function == FUNCTION_AC_V and len(state) > 19 else None
     return d
+
+
+# ---------------------------------------------------------------- stock's RAM, read on request
+#
+# Things stock keeps in RAM that the stream does not carry (docs/stock_v120_notes.md). They are
+# read with READ, which the link answers from the USB interrupt: each block is one instant.
+
+METER_STATE_ADDR, METER_STATE_LEN = 0x20001020, 56
+SCOPE_STATE_ADDR, SCOPE_STATE_LEN = 0x200000F8, 56
+SCOPE_MEASURED_ADDR = 0x20000208            # what the screen shows; 12 words for CH1, then 12 for CH2
+SCOPE_MEASURED_WORDS = 12
+GENERATOR_ADDR, GENERATOR_LEN = 0x20000F50, 10
+# Index of the generator's waveform menu. Only these two were seen on hardware.
+GENERATOR_WAVEFORMS = {1: "Square", 4: "Full Wave"}
+# Unit code of the MAX / MEAN / MIN boxes. 1 was seen with volts; 0 with a value in millivolts (assumed mV).
+STATS_UNITS = {1: "V", 0: "mV?"}
+
+
+def decode_generator(block: bytes) -> dict:
+    """The signal generator's settings from the 10 bytes at GENERATOR_ADDR.
+
+    "flag0" was 1 in every dump taken; whether it is the output switch is not established."""
+    if len(block) < GENERATOR_LEN:
+        raise LinkError("generator block too short")
+    return {"flag0": block[0], "waveform_index": block[1], "waveform": GENERATOR_WAVEFORMS.get(block[1]),
+            "frequency_hz": struct.unpack_from("<I", block, 4)[0], "duty_percent": block[8],
+            "amplitude_v": block[9] / 10.0}
+
+
+def decode_scope_measurements(words: bytes) -> dict:
+    """One channel's twelve 32-bit words of stock's own measurements, in SI units.
+
+    "extra" are the three words not identified (the first looks like a second amplitude).
+    Checked for CH1 against a photograph of the screen; CH2's block follows CH1's and was only
+    seen with the channel off (a frequency and its period, the rest zero)."""
+    if len(words) < 4 * SCOPE_MEASURED_WORDS:
+        raise LinkError("measurement block too short")
+    w = struct.unpack_from("<12I", words)
+    return {"frequency_hz": w[0], "period_s": w[1] * 1e-9, "duty_positive_percent": w[2] / 100.0,
+            "duty_negative_percent": w[3] / 100.0, "width_positive_s": w[4] * 1e-9, "width_negative_s": w[5] * 1e-9,
+            "vmax": w[6] * 1e-6, "vmin": w[7] * 1e-6, "vpp": w[8] * 1e-6, "extra": [x * 1e-6 for x in w[9:12]]}
+
+
+def decode_meter_stats(state: bytes) -> list:
+    """The MAX, MEAN and MIN boxes from 56 bytes of meter state: [(name, value, decimals, unit code)].
+
+    Each box scales on its own. A value that is not a number means the box is empty."""
+    if len(state) < 50:
+        raise LinkError("meter state too short for the statistics")
+    values = struct.unpack_from("<3f", state, 32)
+    return [(name, None if v != v else v, state[44 + i], state[47 + i])
+            for i, (name, v) in enumerate(zip(("MAX", "MEAN", "MIN"), values))]
 
 
 # ---------------------------------------------------------------- oscilloscope records
@@ -370,6 +463,65 @@ def cmd_read(link: Link, args) -> int:
     return 0
 
 
+def status_lines(mode: int, meter: bytes, scope: bytes, measured: bytes, generator: bytes) -> list:
+    """What `status` prints, from the four RAM blocks. Stock only updates a block in its own mode:
+    the others show what was there when the instrument last left that mode."""
+    out = ["system mode  %d (%s)" % (mode, MODES.get(mode, "unknown"))]
+    g = decode_generator(generator)
+    out.append("generator    %s (index %d), %s, duty %d %%, %.1f V, byte0 %d   raw %s" % (
+        g["waveform"] or "?", g["waveform_index"], _eng(g["frequency_hz"], "Hz"), g["duty_percent"],
+        g["amplitude_v"], g["flag0"], generator.hex()))
+    s = scope_settings(scope)
+    out.append("scope        %s, %s%s" % (
+        "RUN" if scope[46] == 1 else "STOP" if scope[46] == 0 else "run byte %d" % scope[46],
+        "settings not understood" if s is None else "%s/div, CH1 %s/div X%d, CH2 %s/div X%d, channels %s" % (
+            _eng(s["seconds_per_div"], "s"), _eng(s["channels"][0]["volts_per_div"], "V"), s["channels"][0]["probe"],
+            _eng(s["channels"][1]["volts_per_div"], "V"), s["channels"][1]["probe"],
+            "+".join("CH%d" % (i + 1) for i, c in enumerate(s["channels"]) if c["enabled"]) or "none"),
+        "   state %s" % scope.hex()))
+    for ch in (0, 1):
+        block = measured[48 * ch:48 * ch + 48]
+        m = decode_scope_measurements(block)
+        out.append("  CH%d shown   %s, period %s, duty +%.2f %% / -%.2f %%, width +%s / -%s, Vmax %s, Vmin %s, Vpp %s" % (
+            ch + 1, _eng(m["frequency_hz"], "Hz"), _eng(m["period_s"], "s"), m["duty_positive_percent"],
+            m["duty_negative_percent"], _eng(m["width_positive_s"], "s"), _eng(m["width_negative_s"], "s"),
+            _eng(m["vmax"], "V"), _eng(m["vmin"], "V"), _eng(m["vpp"], "V")))
+        out.append("     words    %s" % " ".join(str(x) for x in struct.unpack_from("<12I", block)))
+    held = held_screen(meter)
+    out.append("meter        menu %d, measuring %d, screen byte %d, unit code %d, HOLD %s%s" % (
+        meter[5], meter[6], meter[13], meter[16], "on" if meter[20] == 1 else "off",
+        "" if held is None else ", state value %s %s%s" % (held["text"], held["prefix"], held["unit"])))
+    out.append("  boxes      %s" % ", ".join(
+        "%s %s (unit code %d%s)" % (name, "empty" if v is None else "%.*f" % (min(dec, 6), v), code,
+                                    ": " + STATS_UNITS[code] if code in STATS_UNITS else "")
+        for name, v, dec, code in decode_meter_stats(meter)))
+    out.append("     state    %s" % meter.hex())
+    return out
+
+
+def cmd_status(link: Link, args) -> int:
+    """Read and print the generator's settings, the scope's own measurements and the meter's
+    statistics boxes: the things stock keeps in RAM and the stream does not carry."""
+    shown = None
+    try:
+        while True:
+            mode = link.info()["mode"]
+            lines = status_lines(mode, link.read(METER_STATE_ADDR, METER_STATE_LEN),
+                                 link.read(SCOPE_STATE_ADDR, SCOPE_STATE_LEN),
+                                 link.read(SCOPE_MEASURED_ADDR, 96), link.read(GENERATOR_ADDR, GENERATOR_LEN))
+            if lines != shown:
+                if shown is not None:
+                    print()
+                print("\n".join(lines))
+                sys.stdout.flush()
+                shown = lines
+            if not args.watch:
+                return 0
+            time.sleep(args.watch)
+    except KeyboardInterrupt:
+        return 0
+
+
 def cmd_dump_cal(link: Link, args) -> int:
     if args.out.exists():
         raise LinkError("%s already exists: refusing to overwrite a calibration backup" % args.out)
@@ -401,6 +553,22 @@ def cmd_verify(link: Link, args) -> int:
     return 1
 
 
+def meter_text(d: dict) -> str:
+    """One reading of decode_meter_event as text: "1.811 V", "2.349 V 49Hz", "0.0003 V HOLD:-0.0005V".
+
+    A trailing '~' marks a reading that is not consistent (see decode_meter_event)."""
+    unit = (d["prefix"] + d["unit"]) if d["unit"] else ""
+    out = d["text"].strip() + (" " + unit if unit else "")
+    if d["frequency_hz"] is not None:
+        out += " %dHz" % d["frequency_hz"]
+    if d["hold"]:
+        h = d["held"]
+        out += " HOLD:" + (h["text"] + h["prefix"] + h["unit"] if h else "?")
+    if unit and not d["consistent"]:
+        out += " ~"
+    return out
+
+
 def cmd_meter(link: Link, args) -> int:
     """Print every meter frame: the display digits, the function and the raw bytes."""
     link.stream(STREAM_METER)
@@ -412,12 +580,9 @@ def cmd_meter(link: Link, args) -> int:
             frame, func = rs[8:20], rs[20]
             tick = struct.unpack_from("<I", rs, 4)[0]
             if rs[2] == 1:
-                d = decode_meter_event(frame, rs[24:64])
-                unit = (d["prefix"] + d["unit"]) if d["unit"] else ""
-                # '~' marks a reading whose unit the frame and stock's state do not agree on
-                shown = "%s%s%s" % (d["text"], " " + unit if unit else "", "" if d["consistent"] or not unit else " ~")
+                d = decode_meter_event(frame, rs[24:64], func)
                 print("%9.3f s  %-14s %-10s raw %s  state %s" % (
-                    tick / 1000.0, shown, METER_FUNCTIONS.get(func, "func 0x%02X" % func),
+                    tick / 1000.0, meter_text(d), METER_FUNCTIONS.get(func, "func 0x%02X" % func),
                     frame.hex(" "), rs[24:64].hex()))
             else:
                 print("%9.3f s  echo    %-10s raw %s" % (
@@ -476,6 +641,11 @@ def main(argv=None, transport=None) -> int:
     p.add_argument("addr", type=lambda s: int(s, 0))
     p.add_argument("length", type=lambda s: int(s, 0))
     p.set_defaults(fn=cmd_read)
+    p = sub.add_parser("status", help="generator settings, the scope's own measurements and the meter's "
+                                      "MAX/MEAN/MIN, read from stock's RAM")
+    p.add_argument("--watch", type=float, default=0, metavar="SECONDS",
+                   help="keep reading at this interval and print again whenever something changes")
+    p.set_defaults(fn=cmd_status)
     p = sub.add_parser("dump-cal", help="save the 4 KB settings/calibration page (0x08006000)")
     p.add_argument("out", type=Path)
     p.set_defaults(fn=cmd_dump_cal)
