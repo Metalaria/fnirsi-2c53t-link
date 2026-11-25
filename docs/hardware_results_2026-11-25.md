@@ -282,7 +282,28 @@ Square Wave selected. Patch 5 writes the playing table whatever is selected, so 
 instrument went on showing "Square Wave" and playing a sinc until a generator setting was
 changed. Patch 6 stores such a waveform for the USB entry only.
 
-Not checked on the unit: a power cycle with an added entry selected.
+Not checked on the unit with patch 5: a power cycle with an added entry selected.
+
+## Patch 6 on the unit
+
+Flashed later the same evening over patch 5 (seventh update), built with the same five
+entries, AM 80% now borrowing Sink Pulse's picture (`d34097a8…83ec`, as in
+`reference/APP_2C53T_V1.2.0_link_patch6_menu.json`).
+
+| | |
+|---|---|
+| `fnlink.py info` | protocol 1, patch 6, the five entries |
+| `fnlink.py verify` | MATCH (755556 bytes) |
+| Settings and calibration page | against the dump taken after patch 5: the calibration table is identical; 7 bytes of settings differ and 206 in the scratch area after the table, which stock fills with whatever its staging buffer held (the same area that went from `0xFF` to other values on 2026-11-24) |
+| `wave sinc` with Square Wave selected | "stored ... not playing": kept for entry 18, and the instrument's oscilloscope goes on showing the square |
+| `wave gauss` with USB Wave selected | written and read back, 20 to 3741, and the bell on the oscilloscope at once (photograph) |
+| Back on Square Wave | the square again; `wave --show` reads its table as two levels, 20 and 3742 |
+| The list | Burst 10 and AM 80% now show different pictures |
+| After a restart | about a minute after power-on (`uptime 72.0 s`) the generator was on Gauss Pulse with its table in place, 20 to 3741. Whether that entry had been selected before the restart was not noted |
+
+The square on the oscilloscope has a peak after each edge that settles onto the level
+(photograph: 10X probe, channel set to X1). Its table is exactly two values, so that shape
+is made after the DAC; an over-compensated probe draws it. Not pursued further.
 
 ## Not answered
 
