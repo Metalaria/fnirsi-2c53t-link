@@ -1,0 +1,5 @@
+== Lorentz waves, then one step further on in the menu
+generator    Lorentz waves (index 12), 50kHz, duty 50 %, 3.0 V, byte0 1   raw 010c000050c30000321e
+generator    Lorentz waves (index 12), 50kHz, duty 50 %, 3.0 V, byte0 1   raw 010c000050c30000321e
+== Square Wave, then one step back in the menu
+generator    ? (index 0), 50kHz, duty 50 %, 3.0 V, byte0 1   raw 0100000050c30000321e

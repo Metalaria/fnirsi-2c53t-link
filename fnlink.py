@@ -210,8 +210,9 @@ SCOPE_MEASURED_ADDR = 0x20000208            # what the screen shows; 12 words fo
 SCOPE_MEASURED_WORDS = 12
 GENERATOR_ADDR, GENERATOR_LEN = 0x20000F50, 10
 # The generator's waveform, as its position in the menu (0 to 12). Names as the menu shows them: 1 to 12
-# were read on the unit one by one on 2026-11-25 (sessions/2026-11-25_generator_ch2_boxes). The entry
-# before "Square Wave", index 0, has not been seen named.
+# were read on the unit one by one on 2026-11-25 (sessions/2026-11-25_generator_ch2_boxes). Index 0 is one
+# step before "Square Wave" in the menu; stock builds it from a 100-point table at 0x0804D848 that is a sine
+# (code), but its label on the screen was not noted, so it has no name here.
 GENERATOR_WAVEFORMS = {1: "Square Wave", 2: "Sawtooth wave", 3: "Half-wave", 4: "Full Wave", 5: "Step Wave",
                        6: "Reverse Step Wave", 7: "Index Up", 8: "Index Decrease", 9: "Direct Current",
                        10: "Multi-audio", 11: "Sink Pulse", 12: "Lorentz waves"}
@@ -263,7 +264,7 @@ def decode_meter_stats(state: bytes) -> list:
 # ---------------------------------------------------------------- oscilloscope records
 
 COUNTS_PER_DIV = 25         # sample counts per vertical division
-SAMPLES_PER_DIV = 25        # samples per horizontal division (checked from 5 us to 2 ms per division)
+SAMPLES_PER_DIV = 25        # samples per horizontal division (checked from 2 us to 2 ms per division)
 _STEPS = (1, 2, 5)
 
 
@@ -281,8 +282,9 @@ def scope_settings(state: bytes):
     """The 56 scope state bytes of a record header decoded (docs/formats.md), or None.
 
     Per channel: enabled, volts per division as displayed (probe setting applied), probe
-    factor and the sample value of zero volts. CH2's range byte was checked on hardware at X1
-    (2026-11-25); its position and probe bytes are assumed to mirror CH1's."""
+    factor, the sample value of zero volts and the coupling. Range and probe bytes of both
+    channels were checked on hardware (2026-11-25); CH2's position byte is assumed to mirror
+    CH1's. The coupling is known for CH1 only (byte 0: 1 DC, 0 AC); for CH2 it is None."""
     t = seconds_per_div(state[45])
     v = [volts_per_div(state[2]), volts_per_div(state[3])]
     if t is None or None in v:
@@ -291,11 +293,12 @@ def scope_settings(state: bytes):
     for ch in (0, 1):
         probe = 10 if state[6 + ch] == 1 else 1
         position = state[4 + ch] - 256 if state[4 + ch] > 127 else state[4 + ch]
+        coupling = None if ch else ("AC" if state[0] == 0 else "DC")
         channels.append({"enabled": bool(state[20] & (1 << ch)), "volts_per_div": v[ch] * probe,
-                         "probe": probe, "zero": 128 + position})
+                         "probe": probe, "zero": 128 + position, "coupling": coupling})
     level = int.from_bytes(state[28:30], "little", signed=True)
     return {"channels": channels, "seconds_per_div": t, "sample_period": t / SAMPLES_PER_DIV,
-            "time_base_checked": 11 <= state[45] <= 16, "trigger_level": 128 + level}
+            "time_base_checked": 7 <= state[45] <= 16, "trigger_level": 128 + level}
 
 
 def measure_record(settings: dict, channel: int, data: bytes) -> dict:
@@ -676,8 +679,9 @@ def status_lines(mode: int, meter: bytes, scope: bytes, measured: bytes, generat
     s = scope_settings(scope)
     out.append("scope        %s, %s%s" % (
         "RUN" if scope[46] == 1 else "STOP" if scope[46] == 0 else "run byte %d" % scope[46],
-        "settings not understood" if s is None else "%s/div, CH1 %s/div X%d, CH2 %s/div X%d, channels %s" % (
+        "settings not understood" if s is None else "%s/div, CH1 %s/div X%d %s, CH2 %s/div X%d, channels %s" % (
             _eng(s["seconds_per_div"], "s"), _eng(s["channels"][0]["volts_per_div"], "V"), s["channels"][0]["probe"],
+            s["channels"][0]["coupling"],
             _eng(s["channels"][1]["volts_per_div"], "V"), s["channels"][1]["probe"],
             "+".join("CH%d" % (i + 1) for i, c in enumerate(s["channels"]) if c["enabled"]) or "none"),
         "   state %s" % scope.hex()))

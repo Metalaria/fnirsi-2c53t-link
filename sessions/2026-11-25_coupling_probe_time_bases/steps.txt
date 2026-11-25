@@ -1,0 +1,99 @@
+== 1
+ 2573.431 s  CH1  seq  94  min  43  max 210  50mV/div X1  5us/div  Vpp 334mV  50.1kHz  -> scope_000000_ch1_t2573431.bin
+ 2573.461 s  CH1  seq  95  min  43  max 211  50mV/div X1  5us/div  Vpp 336mV  50kHz  -> scope_000001_ch1_t2573461.bin
+generator    Square Wave (index 1), 50kHz, duty 50 %, 3.0 V, byte0 1   raw 0101000050c30000321e
+scope        RUN, 5us/div, CH1 50mV/div X1, CH2 100mV/div X1, channels CH1   state 01000203b40000000000000000000000000000000101000100000000ffff0000000000000000000000000000000801000001ff0000000000
+  CH1 shown   50kHz, period 20us, duty +48.90 % / -51.09 %, width +9.78us / -10.2us, Vmax 317mV, Vmin -17.9mV, Vpp 335mV
+  CH2 shown   0Hz, period 0s, duty +0.33 % / -99.67 %, width +0s / -0s, Vmax 0V, Vmin -8mV, Vpp 8mV
+== 2
+ 2595.913 s  CH1  seq  96  min   2  max 137  50mV/div X1  5us/div  Vpp 270mV  50kHz  CLIPPED  -> scope_000000_ch1_t2595913.bin
+ 2595.943 s  CH1  seq  97  min   2  max 137  50mV/div X1  5us/div  Vpp 270mV  50kHz  CLIPPED  -> scope_000001_ch1_t2595943.bin
+generator    Square Wave (index 1), 50kHz, duty 50 %, 3.0 V, byte0 1   raw 0101000050c30000321e
+scope        RUN, 5us/div, CH1 50mV/div X1, CH2 100mV/div X1, channels CH1   state 00000203b40000000000000000000000000000000101000100000000ffff0000000000000000000000000000000801000001ff0000000000
+  CH1 shown   50kHz, period 20us, duty +47.88 % / -52.11 %, width +9.58us / -10.4us, Vmax 170mV, Vmin -48mV, Vpp 218mV
+  CH2 shown   0Hz, period 0s, duty +0.33 % / -99.67 %, width +0s / -0s, Vmax 0V, Vmin -8mV, Vpp 8mV
+== 3
+== 3
+ 2619.718 s  CH1  seq  98  min  43  max 211  50mV/div X1  5us/div  Vpp 336mV  50kHz  -> scope_000000_ch1_t2619718.bin
+ 2619.748 s  CH1  seq  99  min  43  max 211  50mV/div X1  5us/div  Vpp 336mV  50kHz  -> scope_000001_ch1_t2619748.bin
+generator    Square Wave (index 1), 50kHz, duty 50 %, 3.0 V, byte0 1   raw 0101000050c30000321e
+scope        RUN, 5us/div, CH1 50mV/div X1, CH2 100mV/div X1, channels CH1   state 01000203b40000000000000000000000000000000101000100000000ffff0000000000000000000000000000000801000001ff0000000000
+  CH1 shown   50kHz, period 20us, duty +49.44 % / -50.55 %, width +9.89us / -10.1us, Vmax 317mV, Vmin -17.7mV, Vpp 335mV
+  CH2 shown   0Hz, period 0s, duty +0.33 % / -99.67 %, width +0s / -0s, Vmax 0V, Vmin -8mV, Vpp 8mV
+== 4
+ 2659.843 s  CH1  seq 100  min  30  max 245  20mV/div X1  5us/div  Vpp 172mV  50kHz  CLIPPED  -> scope_000000_ch1_t2659843.bin
+ 2659.873 s  CH1  seq 101  min  30  max 245  20mV/div X1  5us/div  Vpp 172mV  50kHz  CLIPPED  -> scope_000001_ch1_t2659873.bin
+generator    Square Wave (index 1), 50kHz, duty 50 %, 3.0 V, byte0 1   raw 0101000050c30000321e
+scope        RUN, 5us/div, CH1 20mV/div X1, CH2 100mV/div X1, channels CH1   state 01000103b4000000000000000000000000000000010100010000000064000000000000000000000000000000000801000001ff0000000000
+  CH1 shown   50kHz, period 20us, duty +51.86 % / -48.13 %, width +10.4us / -9.63us, Vmax 141mV, Vmin -16.9mV, Vpp 158mV
+  CH2 shown   0Hz, period 0s, duty +0.33 % / -99.67 %, width +0s / -0s, Vmax 0V, Vmin -8mV, Vpp 8mV
+== 5
+ 2668.330 s  CH1  seq 102  min  43  max 211  50mV/div X1  5us/div  Vpp 336mV  50kHz  -> scope_000000_ch1_t2668330.bin
+ 2668.360 s  CH1  seq 103  min  43  max 211  50mV/div X1  5us/div  Vpp 336mV  50kHz  -> scope_000001_ch1_t2668360.bin
+generator    Square Wave (index 1), 50kHz, duty 50 %, 3.0 V, byte0 1   raw 0101000050c30000321e
+scope        RUN, 5us/div, CH1 50mV/div X1, CH2 100mV/div X1, channels CH1   state 01000203b40000000000000000000000000000000101000100000000faff0000000000000000000000000000000801000001ff0000000000
+  CH1 shown   50kHz, period 20us, duty +49.47 % / -50.52 %, width +9.89us / -10.1us, Vmax 317mV, Vmin -17.5mV, Vpp 334mV
+  CH2 shown   0Hz, period 0s, duty +0.33 % / -99.67 %, width +0s / -0s, Vmax 0V, Vmin -8mV, Vpp 8mV
+== 6
+ 2685.158 s  CH1  seq 104  min  43  max 211  500mV/div X10  5us/div  Vpp 3.36V  50kHz  -> scope_000000_ch1_t2685158.bin
+ 2685.188 s  CH1  seq 105  min  43  max 211  500mV/div X10  5us/div  Vpp 3.36V  50kHz  -> scope_000001_ch1_t2685188.bin
+generator    Square Wave (index 1), 50kHz, duty 50 %, 3.0 V, byte0 1   raw 0101000050c30000321e
+scope        RUN, 5us/div, CH1 500mV/div X10, CH2 100mV/div X1, channels CH1   state 01000203b40001000000000000000000000000000101000100000000faff0000000000000000000000000000000801000001ff0000000000
+  CH1 shown   50kHz, period 20us, duty +49.47 % / -50.52 %, width +9.89us / -10.1us, Vmax 3.17V, Vmin -180mV, Vpp 3.35V
+  CH2 shown   0Hz, period 0s, duty +0.33 % / -99.67 %, width +0s / -0s, Vmax 0V, Vmin -8mV, Vpp 8mV
+== 7
+ 2699.083 s  CH1  seq 106  min  43  max 211  50mV/div X1  5us/div  Vpp 336mV  50kHz  -> scope_000000_ch1_t2699083.bin
+ 2699.113 s  CH1  seq 107  min  43  max 211  50mV/div X1  5us/div  Vpp 336mV  50kHz  -> scope_000001_ch1_t2699113.bin
+generator    Square Wave (index 1), 50kHz, duty 50 %, 3.0 V, byte0 1   raw 0101000050c30000321e
+scope        RUN, 5us/div, CH1 50mV/div X1, CH2 100mV/div X1, channels CH1   state 01000203b40000000000000000000000000000000101000100000000faff0000000000000000000000000000000801000001ff0000000000
+  CH1 shown   50kHz, period 20us, duty +49.51 % / -50.48 %, width +9.9us / -10.1us, Vmax 317mV, Vmin -17.7mV, Vpp 334mV
+  CH2 shown   0Hz, period 0s, duty +0.33 % / -99.67 %, width +0s / -0s, Vmax 0V, Vmin -8mV, Vpp 8mV
+== 8
+ 2711.803 s  CH1  seq 108  min  43  max 211  50mV/div X1  2us/div  Vpp 336mV  50kHz  -> scope_000000_ch1_t2711803.bin
+ 2711.833 s  CH1  seq 109  min  43  max 211  50mV/div X1  2us/div  Vpp 336mV  50kHz  -> scope_000001_ch1_t2711833.bin
+generator    Square Wave (index 1), 50kHz, duty 50 %, 3.0 V, byte0 1   raw 0101000050c30000321e
+scope        RUN, 2us/div, CH1 50mV/div X1, CH2 100mV/div X1, channels CH1   state 01000203b40000000000000000000000000000000101000100000000faff0000000000000000000000000000000701000001ff0000000000
+  CH1 shown   50kHz, period 20us, duty +49.45 % / -50.54 %, width +9.89us / -10.1us, Vmax 317mV, Vmin -17.6mV, Vpp 335mV
+  CH2 shown   0Hz, period 0s, duty +0.33 % / -99.67 %, width +0s / -0s, Vmax 0V, Vmin -8mV, Vpp 8mV
+== 9
+ 2719.212 s  CH1  seq 110  min  43  max 211  50mV/div X1  1us/div  Vpp 336mV  -> scope_000000_ch1_t2719212.bin
+ 2719.242 s  CH1  seq 111  min  43  max 211  50mV/div X1  1us/div  Vpp 336mV  -> scope_000001_ch1_t2719242.bin
+generator    Square Wave (index 1), 50kHz, duty 50 %, 3.0 V, byte0 1   raw 0101000050c30000321e
+scope        RUN, 1us/div, CH1 50mV/div X1, CH2 100mV/div X1, channels CH1   state 01000203b40000000000000000000000000000000101000100000000faff0000000000000000000000000000000601000001ff0000000000
+  CH1 shown   50kHz, period 20us, duty +49.69 % / -50.30 %, width +9.94us / -10.1us, Vmax 317mV, Vmin -17.7mV, Vpp 334mV
+  CH2 shown   0Hz, period 0s, duty +0.33 % / -99.67 %, width +0s / -0s, Vmax 0V, Vmin -8mV, Vpp 8mV
+== 10
+ 2792.029 s  CH1  seq 112  min 200  max 202  50mV/div X1  5us/div  Vpp 4mV  -> scope_000000_ch1_t2792029.bin
+ 2792.060 s  CH1  seq 113  min 200  max 202  50mV/div X1  5us/div  Vpp 4mV  -> scope_000001_ch1_t2792060.bin
+generator    Square Wave (index 1), 100Hz, duty 50 %, 3.0 V, byte0 1   raw 0101000064000000321e
+scope        RUN, 5us/div, CH1 50mV/div X1, CH2 100mV/div X1, channels CH1   state 01000203b40000000000000000000000000000000101000100000000faff0000000000000000000000000000000801000001ff0000000000
+  CH1 shown   106Hz, period 9.43ms, duty +87.01 % / -12.98 %, width +8.21ms / -1.23ms, Vmax 174mV, Vmin 159mV, Vpp 14.1mV
+  CH2 shown   0Hz, period 0s, duty +0.33 % / -99.67 %, width +0s / -0s, Vmax 0V, Vmin -8mV, Vpp 8mV
+== 11
+ 2802.487 s  CH1  seq 114  min 201  max 204  50mV/div X1  10us/div  Vpp 6mV  -> scope_000000_ch1_t2802487.bin
+ 2802.518 s  CH1  seq 115  min 200  max 202  50mV/div X1  10us/div  Vpp 4mV  -> scope_000001_ch1_t2802518.bin
+generator    Square Wave (index 1), 100Hz, duty 50 %, 3.0 V, byte0 1   raw 0101000064000000321e
+scope        RUN, 10us/div, CH1 50mV/div X1, CH2 100mV/div X1, channels CH1   state 01000203b40000000000000000000000000000000101000100000000faff0000000000000000000000000000000901000001ff0000000000
+  CH1 shown   118Hz, period 8.47ms, duty +91.36 % / -8.63 %, width +7.74ms / -731us, Vmax 183mV, Vmin 168mV, Vpp 14.3mV
+  CH2 shown   0Hz, period 0s, duty +0.33 % / -99.67 %, width +0s / -0s, Vmax 0V, Vmin -8mV, Vpp 8mV
+== 12
+ 2809.588 s  CH1  seq 116  min 200  max 203  50mV/div X1  20us/div  Vpp 6mV  -> scope_000000_ch1_t2809588.bin
+ 2809.619 s  CH1  seq 117  min 200  max 203  50mV/div X1  20us/div  Vpp 6mV  -> scope_000001_ch1_t2809619.bin
+generator    Square Wave (index 1), 100Hz, duty 50 %, 3.0 V, byte0 1   raw 0101000064000000321e
+scope        RUN, 20us/div, CH1 50mV/div X1, CH2 100mV/div X1, channels CH1   state 01000203b40000000000000000000000000000000101000100000000faff0000000000000000000000000000000a01000001ff0000000000
+  CH1 shown   114Hz, period 8.77ms, duty +80.68 % / -19.31 %, width +7.08ms / -1.69ms, Vmax 184mV, Vmin 151mV, Vpp 33.3mV
+  CH2 shown   0Hz, period 0s, duty +0.33 % / -99.67 %, width +0s / -0s, Vmax 0V, Vmin -8mV, Vpp 8mV
+== 13
+ 2882.886 s  CH2  seq  22  min  47  max 212  50mV/div X1  5us/div  Vpp 330mV  50kHz  -> scope_000000_ch2_t2882886.bin
+ 2882.918 s  CH2  seq  23  min  47  max 212  50mV/div X1  5us/div  Vpp 330mV  50kHz  -> scope_000001_ch2_t2882918.bin
+generator    Square Wave (index 1), 50kHz, duty 50 %, 3.0 V, byte0 1   raw 0101000050c30000321e
+scope        RUN, 5us/div, CH1 50mV/div X1, CH2 50mV/div X1, channels CH2   state 01000202b4000000000000000000000000000000021201010000000001000000000000000000000000000000000801000001ff0000000000
+  CH1 shown   0Hz, period 0s, duty +0.33 % / -99.67 %, width +0s / -0s, Vmax 2mV, Vmin -2mV, Vpp 4mV
+  CH2 shown   50kHz, period 20us, duty +49.45 % / -50.54 %, width +9.89us / -10.1us, Vmax 167mV, Vmin -162mV, Vpp 329mV
+== 14
+ 2905.919 s  CH2  seq  24  min  46  max 211  500mV/div X10  5us/div  Vpp 3.3V  50kHz  -> scope_000000_ch2_t2905919.bin
+ 2905.952 s  CH2  seq  25  min  47  max 212  500mV/div X10  5us/div  Vpp 3.3V  50kHz  -> scope_000001_ch2_t2905952.bin
+generator    Square Wave (index 1), 50kHz, duty 50 %, 3.0 V, byte0 1   raw 0101000050c30000321e
+scope        RUN, 5us/div, CH1 50mV/div X1, CH2 500mV/div X10, channels CH2   state 01000202b4000001000000000000000000000000021201010000000001000000000000000000000000000000000801000001ff0000000000
+  CH1 shown   0Hz, period 0s, duty +0.33 % / -99.67 %, width +0s / -0s, Vmax 2mV, Vmin -2mV, Vpp 4mV
+  CH2 shown   50kHz, period 20us, duty +49.40 % / -50.59 %, width +9.88us / -10.1us, Vmax 1.67V, Vmin -1.62V, Vpp 3.29V

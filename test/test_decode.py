@@ -359,6 +359,29 @@ st = fnlink.scope_settings(CH2_ONLY)
 check("scope state: CH2 alone at 100 mV and 10 us per division",
       abs(st["channels"][1]["volts_per_div"] - 0.1) < 1e-12 and abs(st["seconds_per_div"] - 10e-6) < 1e-15, str(st))
 
+# Coupling, probe setting and time base, from the states of sessions/2026-11-25_coupling_probe_time_bases.
+STEP_DC = bytes.fromhex("01000203b40000000000000000000000000000000101000100000000ffff0000000000000000000000000000000801000001ff0000000000")
+STEP_AC = bytes.fromhex("00000203b40000000000000000000000000000000101000100000000ffff0000000000000000000000000000000801000001ff0000000000")
+check("scope state: CH1's coupling is byte 0, and the only byte that differs between DC and AC",
+      [i for i in range(56) if STEP_DC[i] != STEP_AC[i]] == [0]
+      and fnlink.scope_settings(STEP_DC)["channels"][0]["coupling"] == "DC"
+      and fnlink.scope_settings(STEP_AC)["channels"][0]["coupling"] == "AC"
+      and fnlink.scope_settings(STEP_AC)["channels"][1]["coupling"] is None)
+STEP_CH1_X10 = bytes.fromhex("01000203b40001000000000000000000000000000101000100000000faff0000000000000000000000000000000801000001ff0000000000")
+STEP_CH2_X10 = bytes.fromhex("01000202b4000001000000000000000000000000021201010000000001000000000000000000000000000000000801000001ff0000000000")
+check("scope state: the X10 setting of each channel is its own byte and multiplies its volts per division",
+      [c["probe"] for c in fnlink.scope_settings(STEP_CH1_X10)["channels"]] == [10, 1]
+      and [c["probe"] for c in fnlink.scope_settings(STEP_CH2_X10)["channels"]] == [1, 10]
+      and abs(fnlink.scope_settings(STEP_CH1_X10)["channels"][0]["volts_per_div"] - 0.5) < 1e-12
+      and abs(fnlink.scope_settings(STEP_CH2_X10)["channels"][1]["volts_per_div"] - 0.5) < 1e-12)
+STEP_2US = bytes.fromhex("01000203b40000000000000000000000000000000101000100000000faff0000000000000000000000000000000701000001ff0000000000")
+check("scope state: 2 us per division is a checked time base, 1 us is not",
+      fnlink.scope_settings(STEP_2US)["time_base_checked"] and abs(fnlink.scope_settings(STEP_2US)["seconds_per_div"] - 2e-6) < 1e-15
+      and not fnlink.scope_settings(STEP_2US[:45] + b"\x06" + STEP_2US[46:])["time_base_checked"])
+text = "\n".join(fnlink.status_lines(2, IDLE, STEP_AC, STOPPED, bytes.fromhex("0100000050c30000321e")))
+check("status: CH1's coupling on the scope line, and the first waveform of the menu without a name",
+      "CH1 50mV/div X1 AC, CH2 100mV/div X1, channels CH1" in text and "? (index 0), 50kHz" in text, text)
+
 # ---------------------------------------------------------------- the settings/calibration page
 # Made-up pages only: a real one holds a unit's calibration and has no place in a repository.
 

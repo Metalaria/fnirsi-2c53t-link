@@ -209,7 +209,7 @@ photographs of the generator screen):
 | Offset | Content |
 |---|---|
 | 0 | 0 or 1; it changes while the generator screen is operated. Not established |
-| 1 | waveform as its position in the menu, 0 to 12: 1 Square Wave, 2 Sawtooth wave (a triangle at 50 % duty), 3 Half-wave, 4 Full Wave, 5 Step Wave, 6 Reverse Step Wave, 7 Index Up, 8 Index Decrease, 9 Direct Current, 10 Multi-audio, 11 Sink Pulse, 12 Lorentz waves. All twelve were read one by one on 2026-11-25, the label from the screen and the index from this byte; the shapes of 7 to 12 were not looked at. The entry before Square Wave (index 0) was not captured |
+| 1 | waveform as its position in the menu, 0 to 12: 1 Square Wave, 2 Sawtooth wave (a triangle at 50 % duty), 3 Half-wave, 4 Full Wave, 5 Step Wave, 6 Reverse Step Wave, 7 Index Up, 8 Index Decrease, 9 Direct Current, 10 Multi-audio, 11 Sink Pulse, 12 Lorentz waves. All twelve were read one by one on 2026-11-25, the label from the screen and the index from this byte; the shapes of 7 to 12 were not looked at. Index 0 is one step before Square Wave in the menu (unit); its label was not noted. Stock builds it from the 100-point table at `0x0804D848`, which is a sine to within half a count (code: the builder at `0x08029E14` switches on this byte, 0 to 12) |
 | 4–7 | frequency in Hz, 32 bits (1000, 15000, 35000, 50000 seen) |
 | 8 | duty cycle in % (50 seen) |
 | 9 | amplitude in tenths of a volt (30 and 20 seen for 3.0 V and 2.0 V) |
