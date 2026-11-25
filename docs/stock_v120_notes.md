@@ -209,7 +209,7 @@ photographs of the generator screen):
 | Offset | Content |
 |---|---|
 | 0 | 0 or 1; it changes while the generator screen is operated. Not established |
-| 1 | waveform as its position in the menu, 0 to 12: 1 Square Wave, 2 Sawtooth wave (a triangle at 50 % duty), 3 Half-wave, 4 Full Wave, 5 Step Wave, 6 Reverse Step Wave, 7 Index Up, 8 Index Decrease, 9 Direct Current, 10 Multi-audio, 11 Sink Pulse, 12 Lorentz waves. All twelve were read one by one on 2026-11-25, the label from the screen and the index from this byte; the shapes of 7 to 12 were not looked at. Index 0 is one step before Square Wave in the menu (unit); its label was not noted. Stock builds it from the 100-point table at `0x0804D848`, which is a sine to within half a count (code: the builder at `0x08029E14` switches on this byte, 0 to 12) |
+| 1 | waveform as its position in the menu, 0 to 12: 1 Square Wave, 2 Sawtooth wave (a triangle at 50 % duty), 3 Half-wave, 4 Full Wave, 5 Step Wave, 6 Reverse Step Wave, 7 Index Up, 8 Index Decrease, 9 Direct Current, 10 Multi-audio, 11 Sink Pulse, 12 Lorentz waves. All twelve were read one by one on 2026-11-25, the label from the screen and the index from this byte; the shapes of 7 to 12 were not looked at. Index 0 is one step before Square Wave in the menu (unit) and is the sine: stock builds it from the 100-point table at `0x0804D848`, a sine to within half a count (code: the builder at `0x08029E14` switches on this byte, 0 to 12), and stock's table of waveform names, thirteen per language from `0x0804C61C`, starts with "Sine Wave". The table spells entry 9 "Direct current". The samples are played by a circular DMA of 100 transfers from the table in RAM to the DAC, clocked by TMR7 (code: `0x0802CAC2`, `0x08029D40`). The timer's period register gets 1, or `0x13` when `200 * frequency` is under 4000, and its divider is computed from a clock frequency so that the updates come at `100 * frequency`: one pass of the table per period |
 | 4–7 | frequency in Hz, 32 bits (1000, 15000, 35000, 50000 seen) |
 | 8 | duty cycle in % (50 seen) |
 | 9 | amplitude in tenths of a volt (30 and 20 seen for 3.0 V and 2.0 V) |
@@ -217,6 +217,52 @@ photographs of the generator screen):
 
 The sample table follows the waveform and the amplitude: 20 to 3742 for a 3.0 V square,
 1880 to 3742 for a 3.0 V full wave, 1260 to 2501 at 2.0 V.
+
+## User interface
+
+### Keys
+
+The key scan does not act on a key: it sends a one-byte code to a FreeRTOS queue, and a task of
+its own takes it from there. (code)
+
+- Queue handle at `0x20002D70`. The scan sends at `0x080404F4` (`xQueueGenericSend`,
+  `0x08041CF0`, no waiting).
+- Key task at `0x08040008`: it waits on the queue for ever, then ignores the key while any of
+  `ms[0x2F]`, `ms[0x30]`, `ms[0x33]`, `ms[0xF2C]` is not 0 or `ms[0xE10]` is 1 or `0xFF` (2 and
+  3 are cleared and the key handled). Otherwise it calls entry `code - 1` of the table of
+  handlers at `0x08046548`.
+- After every key taken from the queue, handled or not: the buzzer's duty is set to the volume
+  `ms[0xF62]` when that is not 0 (the click, see the buzzer above) and the idle counter
+  `ms[0xF6C]` is zeroed.
+
+### Languages
+
+V1.2.0 offers Chinese and English, but the tables of eight languages that V1.1.0 added are
+still in the image and still indexed by the language byte. (code; nothing of this was tried on
+the unit)
+
+- `ms[0xF60]`: 1 Chinese, 2 English, 3 Russian, 4 Japanese, 5 Spanish, 6 Portuguese, 7 German,
+  8 Korean, by the order of the rows of every table.
+- What limits the menu to two: the handler that steps the language up, `0x0800AB12`, does it
+  only while the byte is at most 1 (`cmp r0, #1` at `0x0800AB16`). The one that steps it down,
+  `0x0800A340`, goes down to 1 from any value. A third writer, `0x0800BEDC`, stores a list's
+  row plus one.
+- 74 places read the byte. 55 use it as an index into a table (`table + 4 * language - 4`, or
+  a row of several pointers per language), with no check of its range; 5 only ask whether it
+  is 1 and 4 compare it with 2 (the two handlers above among them); the other 10 were not
+  classified.
+- Pointer tables to 606 strings were found, between `0x0804BF28` and `0x0804C9FC`. In all
+  eight languages: the settings menu (7 labels), the meter's twelve function names, the
+  generator's three labels and thirteen waveform names, the oscilloscope's menu (8 labels),
+  the messages for saving and deleting, version and model. In Chinese and English only: the
+  twelve measurement labels (`Freq:`, `Peri:` …), the trigger menu (`Mode:`, `Edge:`,
+  `Channel:`, `Normal`, `Auto`, `Single`) and the channel menu (`Channel:`, `Probe:`,
+  `Coupling:`, `FFT:`, `20M Limit:`), whose painter picks its row with "is it 1?".
+- Not looked at: whether the fonts still hold the glyphs of the other six (no file name in
+  the image looks like a font, so they are probably in the image itself: the files it names
+  are the JPEG screens of `3:/System file/`, the logo and the screenshots), whether any of
+  those JPEG screens carries text or is picked by language, and whether the settings loader
+  accepts a byte above 2 at power-up.
 
 ## FreeRTOS
 
