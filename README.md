@@ -202,6 +202,9 @@ USB ids default to `1209:0001`, the pid.codes test PID, which is for private tes
 - [`sessions/`](sessions/2026-11-25_openscope_parity/README.md) holds what was saved that way
   for OpenScope-2C53T's open questions about stock, and `tools/paused_view_check.py` compares
   what stock draws while stopped with the record it captured.
+  [`sessions/2026-11-25_meter_functions/`](sessions/2026-11-25_meter_functions/README.md) has
+  the meter's state in each of its twelve functions and the buzzer's counter during a
+  continuity test; `tools/exti3_gate.py` and `tools/buzzer_tail_check.py` go with it.
 - Going back to stock: flash `APP_2C53T_V1.2.0_251015.bin` through the factory IAP drive.
 
 ## Safety

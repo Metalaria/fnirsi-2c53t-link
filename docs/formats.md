@@ -84,6 +84,7 @@ Offsets are into the 40 state bytes (add `0x20001020` for the address).
 | 8–11 | the reading as a `float`. While stock converts it, this briefly holds the raw count (9827.0) instead of the scaled value (9.827) |
 | 12 | decimals shown |
 | 13 | what the screen shows: 0 a number, 1 "Auto" waiting, 2 overload, 3 blank |
+| 14 | the variant inside the menu entry of offset 5: 1 or 2 (DC / AC, diode / continuity), 0 in Auto. Read in all twelve functions on 2026-11-25 |
 | 16 | unit code: 1 V, 2 Ω, 3 kΩ, 4 MΩ, 5 nF, 6 µF, 9 °C, 11 mA, 12 A; `0xFF` none |
 | 18–19 | in AC V: the frequency in Hz, 16 bits, a frame behind the frame's byte 11. Stale in the other functions |
 | 20 | 1 while HOLD is on |

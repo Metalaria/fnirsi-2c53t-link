@@ -117,6 +117,57 @@ The same 1 s handler shows in the acquisition counters: `ms[0xDB2]` goes up by o
 `ms[0xDB1]`: 66 to 71 a second, 67, 67, 66 repeating once settled, with one channel at 200 us
 per division. `ms[0xDB0]` moves among 0, 1 and 2 within each acquisition.
 
+## The meter's functions and the buzzer
+
+Later the same day, for OpenScope-2C53T's pull request 102 (their continuity beep, moved to
+the meter chip's own buzzer tone on PC3, as stock does it). Captures in
+[`sessions/2026-11-25_meter_functions/`](../sessions/2026-11-25_meter_functions/README.md).
+
+**Stock's handler.** EXTI line 3 is PC3. The handler at `0x08009C10` returns unless
+`ms[0xF68]` is 1 (multimeter); then it writes 10 to the buzzer's duty (TMR11 C1DT,
+`0x40015434`) if `ms[0xF2D]` is 0, or if `ms[0xF2D]` and `ms[0xF36]` are both 2, and in
+every case zeroes `0x20002D67`. `tools/exti3_gate.py` runs it in an emulator over 256
+combinations of the three bytes: the duty is written in those five and no other. (code, emu)
+
+**Which functions those are.** The three bytes in each function of the meter menu (unit):
+
+| Function on screen | `ms[0xF2D]` | `ms[0xF2E]` | `ms[0xF36]` | Chip's tone reaches the buzzer |
+|---|---|---|---|---|
+| Automatic | 0 | 0 | 0 | yes |
+| DC Voltage | 1 | 1 | 1 | no |
+| AC Voltage | 1 | 2 | 2 | no |
+| Continuity | 2 | 3 | 2 | yes |
+| Diode | 2 | 4 | 1 | no |
+| Resistance | 3 | 5 | 1 | no |
+| Capacitance | 4 | 6 | 1 | no |
+| Temperature | 5 | 7 | 1 | no |
+| Small DC current | 6 | 8 | 1 | no |
+| Small AC current | 6 | 9 | 2 | no |
+| Large DC current | 7 | 10 | 1 | no |
+| Large AC current | 7 | 11 | 2 | no |
+
+The bytes were read; the last column is the handler's code applied to them. Only Continuity
+was tried with the leads. `ms[0xF36]` is therefore the variant inside a menu entry (DC or AC,
+diode or continuity), which is also how it picks the order sent to the meter chip.
+`fnlink.py status` now names the function and says whether the tone gets through.
+
+**How long the beep lasts.** The counter at `0x20002D67` is advanced in two places with the
+same code (`0x08029D0C`, `0x08040508`): while the duty is not 0 it goes up by one, and at 11
+the duty is set to 0 and the counter with it. It is the counter of the key click in the table
+above. In Continuity, watched for 25 s with the leads shorted three times
+(`tools/buzzer_tail_check.py` redoes this):
+
+- leads open: 0 on every read;
+- leads shorted: 0, with 131 single reads of 1, each 0 again on the next read and 10 ms or a
+  multiple of it after the one before. The tick takes it to 1 and the next edge of the tone
+  zeroes it. Never above 1;
+- leads released: 1 to 10, one step every 10 ms, then 0: 101.0 and 100.0 ms from the first 1
+  in the two releases captured.
+
+So stock's continuity beep goes on for 11 ticks after the last edge of the chip's tone, 100
+to 110 ms depending on where in the 10 ms the edge fell. The duty register itself cannot be
+read with the link; that the buzzer is on is inferred from the counter moving.
+
 ## Not answered
 
 - What needs a write to the instrument's memory (the 20M limit, the per-channel "FFT" flag)

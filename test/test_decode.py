@@ -302,6 +302,41 @@ text = "\n".join(fnlink.status_lines(2, IDLE, SCOPE_STATE_STOPPED, STOPPED, byte
 check("status: with the arrow keys' mode when it was read", "  arrows     move: left/right move the trace sideways" in text
       and "(byte 0x02; SELECT changes it)" in text, text)
 
+# ---------------------------------------------------------------- the meter's functions
+# The twelve functions of stock's meter menu, as read on the unit
+# (sessions/2026-11-25_meter_functions/meter_functions.txt): name, state bytes.
+METER_STATES = [
+    ("Automatic", "5e000000000000000000000000010000ff0000000000000000000000000000000000c07f0000c07f0000c07f000000000000000000000000"),
+    ("DC Voltage", "5e000000000101ff04e78c3b04000101010000000000000000000000000000003333bf41686686bf0000d0c1030403000000000000000000"),
+    ("AC Voltage", "5e000000000102ffc1ca613f04000201010000000000000000000000000000002041a93f9949254400000000040204010000010000000000"),
+    ("Continuity", "5e000000000203ff0000a04104020200020000000000000000000000000000000000c07f0000c07f0000c07f040404000000000000000000"),
+    ("Diode", "5e000000000204ff0000a04104020101010000000000000000000000000000000000c07f0000c07f0000c07f040404000000000000000000"),
+    ("Resistance", "5e000000000305ff0000a04104020102040000000000000000000000000000000000c07f0000c07f0000c07f040404000000000000000000"),
+    ("Capacitance", "5e000000000406ff000000000300010005000000000000000000000000000000000000000000000000000000040404000000050505000000"),
+    ("Temperature", "5e000000000507ff0000d04100000100090000000000000000000000000000000000d0410000504100000000030304000000090909000000"),
+    ("Small DC current", "5e000000000608ff6f1203bc030001010b00000000000000000000000000000000000000000090c0000010c10404040000000a0a0a000000"),
+    ("Small AC current", "5e000000000609ff6f12033c030002010b0000000000000000000000000000000000004100008040000000000404040000000a0a0a000000"),
+    ("Large DC current", "5e00000000070aff17b751ba040001020c000000000000000000000000000000000000000000e1c3000061c40402020000000a0a0a000000"),
+    ("Large AC current", "5e00000000070bff3480373a040002020c00000000000000000000000000000000002f440000c8c2000061c40202020000000a0a0a000000"),
+]
+states = [(name, bytes.fromhex(h)) for name, h in METER_STATES]
+check("meter state: byte 6 names the function in the eleven that measure something",
+      all(fnlink.METER_MEASURING[st[6]] == name for name, st in states[1:]) and states[0][1][6] == 0)
+check("meter state: byte 5 is the menu entry, 0 to 7, two functions in four of them",
+      [st[5] for _, st in states] == [0, 1, 1, 2, 2, 3, 4, 5, 6, 6, 7, 7])
+check("meter state: byte 14 is 1 or 2 inside an entry, AC and continuity being 2",
+      [st[14] for _, st in states] == [0, 1, 2, 2, 1, 1, 1, 1, 1, 2, 1, 2])
+check("buzzer: stock's gate lets the chip's tone through in Automatic and Continuity only",
+      [name for name, st in states if fnlink.buzzer_follows_meter_chip(1, st)] == ["Automatic", "Continuity"]
+      and not any(fnlink.buzzer_follows_meter_chip(2, st) for _, st in states))
+text = "\n".join(fnlink.status_lines(1, states[3][1], SCOPE_STATE_STOPPED, STOPPED, bytes.fromhex("01040000b88800003214")))
+check("status: names the meter's function and says what the buzzer follows",
+      "menu 2 (continuity and diode), measuring 3 (Continuity), variant 2" in text and "tone reaches the buzzer" in text
+      and "state value OL Ohm" in text, text)
+text = "\n".join(fnlink.status_lines(1, states[4][1], SCOPE_STATE_STOPPED, STOPPED, bytes.fromhex("01040000b88800003214")))
+check("status: in Diode the chip's tone does not reach the buzzer", "measuring 4 (Diode), variant 1" in text
+      and "tone does not reach the buzzer" in text, text)
+
 # ---------------------------------------------------------------- the settings/calibration page
 # Made-up pages only: a real one holds a unit's calibration and has no place in a repository.
 
