@@ -110,9 +110,18 @@ Meter chip on USART2, 9600 8N1. (code, emu)
 - Transmit buffer `0x20000005` (function word at `0x20000008`), meter mode `0x20001025`,
   value `0x20001028`, semaphore `0x20002D7C`, task entry `0x0803DAC0`.
 
-Meter state, from `0x20001020` (unit; details in `formats.md`): screen status `+13`, unit code
-`+16`, AC frequency `+18`, HOLD flag `+20` (`0x20001034`), MAX / MEAN / MIN floats `+32`, `+36`,
-`+40`, their decimals `+44..46` and unit codes `+47..49`.
+Meter state, from `0x20001020` (unit; details in `formats.md`): menu entry `+5`, function
+`+6`, variant inside the entry `+14`, screen status `+13`, unit code `+16`, AC frequency `+18`,
+HOLD flag `+20` (`0x20001034`), MAX / MEAN / MIN floats `+32`, `+36`, `+40`, their decimals
+`+44..46` and unit codes `+47..49`.
+
+Buzzer. PC3 (EXTI line 3) carries the meter chip's own buzzer tone. Stock's handler at
+`0x08009C10` turns the buzzer on at each edge (duty 10 to TMR11 C1DT, `0x40015434`) only in
+the multimeter and with menu entry 0, or entry 2 with variant 2: Automatic and Continuity on
+the unit. Every edge zeroes the tick counter `0x20002D67`, which the 10 ms tick advances while
+the buzzer is on and which turns it off at 11, so the beep ends 100 to 110 ms after the last
+edge; a key click uses the same counter. (code, emu, unit: see
+[`hardware_results_2026-11-25.md`](hardware_results_2026-11-25.md))
 
 Display digits: bytes 2 to 6 carry four 7-segment digits, each split across two bytes.
 Digit `i` (0 to 3) is the high nibble of byte `2+i` together with the low nibble of byte

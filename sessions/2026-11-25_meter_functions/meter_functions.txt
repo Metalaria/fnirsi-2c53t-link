@@ -1,0 +1,56 @@
+== Automatic
+meter        menu 0, measuring 0, screen byte 1, unit code 255, HOLD off
+  boxes      MAX empty (unit code 0: mV?), MEAN empty (unit code 0: mV?), MIN empty (unit code 0: mV?)
+     state    5e000000000000000000000000010000ff0000000000000000000000000000000000c07f0000c07f0000c07f000000000000000000000000
+== DC Voltage
+meter        menu 1, measuring 2, screen byte 0, unit code 1, HOLD off, state value 0.0000 V
+  boxes      MAX 0.0000 (unit code 0: mV?), MEAN 0.0000 (unit code 0: mV?), MIN 0.0000 (unit code 0: mV?)
+     state    5e000000000102ff000000000400020101000000000000000000000000000000000000000000000000000000040404000000000000000000
+== Automatic
+meter        menu 0, measuring 0, screen byte 1, unit code 255, HOLD off
+  boxes      MAX empty (unit code 0: mV?), MEAN empty (unit code 0: mV?), MIN empty (unit code 0: mV?)
+     state    5e000000000000000000000000010000ff0000000000000000000000000000000000c07f0000c07f0000c07f000000000000000000000000
+== DC Voltage
+meter        menu 1, measuring 1, screen byte 0, unit code 1, HOLD off, state value 0.0043 V
+  boxes      MAX 23.900 (unit code 0: mV?), MEAN -1.0500 (unit code 0: mV?), MIN -26.000 (unit code 0: mV?)
+     state    5e000000000101ff04e78c3b04000101010000000000000000000000000000003333bf41686686bf0000d0c1030403000000000000000000
+== AC Voltage
+meter        menu 1, measuring 2, screen byte 0, unit code 1, HOLD off, state value 0.8820 V
+  boxes      MAX 1.3223 (unit code 1: V), MEAN 661.15 (unit code 0: mV?), MIN 0.0000 (unit code 0: mV?)
+     state    5e000000000102ffc1ca613f04000201010000000000000000000000000000002041a93f9949254400000000040204010000010000000000
+== Continuity
+meter        menu 2, measuring 3, screen byte 2, unit code 2, HOLD off, state value OL Ohm
+  boxes      MAX empty (unit code 0: mV?), MEAN empty (unit code 0: mV?), MIN empty (unit code 0: mV?)
+     state    5e000000000203ff0000a04104020200020000000000000000000000000000000000c07f0000c07f0000c07f040404000000000000000000
+== Diode
+meter        menu 2, measuring 4, screen byte 2, unit code 1, HOLD off, state value OL V
+  boxes      MAX empty (unit code 0: mV?), MEAN empty (unit code 0: mV?), MIN empty (unit code 0: mV?)
+     state    5e000000000204ff0000a04104020101010000000000000000000000000000000000c07f0000c07f0000c07f040404000000000000000000
+== Resistance
+meter        menu 3, measuring 5, screen byte 2, unit code 4, HOLD off, state value OL MOhm
+  boxes      MAX empty (unit code 0: mV?), MEAN empty (unit code 0: mV?), MIN empty (unit code 0: mV?)
+     state    5e000000000305ff0000a04104020102040000000000000000000000000000000000c07f0000c07f0000c07f040404000000000000000000
+== Capacitance
+meter        menu 4, measuring 6, screen byte 0, unit code 5, HOLD off, state value 0.000 nF
+  boxes      MAX 0.0000 (unit code 0: mV?), MEAN 0.0000 (unit code 0: mV?), MIN 0.0000 (unit code 0: mV?)
+     state    5e000000000406ff000000000300010005000000000000000000000000000000000000000000000000000000040404000000050505000000
+== Temperature
+meter        menu 5, measuring 7, screen byte 0, unit code 9, HOLD off, state value 26 degC
+  boxes      MAX 26.000 (unit code 0: mV?), MEAN 13.000 (unit code 0: mV?), MIN 0.0000 (unit code 0: mV?)
+     state    5e000000000507ff0000d04100000100090000000000000000000000000000000000d0410000504100000000030304000000090909000000
+== Small DC current
+meter        menu 6, measuring 8, screen byte 0, unit code 11, HOLD off, state value -0.008 mA
+  boxes      MAX 0.0000 (unit code 0: mV?), MEAN -4.5000 (unit code 0: mV?), MIN -9.0000 (unit code 0: mV?)
+     state    5e000000000608ff6f1203bc030001010b00000000000000000000000000000000000000000090c0000010c10404040000000a0a0a000000
+== Small AC current
+meter        menu 6, measuring 9, screen byte 0, unit code 11, HOLD off, state value 0.008 mA
+  boxes      MAX 8.0000 (unit code 0: mV?), MEAN 4.0000 (unit code 0: mV?), MIN 0.0000 (unit code 0: mV?)
+     state    5e000000000609ff6f12033c030002010b0000000000000000000000000000000000004100008040000000000404040000000a0a0a000000
+== Large DC current
+meter        menu 7, measuring 10, screen byte 0, unit code 12, HOLD off, state value -0.0008 A
+  boxes      MAX 0.0000 (unit code 0: mV?), MEAN -450.00 (unit code 0: mV?), MIN -900.00 (unit code 0: mV?)
+     state    5e00000000070aff17b751ba040001020c000000000000000000000000000000000000000000e1c3000061c40402020000000a0a0a000000
+== Large AC current
+meter        menu 7, measuring 11, screen byte 0, unit code 12, HOLD off, state value 0.0007 A
+  boxes      MAX 700.00 (unit code 0: mV?), MEAN -100.00 (unit code 0: mV?), MIN -900.00 (unit code 0: mV?)
+     state    5e00000000070bff3480373a040002020c00000000000000000000000000000000002f440000c8c2000061c40202020000000a0a0a000000

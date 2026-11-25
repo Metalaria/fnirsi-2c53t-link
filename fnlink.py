@@ -52,6 +52,25 @@ METER_FUNCTIONS = {
     0x12: "Temp", 0x11: "DC mA", 0x16: "AC mA", 0x10: "DC A", 0x15: "AC A", 0x0A: "Cap",
 }
 
+# Stock's own meter state (unit, 2026-11-25: read in each of the twelve functions).
+# state[5] is the entry of the function menu, state[6] what is being measured and
+# state[14] the variant inside the entry: 1 or 2 (DC / AC, diode / continuity), 0 in Auto.
+METER_MENU = {0: "Automatic", 1: "voltage", 2: "continuity and diode", 3: "resistance", 4: "capacitance",
+              5: "temperature", 6: "small current", 7: "large current"}
+METER_MEASURING = {0: "nothing yet", 1: "DC Voltage", 2: "AC Voltage", 3: "Continuity", 4: "Diode", 5: "Resistance",
+                   6: "Capacitance", 7: "Temperature", 8: "Small DC current", 9: "Small AC current",
+                   10: "Large DC current", 11: "Large AC current"}
+
+
+def buzzer_follows_meter_chip(mode: int, state: bytes) -> bool:
+    """Whether stock lets the meter chip's own buzzer tone through to the buzzer.
+
+    Stock's EXTI3 handler (0x08009C10) turns the buzzer on at each edge of that tone only in the
+    multimeter (system mode 1) and when the menu entry is 0, or when the entry and the variant
+    are both 2. On the unit those are Automatic and Continuity; Diode (2, 1) is not."""
+    return mode == 1 and (state[5] == 0 or (state[5] == 2 and state[14] == 2))
+
+
 # Seven-segment font of the meter chip's display bytes. Segment bits, read off stock's own
 # digit table: a=0x80 f=0x40 e=0x20 b=0x08 g=0x04 c=0x02 d=0x01; 0x10 is not part of the glyph.
 SEG_A, SEG_F, SEG_E, SEG_B, SEG_G, SEG_C, SEG_D, SEG_EXTRA = 0x80, 0x40, 0x20, 0x08, 0x04, 0x02, 0x01, 0x10
@@ -668,9 +687,12 @@ def status_lines(mode: int, meter: bytes, scope: bytes, measured: bytes, generat
             _eng(m["vmax"], "V"), _eng(m["vmin"], "V"), _eng(m["vpp"], "V")))
         out.append("     words    %s" % " ".join(str(x) for x in struct.unpack_from("<6I6i", block)))
     held = held_screen(meter)
-    out.append("meter        menu %d, measuring %d, screen byte %d, unit code %d, HOLD %s%s" % (
-        meter[5], meter[6], meter[13], meter[16], "on" if meter[20] == 1 else "off",
+    out.append("meter        menu %d (%s), measuring %d (%s), variant %d, screen byte %d, unit code %d, HOLD %s%s" % (
+        meter[5], METER_MENU.get(meter[5], "not known"), meter[6], METER_MEASURING.get(meter[6], "not known"),
+        meter[14], meter[13], meter[16], "on" if meter[20] == 1 else "off",
         "" if held is None else ", state value %s %s%s" % (held["text"], held["prefix"], held["unit"])))
+    out.append("  buzzer     the meter chip's tone %s (stock's gate on menu and variant)" % (
+        "reaches the buzzer" if buzzer_follows_meter_chip(mode, meter) else "does not reach the buzzer"))
     out.append("  boxes      %s" % ", ".join(
         "%s %s (unit code %d%s)" % (name, "empty" if v is None else "%.*f" % (min(dec, 6), v), code,
                                     ": " + STATS_UNITS[code] if code in STATS_UNITS else "")
