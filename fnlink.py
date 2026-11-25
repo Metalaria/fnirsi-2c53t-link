@@ -702,26 +702,35 @@ def cmd_wave(link: Link, args) -> int:
     if args.invert:
         samples = [WAVE_FULL_SCALE - v for v in samples]
     r = link.wave(samples)
+    stock = GENERATOR_WAVEFORMS.get(r["waveform_index"]) or added.get(r["waveform_index"]) or "waveform %d" % r["waveform_index"]
+    usb = info.get("menu_usb_index", 0)
+    usb_name = added.get(usb, "?")
+    # From patch 6, with a "USB" entry in the menu the playing table is only written while that entry is selected.
+    if usb and info["patch"] >= 6 and r["waveform_index"] != usb:
+        print("stored       %s: %d samples, kept as entry %d of the instrument's list, \"%s\", until power-off"
+              % (what, WAVE_POINTS, usb + 1, usb_name))
+        print("not playing  the instrument is on %s, which is left as it is. Select \"%s\" on it to play this one."
+              % (stock, usb_name))
+        print("\n".join(wave_text_plot(wave_stored(samples, r["amplitude"] or WAVE_AMPLITUDE_MAX))))
+        return 0
     want = wave_stored(samples, r["amplitude"])
     got = list(struct.unpack("<%dH" % WAVE_POINTS, link.read(WAVE_ADDR, 2 * WAVE_POINTS)))
     if got != want:
         raise LinkError("the table read back differs from what was sent in %d of %d samples: a generator setting "
                         "may have been changed meanwhile" % (sum(a != b for a, b in zip(got, want)), WAVE_POINTS))
-    stock = GENERATOR_WAVEFORMS.get(r["waveform_index"]) or added.get(r["waveform_index"]) or "waveform %d" % r["waveform_index"]
-    usb = info.get("menu_usb_index", 0)
     print("written      %s: %d samples, read back identical (%d to %d in the table)" % (what, WAVE_POINTS, min(got), max(got)))
     print("amplitude    %.1f V, the one set on the instrument" % (r["amplitude"] / 10.0))
     if r["amplitude"] == 0:
         print("             at 0 V the output is flat: raise the amplitude on the instrument and write again")
     if usb and r["waveform_index"] == usb:
         print("until        another one is sent or the instrument is switched off: it is entry %d of its list, \"%s\", "
-              "which is the one selected." % (usb + 1, added.get(usb, "?")))
+              "which is the one selected." % (usb + 1, usb_name))
     else:
         print("until        the waveform, the duty or the amplitude is changed on the instrument, or it is switched "
               "off: then it plays %s again. Its screen keeps showing %s meanwhile." % (stock, stock))
         if usb:
             print("in the menu  entry %d of the instrument's list, \"%s\", plays it from now until power-off."
-                  % (usb + 1, added.get(usb, "?")))
+                  % (usb + 1, usb_name))
     print("\n".join(wave_text_plot(got)))
     return 0
 

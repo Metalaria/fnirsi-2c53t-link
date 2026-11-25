@@ -264,6 +264,10 @@ def main() -> int:
     has_scope = "0x0803e49a" in manifest["hooks"]
     has_languages = "0x0800beca" in manifest.get("calls", [])
     menu = manifest.get("menu", [])
+    # The waveform under which WAVE stores into the playing table: any, unless the image has a
+    # "USB" entry in the menu, in which case only that one (patch 6).
+    usb_index = next((m["index"] for m in menu if m["source"] == "usb"), 0)
+    PLAYS = usb_index or 1
     print("image: %s, hooks %s" % (args.image.name, ", ".join(manifest["hooks"])))
     ram = usbemu.initial_ram(stock)
     check("patched image leaves stock's initial RAM unchanged", usbemu.initial_ram(image) == ram)
@@ -331,7 +335,7 @@ def main() -> int:
     # INFO
     rs = request(e, 0x01, seq=0x5A)
     check("INFO: header", rs[0] == 0x81 and rs[1] == 0x5A and rs[2] == 0 and rs[3] == 44, rs[:8].hex())
-    check("INFO: tag 2C53LINK, proto 1, patch 5", rs[8:16] == b"2C53LINK" and rs[16] == 1 and rs[17] == 5)
+    check("INFO: tag 2C53LINK, proto 1, patch 6", rs[8:16] == b"2C53LINK" and rs[16] == 1 and rs[17] == 6)
     check("INFO: reports system mode, not subscribed", rs[18] == 2 and rs[19] == 0)
     check("INFO: reports tick count", struct.unpack_from("<I", rs, 20)[0] == e.r32(X_TICK_COUNT))
 
@@ -403,13 +407,13 @@ def main() -> int:
         return request(e, 0x04, seq, len(samples) if count is None else count, first,
                        data=struct.pack("<%dH" % len(samples), *samples))
 
-    set_generator(1, 30)
+    set_generator(PLAYS, 30)
     around = (bytes(e.mu.mem_read(GEN - 64, 64 + 10)), bytes(e.mu.mem_read(TABLE + 2 * POINTS, 64)))
     n_writes = len(e.writes)
     part = [0, 1, 33, 2047, 4094, 4095, 0xFFFF] + [100 * k for k in range(21)]
     rs = wave(0, part, seq=0x71)
     check("WAVE: answer header, the amplitude used and stock's waveform",
-          rs[0] == 0x84 and rs[1] == 0x71 and rs[2] == 0 and rs[3] == 2 and rs[8] == 30 and rs[9] == 1
+          rs[0] == 0x84 and rs[1] == 0x71 and rs[2] == 0 and rs[3] == 2 and rs[8] == 30 and rs[9] == PLAYS
           and struct.unpack_from("<I", rs, 4)[0] == 0, rs[:12].hex())
     check("WAVE: 28 samples stored with stock's scaling, values above 4094 held at 4094",
           table()[:28] == fnlink.wave_stored(part, 30) and table()[4:7] == [3741, 3741, 3741] and table()[0] == 20,
@@ -442,14 +446,21 @@ def main() -> int:
     check("WAVE: every store into stock's SRAM is 16 bits inside the table (%d stores)" % len(stored),
           not stray and len(stored) == 28 + POINTS + 1 and all(a % 2 == 0 for a in stored), ", ".join(stray[:6]))
     for ampl, used in ((10, 10), (1, 1), (0, 0), (31, 30), (200, 30)):
-        set_generator(4, ampl)
+        set_generator(PLAYS, ampl)
         rs = wave(0, ramp[:28], seq=0x79)
         check("WAVE: amplitude %d on the instrument -> scaled by %d" % (ampl, used),
-              rs[8] == used and rs[9] == 4 and table()[:28] == fnlink.wave_stored(ramp[:28], used)
+              rs[8] == used and rs[9] == PLAYS and table()[:28] == fnlink.wave_stored(ramp[:28], used)
               and max(table()[:28]) <= 20 + 4094 * 30 // 33)
-    set_generator(1, 30, fill=False)
+    if usb_index:
+        set_generator(2, 30)
+        answers = [wave(first, ramp[first:first + 28]) for first in range(0, POINTS, 28)]
+        check("WAVE: with a USB entry in the menu and another waveform selected, the playing table is left alone",
+              all(r[2] == 0 and r[3] == 2 and r[9] == 2 for r in answers) and table() == [SENTINEL] * POINTS)
+    set_generator(PLAYS, 30, fill=False)
     for first in range(0, POINTS, 28):
         wave(first, ramp[first:first + 28])
+    check("WAVE: ...and written at once while the entry that plays it is selected", table() == fnlink.wave_stored(ramp, 30))
+    set_generator(1, 30, fill=False)
     e.audit = False
     try:
         e.call(0x08029E14)                              # stock's own table builder, as after a key
@@ -543,7 +554,7 @@ def main() -> int:
         return out
 
     check("INFO: 44 bytes, feature bits 0 and 1 say the status stream and WAVE exist, bit 2 only with a menu",
-          (lambda r: r[3] == 44 and r[44] == (7 if menu else 3) and r[45] == len(menu) and r[16] == 1 and r[17] == 5)(request(e, 1, 0x60)))
+          (lambda r: r[3] == 44 and r[44] == (7 if menu else 3) and r[45] == len(menu) and r[16] == 1 and r[17] == 6)(request(e, 1, 0x60)))
     check("status: nothing is sent before the host subscribes", status_events(350) == [])
     rs = request(e, 0x03, 0x61, STREAM_STATUS)
     check("STREAM: subscribe to the status blocks", rs[2] == 0 and rs[8] == STREAM_STATUS)
@@ -806,7 +817,7 @@ def main() -> int:
         check("fnlink info", fnlink.main(["info"], transport=tr) == 0)
         e.audit = False
         generator_before = bytes(e.mu.mem_read(0x20000F50, 10))
-        e.mu.mem_write(0x20000F50, bytes([1, 2, 0, 0]) + struct.pack("<I", 2000) + bytes([50, 25]))
+        e.mu.mem_write(0x20000F50, bytes([1, PLAYS, 0, 0]) + struct.pack("<I", 2000) + bytes([50, 25]))
         e.audit = True
         tab = lambda: list(struct.unpack("<100H", e.mu.mem_read(0x20000F5A, 200)))
         check("fnlink wave: a built-in shape is stored and read back",
@@ -1217,10 +1228,9 @@ def main() -> int:
                   tab_now() == fnlink.wave_stored(earlier, 30))
             sent = fnlink.wave_shape("sinc")
             gen_set(1, 30)
-            send(sent)
-            check("menu: WAVE still stores straight into the table that is playing", tab_now() == fnlink.wave_stored(sent, 30))
             e.call(BUILDER)
-            check("menu: ...which stock rebuilds as its own waveform (square: 20 and 3742)", set(tab_now()) == {20, 3742})
+            send(sent)
+            check("menu: with Square Wave selected, WAVE leaves the square that is playing as it is", set(tab_now()) == {20, 3742})
             gen_set(usb_entry["index"], 30)
             e.call(BUILDER)
             check("menu: selecting the USB entry plays what was sent", tab_now() == fnlink.wave_stored(sent, 30))
@@ -1246,11 +1256,15 @@ def main() -> int:
                     check("menu: entry %d through the emulated instrument" % x["index"], False)
             tr5 = type("T", (), {"write": lambda self, r: e.host_out(1, r), "read": lambda self, t: next((x for x in (poll_in(e) for _ in range(t)) if x is not None), None)})()
             gen_set(1, 30)
-            check("menu: fnlink info and wave name the entries", fnlink.main(["info"], transport=tr5) == 0
-                  and fnlink.main(["wave", "gauss"], transport=tr5) == 0 and fnlink.main(["wave", "--show"], transport=tr5) == 0)
+            e.call(BUILDER)
+            check("menu: fnlink info and wave name the entries; a waveform sent under Square Wave is stored, not played",
+                  fnlink.main(["info"], transport=tr5) == 0 and fnlink.main(["wave", "gauss"], transport=tr5) == 0
+                  and set(tab_now()) == {20, 3742} and fnlink.main(["wave", "--show"], transport=tr5) == 0)
             gen_set(usb_entry["index"], 30)
             e.call(BUILDER)
             check("menu: what fnlink sent is what the USB entry plays", tab_now() == fnlink.wave_stored(fnlink.wave_shape("gauss"), 30))
+            check("menu: sent while the USB entry is selected, a waveform plays at once and fnlink reads it back",
+                  fnlink.main(["wave", "stairs"], transport=tr5) == 0 and tab_now() == fnlink.wave_stored(fnlink.wave_shape("stairs"), 30))
     else:
         check("no menu in this image: the builder, the list, the keys and the pictures are stock's bytes",
               all(image[a - 0x08007000:a - 0x08007000 + 4] == stock[a - 0x08007000:a - 0x08007000 + 4]
