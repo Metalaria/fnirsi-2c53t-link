@@ -341,6 +341,31 @@ with tempfile.TemporaryDirectory() as tmp:
           (rc_same, rc_diff, rc_one) == (0, 1, 0) and "the calibration table is identical in both" in text
           and "the calibration tables are not the same" in text and "scratch after the table" in text, text[-400:])
 
+# ---------------------------------------------------------------- snapshot and watch
+
+check("range: ADDR:LEN in hex or decimal", fnlink.parse_range("0x2000013D:1") == (0x2000013D, 1) and fnlink.parse_range("536871168:0x38") == (0x20000100, 56))
+for bad in ("0x20000100", "0x20000100:0", "x:4", "1:2:3"):
+    try:
+        fnlink.parse_range(bad)
+        check("range: %r is refused" % bad, False)
+    except fnlink.LinkError:
+        check("range: %r is refused" % bad, True)
+check("private: the calibration page in flash and the tables in RAM, to the byte",
+      [fnlink.private_region(a, n) is not None for a, n in ((0x08005FFF, 1), (0x08005FFF, 2), (0x08006FFF, 1), (0x08007000, 4),
+                                                           (0x20000357, 1), (0x20000357, 2), (0x2000044D, 1), (0x2000044E, 602))]
+      == [False, True, True, False, False, True, True, False])
+t0 = [(0.0, b"\x05"), (0.010, b"\x06"), (0.020, b"\x07"), (0.030, b"\x08"), (0.040, b"\x09")]
+text = "\n".join(fnlink.watch_summary(t0, 400, 1.0, 1))
+check("watch summary: a counter's period from its +1 steps", "changes   4" in text and "one count every 10.00 ms" in text and "4 of +1, 0 other" in text
+      and "3 changes in 0.030 s: one every 10.00 ms" in text and "median 10.0 ms" in text, text)
+wraps = [(0.01 * k, bytes([k % 3])) for k in range(8)]             # 0 1 2 0 1 2 0 1: a counter that wraps
+text = "\n".join(fnlink.watch_summary(wraps, 500, 1.0, 1))
+check("watch summary: a counter that wraps still gives its rate, not a plain-counter period",
+      "6 changes in 0.060 s: one every 10.00 ms" in text and "counter" not in text, text)
+text = "\n".join(fnlink.watch_summary([(0.0, b"\x00"), (0.5, b"\x0b"), (0.7, b"\x00")], 100, 1.0, 1))
+check("watch summary: no period claimed for what is not a plain counter", "counter" not in text and "1 of +1" not in text and "changes   2" in text, text)
+check("watch summary: nothing changed", fnlink.watch_summary([(0.0, b"\x00")], 10, 1.0, 1)[1] == "changes   0")
+
 # ---------------------------------------------------------------- oscilloscope
 
 state, data = scope_record("scope_ch1_1khz_square.hex")
