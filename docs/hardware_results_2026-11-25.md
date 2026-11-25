@@ -168,6 +168,40 @@ So stock's continuity beep goes on for 11 ticks after the last edge of the chip'
 to 110 ms depending on where in the 10 ms the edge fell. The duty register itself cannot be
 read with the link; that the buzzer is on is inferred from the counter moving.
 
+## Generator menu, CH2 and the boxes
+
+Three loose ends of earlier sessions, closed the same day. Captures in
+[`sessions/2026-11-25_generator_ch2_boxes/`](../sessions/2026-11-25_generator_ch2_boxes/README.md).
+
+**The generator's menu.** Each waveform selected in turn and its index read from
+`0x20000F51`: 1 Square Wave, 2 Sawtooth wave, 3 Half-wave, 4 Full Wave, 5 Step Wave, 6 Reverse
+Step Wave, 7 Index Up, 8 Index Decrease, 9 Direct Current, 10 Multi-audio, 11 Sink Pulse,
+12 Lorentz waves. The labels are the screen's. The entry before Square Wave, index 0, was not
+captured, and the shapes of 7 to 12 were not looked at.
+
+**CH2 with a signal.** The generator's 50 kHz square wave on CH2, CH1 off:
+
+- scope state: channel mask `ms[0x14]` = 2; `ms[0x15]` = `0x12` (it is `0x01` with CH1
+  alone) and `ms[0x16]` = 1 (0 with CH1 alone); CH2's range `ms[3]` = 2, then 3 after one
+  step up. `ms[0]` stayed 1 and `ms[1]` 0, so those two are not the channels' on flags;
+- stock's own measurements of CH2 (the second twelve words of the block at `0x20000208`):
+  50 kHz, 20 us, 49.39 %, 329 mV peak to peak at 50 mV per division; 345 mV at 100 mV per
+  division. CH1, off, reads 0 Hz and 4 mV;
+- the record of CH2 at 100 mV per division, scaled with the same 25 counts per division as
+  CH1, gives 344 mV peak to peak and 50.0 kHz (seen in the application that reads the link).
+
+So CH2's range byte and its record scale are as CH1's, at the X1 probe setting. CH2's
+position byte was 0 throughout and its probe byte was never X10: those two stay assumed.
+
+**The units of the MAX, MEAN and MIN boxes.** In Small DC current with nothing connected the
+screen showed the three boxes in uA (0.0000, -5.5000, -11.000) while the reading was in mA;
+the state held those three numbers with bytes 47 to 49 at 0 and, in the capture of the twelve
+functions, bytes 50 to 52 at 10. Across that capture bytes 50 to 52 follow one table (0 mV,
+1 V, 5 nF, 9 degC, 10 uA, the last four being the reading's own codes at offset 16, where 11
+is mA and 12 A), and bytes 47 to 49 are 1 only for a box in volts. The unit is therefore at
+50 to 52; `fnlink.py status` took it from 47 to 49 until now and printed "mV?" for a box in
+microamperes.
+
 ## Not answered
 
 - What needs a write to the instrument's memory (the 20M limit, the per-channel "FFT" flag)

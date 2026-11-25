@@ -209,13 +209,16 @@ SCOPE_STATE_ADDR, SCOPE_STATE_LEN = 0x200000F8, 56
 SCOPE_MEASURED_ADDR = 0x20000208            # what the screen shows; 12 words for CH1, then 12 for CH2
 SCOPE_MEASURED_WORDS = 12
 GENERATOR_ADDR, GENERATOR_LEN = 0x20000F50, 10
-# The generator's waveform, as its position in the menu (0 to 12). Names as the menu shows them; 1 and 4
-# were checked on their own, 2 by its shape on the scope, 3, 5 and 6 follow from the menu's order. The
-# first entry and the last six were not photographed.
+# The generator's waveform, as its position in the menu (0 to 12). Names as the menu shows them: 1 to 12
+# were read on the unit one by one on 2026-11-25 (sessions/2026-11-25_generator_ch2_boxes). The entry
+# before "Square Wave", index 0, has not been seen named.
 GENERATOR_WAVEFORMS = {1: "Square Wave", 2: "Sawtooth wave", 3: "Half-wave", 4: "Full Wave", 5: "Step Wave",
-                       6: "Reverse Step Wave"}
-# Unit code of the MAX / MEAN / MIN boxes. 1 was seen with volts; 0 with a value in millivolts (assumed mV).
-STATS_UNITS = {1: "V", 0: "mV?"}
+                       6: "Reverse Step Wave", 7: "Index Up", 8: "Index Decrease", 9: "Direct Current",
+                       10: "Multi-audio", 11: "Sink Pulse", 12: "Lorentz waves"}
+# Unit code of the MAX / MEAN / MIN boxes, state bytes 50 to 52. V and mV: by the screen and by
+# MEAN = (MAX + MIN) / 2 holding only with MIN in millivolts. uA: by a photograph of the screen in Small DC
+# current. nF and degC: the boxes carry the code the reading itself has in those functions (state byte 16).
+STATS_UNITS = {0: "mV", 1: "V", 5: "nF", 9: "degC", 10: "uA"}
 
 
 def decode_generator(block: bytes) -> dict:
@@ -247,18 +250,20 @@ def decode_scope_measurements(words: bytes) -> dict:
 def decode_meter_stats(state: bytes) -> list:
     """The MAX, MEAN and MIN boxes from 56 bytes of meter state: [(name, value, decimals, unit code)].
 
-    Each box scales on its own. A value that is not a number means the box is empty."""
-    if len(state) < 50:
+    Each box scales on its own. A value that is not a number means the box is empty. The unit code is
+    state byte 50 + box (STATS_UNITS). Bytes 47 to 49 are not it: they were 1 for a box in volts and 0
+    for every other unit seen, and what they are is not established."""
+    if len(state) < 53:
         raise LinkError("meter state too short for the statistics")
     values = struct.unpack_from("<3f", state, 32)
-    return [(name, None if v != v else v, state[44 + i], state[47 + i])
+    return [(name, None if v != v else v, state[44 + i], state[50 + i])
             for i, (name, v) in enumerate(zip(("MAX", "MEAN", "MIN"), values))]
 
 
 # ---------------------------------------------------------------- oscilloscope records
 
 COUNTS_PER_DIV = 25         # sample counts per vertical division
-SAMPLES_PER_DIV = 25        # samples per horizontal division (checked from 50 us to 2 ms per division)
+SAMPLES_PER_DIV = 25        # samples per horizontal division (checked from 5 us to 2 ms per division)
 _STEPS = (1, 2, 5)
 
 
@@ -276,8 +281,8 @@ def scope_settings(state: bytes):
     """The 56 scope state bytes of a record header decoded (docs/formats.md), or None.
 
     Per channel: enabled, volts per division as displayed (probe setting applied), probe
-    factor and the sample value of zero volts. CH2's position and probe bytes are assumed to
-    mirror CH1's, which is the one checked on hardware."""
+    factor and the sample value of zero volts. CH2's range byte was checked on hardware at X1
+    (2026-11-25); its position and probe bytes are assumed to mirror CH1's."""
     t = seconds_per_div(state[45])
     v = [volts_per_div(state[2]), volts_per_div(state[3])]
     if t is None or None in v:

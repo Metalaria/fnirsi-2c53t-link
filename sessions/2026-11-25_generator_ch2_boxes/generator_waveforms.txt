@@ -1,0 +1,24 @@
+== Square Wavw
+generator    Square Wave (index 1), 50kHz, duty 50 %, 3.0 V, byte0 1   raw 0101000050c30000321e
+== Sawtooth wave
+generator    Sawtooth wave (index 2), 50kHz, duty 50 %, 3.0 V, byte0 1   raw 0102000050c30000321e
+== Half-wave
+generator    Half-wave (index 3), 50kHz, duty 50 %, 3.0 V, byte0 1   raw 0103000050c30000321e
+== Full Wave
+generator    Full Wave (index 4), 50kHz, duty 50 %, 3.0 V, byte0 1   raw 0104000050c30000321e
+== Step Wave
+generator    Step Wave (index 5), 50kHz, duty 50 %, 3.0 V, byte0 1   raw 0105000050c30000321e
+== Reverse Step Wave
+generator    Reverse Step Wave (index 6), 50kHz, duty 50 %, 3.0 V, byte0 1   raw 0106000050c30000321e
+== Index Up
+generator    ? (index 7), 50kHz, duty 50 %, 3.0 V, byte0 1   raw 0107000050c30000321e
+== Index Decrease
+generator    ? (index 8), 50kHz, duty 50 %, 3.0 V, byte0 1   raw 0108000050c30000321e
+== Direct Current
+generator    ? (index 9), 50kHz, duty 50 %, 3.0 V, byte0 1   raw 0109000050c30000321e
+== Multi-audio
+generator    ? (index 10), 50kHz, duty 50 %, 3.0 V, byte0 1   raw 010a000050c30000321e
+== Sink Pulse
+generator    ? (index 11), 50kHz, duty 50 %, 3.0 V, byte0 1   raw 010b000050c30000321e
+== Lorentz waves
+generator    ? (index 12), 50kHz, duty 50 %, 3.0 V, byte0 1   raw 010c000050c30000321e

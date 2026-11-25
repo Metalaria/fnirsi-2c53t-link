@@ -251,8 +251,13 @@ check("generator: Square, 15 kHz, 50 %, 3.0 V", (g["waveform"], g["frequency_hz"
       == ("Square Wave", 15000, 50, 3.0), str(g))
 g = fnlink.decode_generator(bytes.fromhex("01040000b88800003214"))
 check("generator: Full Wave, 35 kHz, 2.0 V", (g["waveform"], g["frequency_hz"], g["amplitude_v"]) == ("Full Wave", 35000, 2.0), str(g))
-check("generator: an entry of the menu that was not photographed has no name",
-      fnlink.decode_generator(bytes.fromhex("01070000e8030000321e"))["waveform"] is None)
+check("generator: the first entry of the menu, not seen named, has no name",
+      fnlink.decode_generator(bytes.fromhex("01000000e8030000321e"))["waveform"] is None)
+# the last six entries as the unit printed them (sessions/2026-11-25_generator_ch2_boxes/generator_waveforms.txt)
+LAST_SIX = [("0107000050c30000321e", "Index Up"), ("0108000050c30000321e", "Index Decrease"), ("0109000050c30000321e", "Direct Current"),
+            ("010a000050c30000321e", "Multi-audio"), ("010b000050c30000321e", "Sink Pulse"), ("010c000050c30000321e", "Lorentz waves")]
+check("generator: the last six entries carry the names the menu shows",
+      all(fnlink.decode_generator(bytes.fromhex(raw))["waveform"] == name for raw, name in LAST_SIX))
 g = fnlink.decode_generator(bytes.fromhex("0102000050c300003214"))
 check("generator: the triangle on the scope was entry 2, 50 kHz, 2.0 V", (g["waveform_index"], g["waveform"], g["frequency_hz"], g["amplitude_v"])
       == (2, "Sawtooth wave", 50000, 2.0), str(g))
@@ -336,6 +341,23 @@ check("status: names the meter's function and says what the buzzer follows",
 text = "\n".join(fnlink.status_lines(1, states[4][1], SCOPE_STATE_STOPPED, STOPPED, bytes.fromhex("01040000b88800003214")))
 check("status: in Diode the chip's tone does not reach the buzzer", "measuring 4 (Diode), variant 1" in text
       and "tone does not reach the buzzer" in text, text)
+
+# The boxes' units are state bytes 50 to 52, not 47 to 49 (which read 0 0 0 with the screen showing uA).
+units = {name: [fnlink.STATS_UNITS.get(b[3]) for b in fnlink.decode_meter_stats(st)] for name, st in states}
+check("meter boxes: uA in the current functions, as the screen showed in Small DC current",
+      all(units[n] == ["uA"] * 3 for n in ("Small DC current", "Small AC current", "Large DC current", "Large AC current")), str(units))
+check("meter boxes: the reading's own unit in capacitance and temperature, V and mV in AC voltage",
+      units["Capacitance"] == ["nF"] * 3 and units["Temperature"] == ["degC"] * 3 and units["AC Voltage"] == ["V", "mV", "mV"], str(units))
+small = dict(states)["Small DC current"]
+check("meter boxes: bytes 47 to 49 are not the unit", list(small[47:50]) == [0, 0, 0] and list(small[50:53]) == [10, 10, 10])
+text = "\n".join(fnlink.status_lines(1, small, SCOPE_STATE_STOPPED, STOPPED, bytes.fromhex("01040000b88800003214")))
+check("status: the boxes with their unit", "MEAN -4.5000 (unit code 10: uA)" in text, text)
+
+# CH2 alone with the generator's square wave: scope state and stock's own measurements as read on 2026-11-25.
+CH2_ONLY = bytes.fromhex("01000203b3000000000000000000000000000000021201010000000000000000000000000000000000000000000901000000ff0000000000")
+st = fnlink.scope_settings(CH2_ONLY)
+check("scope state: CH2 alone at 100 mV and 10 us per division",
+      abs(st["channels"][1]["volts_per_div"] - 0.1) < 1e-12 and abs(st["seconds_per_div"] - 10e-6) < 1e-15, str(st))
 
 # ---------------------------------------------------------------- the settings/calibration page
 # Made-up pages only: a real one holds a unit's calibration and has no place in a repository.

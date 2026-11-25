@@ -205,6 +205,8 @@ USB ids default to `1209:0001`, the pid.codes test PID, which is for private tes
   [`sessions/2026-11-25_meter_functions/`](sessions/2026-11-25_meter_functions/README.md) has
   the meter's state in each of its twelve functions and the buzzer's counter during a
   continuity test; `tools/exti3_gate.py` and `tools/buzzer_tail_check.py` go with it.
+  [`sessions/2026-11-25_generator_ch2_boxes/`](sessions/2026-11-25_generator_ch2_boxes/README.md)
+  has the generator's menu entry by entry, CH2 with a signal and the units of the meter's boxes.
 - Going back to stock: flash `APP_2C53T_V1.2.0_251015.bin` through the factory IAP drive.
 
 ## Safety

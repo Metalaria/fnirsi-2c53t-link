@@ -1,0 +1,12 @@
+== CH2 alone, generator's 50 kHz square wave, after AUTO
+scope        RUN, 5us/div, CH1 50mV/div X1, CH2 50mV/div X1, channels CH2   state 01000202b3000000000000000000000000000000021201010000000001000000000000000000000000000000000801000000ff0000000000
+  CH1 shown   0Hz, period 0s, duty +0.33 % / -99.67 %, width +0s / -0s, Vmax 2mV, Vmin -2mV, Vpp 4mV
+  CH2 shown   50kHz, period 20us, duty +49.39 % / -50.60 %, width +9.88us / -10.1us, Vmax 167mV, Vmin -162mV, Vpp 329mV
+== CH2 one step up in volts per division (and the time base at 10 us)
+scope        RUN, 10us/div, CH1 50mV/div X1, CH2 100mV/div X1, channels CH2   state 01000203b3000000000000000000000000000000021201010000000000000000000000000000000000000000000901000000ff0000000000
+  CH1 shown   0Hz, period 0s, duty +0.33 % / -99.67 %, width +0s / -0s, Vmax 2mV, Vmin -2mV, Vpp 4mV
+  CH2 shown   50kHz, period 20us, duty +49.69 % / -50.30 %, width +9.94us / -10.1us, Vmax 170mV, Vmin -175mV, Vpp 345mV
+== Small DC current, nothing connected; the screen's boxes read MAX 0.0000uA, MEAN -5.5000uA, MIN -11.000uA
+meter        menu 6 (small current), measuring 8 (Small DC current), variant 1, screen byte 0, unit code 11, HOLD off, state value -0.010 mA
+  buzzer     the meter chip's tone does not reach the buzzer (stock's gate on menu and variant)
+  boxes      MAX 0.0000 (unit code 0: mV?), MEAN -5.5000 (unit code 0: mV?), MIN -11.000 (unit code 0: mV?)
