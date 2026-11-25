@@ -11,6 +11,8 @@ that can stream what it measures.
 | Multimeter: every frame of the meter chip, as it arrives (~6 per second) | yes |
 | Oscilloscope: each channel's 1024-sample record plus the scope state | yes |
 | Status (patch 3): the generator's settings, the scope's own measurements with RUN/STOP, the rest of the meter's state | yes |
+| Generator (patch 4): any waveform of 100 samples, played by stock's own generator | emulated only |
+| Languages (patch 4, `--languages`): the six that stock still carries but no longer offers | emulated only |
 
 **Status: runs on one unit.** On 2026-11-23 both images were flashed on a retail 2C53T
 through the factory IAP drive. The flash read back identical to the image, the settings and
@@ -28,6 +30,11 @@ the image, the status blocks arrived in every mode with the values on the instru
 screen, and what worked with patch 2 still does. The record is at the end of
 [`docs/hardware_results_2026-11-24.md`](docs/hardware_results_2026-11-24.md).
 
+**Patch 4 has not been on hardware.** It adds one request, `WAVE`, which stores samples in the
+table that stock's signal generator plays, and with it the first write to stock's own data:
+those 200 bytes and no others. The builder's `--languages` is separate and optional. Both are
+described below and both pass the emulated tests; neither has been flashed.
+
 > **One unit is not a guarantee.** The board revision of that unit is unknown and nothing
 > has been tried on another. If you flash this, read [Safety](#safety) first and keep the
 > official `APP_2C53T_V1.2.0_251015.bin` at hand: the factory bootloader is untouched, so the
@@ -37,10 +44,10 @@ screen, and what worked with patch 2 still does. The record is at the end of
 
 | | |
 |---|---|
-| Stock bytes changed | 10: 6 at `0x0802A994` (SysTick handler) and 4 at `0x0803E49A` (tail of the `fpga` task loop), each a `b.w` into the cave |
-| Code added | ~2.7 KB at `0x080BE700`, after the stock image |
+| Stock bytes changed | 10: 6 at `0x0802A994` (SysTick handler) and 4 at `0x0803E49A` (tail of the `fpga` task loop), each a `b.w` into the cave. With `--languages`, 4 more at `0x0800BECA` (a `bl` into the cave) |
+| Code added | ~2.9 KB at `0x080BE700`, after the stock image |
 | SRAM used | `0x20037000`–`0x20037987`, above stock's stack top and below the factory IAP's RAM magic |
-| Stock SRAM written | the USB core's class and descriptor pointers (`0x20002B28`, `0x20002B2C`) and the endpoint bookkeeping the stock class itself writes |
+| Stock SRAM written | the USB core's class and descriptor pointers (`0x20002B28`, `0x20002B2C`) and the endpoint bookkeeping the stock class itself writes. From patch 4, on a `WAVE` request only: the generator's table of samples, `0x20000F5A`–`0x20001021` |
 | Flash written at run time | none |
 
 Stock keeps the USB peripheral initialised but disconnected, and its Artery usbd core
@@ -62,6 +69,24 @@ place. The second hook runs in that task, after each SPI3 command, and copies th
 only while a host is subscribed; otherwise it costs two loads. A record that is on its way
 to the host is never overwritten: newer acquisitions are skipped until it has gone.
 
+**Generator (patch 4).** Stock plays a table of 100 samples in SRAM through a circular DMA
+into the DAC, and rewrites it at power-on and when the waveform, the duty or the amplitude is
+changed, not when the frequency is. `WAVE` stores samples there. The host gives a position in
+the table (0 to 99), never an address; both the position and the count are checked before
+anything is stored, and each sample is scaled the way stock scales its own
+(`sample * amplitude / 33 + 20`, with the amplitude set on the instrument, held at 3.0 V), so
+the DAC stays inside the span stock itself drives it over. The waveform lasts until stock
+rewrites the table; the instrument's screen keeps showing the waveform chosen in its menu.
+
+**Languages (`--languages`, optional).** Stock V1.2.0 still has its texts in eight languages
+and its fonts still have every character they need, but Settings > Language lists two and
+stores the row number. With this option the instruction that loads the row is replaced by a
+call to nine instructions in the cave: the first row still gives Chinese, and OK on the
+second row steps English, Russian, Japanese, Spanish, Portuguese, German, Korean and back
+to English. The list itself still shows two rows, and neither is marked while a third
+language is in use. `tools/language_tables.py` checks the tables and the fonts of your own
+stock image.
+
 ## Build
 
 ```bash
@@ -69,13 +94,15 @@ sudo apt install gcc-arm-none-eabi
 python3 build_link_image.py --stock APP_2C53T_V1.2.0_251015.bin --out APP_2C53T_V1.2.0_link.bin
 ```
 
-`--without-scope-hook` leaves the `fpga` task untouched (the SysTick hook is then the only
+`--languages` adds the language call described above; without it the image has the link and
+nothing else. `--without-scope-hook` leaves the `fpga` task untouched (the SysTick hook is then the only
 change, the same site OpenScope's stock_caplog uses on hardware). That image still offers
 the link, memory read and the meter stream, and is the one to flash first.
 
 The builder refuses any image whose sha256 is not V1.2.0 (`a17c5c35…c760`), checks the
 stock facts the cave relies on, and re-reads its own output. With Ubuntu 24.04's
-`gcc-arm-none-eabi 15:13.2.rel1-2` the results are in `reference/`.
+`gcc-arm-none-eabi 15:13.2.rel1-2` the results are in `reference/`: patch 3, the one that
+has been on hardware, and `*_patch4*.json` for patch 4 with and without `--languages`.
 
 No patched image is distributed: it contains FNIRSI's firmware.
 
@@ -120,6 +147,10 @@ python fnlink.py verify APP_2C53T_V1.2.0_link.bin
 python fnlink.py read 0x20001060 16
 python fnlink.py status                          # generator settings, scope measurements, meter MAX/MEAN/MIN
 python fnlink.py status --events                 # the same from the status stream (patch 3)
+python fnlink.py wave sinc                       # patch 4: one period of a built-in shape into the generator
+python fnlink.py wave harmonics --harmonics 1:1,3:0.33,5:0.2
+python fnlink.py wave --file one_period.csv      # any count of numbers: resampled to 100, stretched to full scale
+python fnlink.py wave --show                     # the table being played, drawn; writes nothing (any patch)
 python fnlink.py meter                           # live display digits, function, raw frame
 python fnlink.py scope captures/                 # one file per record: 56 state bytes + 1024 samples
 ```
@@ -139,10 +170,19 @@ MAX / MEAN / MIN boxes. It needs no other firmware than the one with the link: i
 From patch 3 the link also sends these blocks by itself to a host that subscribes to them
 (`status --events`); `fnlink.py info` says whether the link on the unit does.
 
+`wave` writes one period into the generator's table and reads it back. The shapes are `sine`,
+`triangle`, `ramp`, `ramp-down`, `pulse`, `sinc`, `gauss`, `exp-decay`, `exp-rise`,
+`half-sine`, `abs-sine`, `stairs`, `burst`, `am` and `harmonics`; `--duty` sets the high part
+of `pulse` and the rising part of `triangle`, `--invert` turns any of them upside down. The
+frequency and the amplitude stay the ones set on the instrument: set the amplitude first,
+because the samples are scaled when they are stored. Changing the frequency afterwards keeps
+the waveform; changing the waveform, the duty or the amplitude brings stock's own back.
+
 ## Protocol
 
 Version 1. Patch 3 adds to it without changing anything a patch 2 host relies on: one more
-subscription bit, one more event type, and four more bytes at the end of INFO.
+subscription bit, one more event type, and four more bytes at the end of INFO. Patch 4 adds
+one request and one feature bit.
 
 One 64-byte report each way, no report id.
 
@@ -157,10 +197,16 @@ Requests and responses pair up strictly; events may arrive ahead of a response.
 - `0x01` INFO: `"2C53LINK"`, protocol, patch, system mode, stream mask, tick count, link
   count, request count, meter frames seen, scope records captured, scope records skipped.
   From patch 3, a feature byte follows (payload byte 36): bit 0 = the link has the status
-  stream. A shorter INFO means no features.
+  stream, bit 1 (patch 4) = it has `WAVE`. A shorter INFO means no features.
 - `0x02` READ: up to 56 bytes from `0x08000000`–`0x080FFFFF` or `0x20000000`–`0x20037FFF`.
 - `0x03` STREAM: byte 2 is the subscription mask (1 meter, 2 scope, 4 status from patch 3;
   a link that does not know a bit answers status 3). Every session starts unsubscribed.
+- `0x04` WAVE (patch 4): byte 2 is the number of samples (1 to 28), bytes 4–7 the position of
+  the first one in the generator's table (0 to 99), and the samples follow from byte 8 as
+  16-bit little-endian values from 0 to 4094 (anything above counts as 4094). The response
+  carries two bytes: the amplitude the samples were scaled by, in tenths of a volt, and the
+  index of the waveform stock will go back to. A whole table is four requests. Status 2 if
+  position + count goes past 100, status 3 for a count of 0 or above 28.
 - Status: 0 ok, 1 unknown command, 2 range refused, 3 bad length.
 - `0x90` meter event: kind 1 (12-byte `5A A5` frame) or 2 (10-byte `AA 55` echo); payload =
   frame (12), last function word sent to the meter chip, system mode, 2 spare, 40 bytes of

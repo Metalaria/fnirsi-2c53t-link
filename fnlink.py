@@ -23,6 +23,8 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import math
+import re
 import struct
 import sys
 import time
@@ -32,14 +34,24 @@ from pathlib import Path
 VID, PID = 0x1209, 0x0001
 REPORT_LEN = 64
 PAYLOAD_MAX = 56
-CMD_INFO, CMD_READ, CMD_STREAM = 0x01, 0x02, 0x03
+CMD_INFO, CMD_READ, CMD_STREAM, CMD_WAVE = 0x01, 0x02, 0x03, 0x04
 EVT_METER, EVT_SCOPE_HEADER, EVT_SCOPE_DATA, EVT_STATUS = 0x90, 0xA0, 0xA1, 0xB0
 EVENTS = (EVT_METER, EVT_SCOPE_HEADER, EVT_SCOPE_DATA, EVT_STATUS)
 STREAM_METER, STREAM_SCOPE, STREAM_STATUS = 0x01, 0x02, 0x04
 FEATURE_STATUS = 0x01                   # INFO feature bit: the link has the status stream (patch 3)
+FEATURE_WAVE = 0x02                     # INFO feature bit: the link can store the generator's table (patch 4)
 # Sub-kinds of a status event: which block of stock's SRAM it carries.
 STATUS_GENERATOR, STATUS_SCOPE_CH1, STATUS_SCOPE_CH2, STATUS_METER = 1, 2, 3, 4
 STATUS = {0: "ok", 1: "unknown command", 2: "address range not readable", 3: "bad length"}
+
+# The signal generator's table (code: stock plays these 100 samples through a circular DMA into the
+# DAC and rewrites them at power-on and when the waveform, the duty or the amplitude is changed, not
+# when the frequency is). Patch 4 stores samples there, scaled as stock scales its own.
+WAVE_ADDR = 0x20000F5A                  # state[0xE62]
+WAVE_POINTS = 100
+WAVE_FULL_SCALE = 4094                  # top of stock's own sine table
+WAVE_CHUNK = PAYLOAD_MAX // 2           # samples of 16 bits in one request
+WAVE_AMPLITUDE_MAX = 30                 # tenths of a volt: stock's menu stops at 3.0 V
 
 APP_BASE = 0x08007000
 CAL_ADDR, CAL_LEN = 0x08006000, 0x1000
@@ -338,6 +350,124 @@ def _eng(value: float, unit: str) -> str:
     return "%.3g%s" % (value, unit)
 
 
+def wave_stored(samples, amplitude: int) -> list:
+    """What the instrument stores for these samples (0..4094) at an amplitude in tenths of a volt:
+    stock's own scaling, sample * amplitude / 33 + 20, which the patch applies."""
+    amplitude = min(amplitude, WAVE_AMPLITUDE_MAX)
+    return [min(v, WAVE_FULL_SCALE) * amplitude // 33 + 20 for v in samples]
+
+
+def wave_normalise(values) -> list:
+    """Any 100 numbers as samples: the lowest becomes 0 and the highest 4094. A flat list stays at
+    mid scale."""
+    values = [float(v) for v in values]
+    if len(values) != WAVE_POINTS:
+        raise LinkError("a waveform is %d points, got %d" % (WAVE_POINTS, len(values)))
+    if any(math.isnan(v) or math.isinf(v) for v in values):
+        raise LinkError("a waveform cannot hold NaN or infinity")
+    lo, hi = min(values), max(values)
+    if hi == lo:
+        return [WAVE_FULL_SCALE // 2] * WAVE_POINTS
+    return [int(round((v - lo) / (hi - lo) * WAVE_FULL_SCALE)) for v in values]
+
+
+def wave_resample(values, points: int = WAVE_POINTS) -> list:
+    """One period given as any number of points (two at least), as `points` of them, by linear
+    interpolation around the period: the last point is followed by the first."""
+    values = [float(v) for v in values]
+    n = len(values)
+    if n < 2:
+        raise LinkError("a waveform needs two points at least")
+    if n == points:
+        return values
+    out = []
+    for i in range(points):
+        x = i * n / points
+        k = int(x)
+        out.append(values[k % n] + (values[(k + 1) % n] - values[k % n]) * (x - k))
+    return out
+
+
+def parse_wave_text(text: str) -> list:
+    """Numbers from a text file: one per line or separated by commas, semicolons or spaces. `#`
+    starts a comment. A line that begins with a word (a CSV header) is skipped."""
+    values = []
+    for line in text.splitlines():
+        line = line.split("#", 1)[0].strip()
+        if not line or re.match(r"[A-Za-z_]", line):
+            continue
+        for tok in re.split(r"[;,\s]+", line):
+            if tok:
+                try:
+                    values.append(float(tok))
+                except ValueError:
+                    raise LinkError("not a number in the waveform file: %r" % tok) from None
+    return values
+
+
+def parse_harmonics(text: str) -> list:
+    """`1:1,3:0.33,5:0.2` or `1:1:0,2:0.5:90` -> [(order, amplitude, phase in degrees)]."""
+    out = []
+    for item in text.split(","):
+        parts = item.strip().split(":")
+        try:
+            order, level = int(parts[0]), float(parts[1])
+            phase = float(parts[2]) if len(parts) > 2 else 0.0
+        except (ValueError, IndexError):
+            raise LinkError("a harmonic is ORDER:LEVEL or ORDER:LEVEL:DEGREES, got %r" % item) from None
+        if not 1 <= order <= WAVE_POINTS // 4 or len(parts) > 3:
+            raise LinkError("harmonic order %d: 1 to %d fit in %d points" % (order, WAVE_POINTS // 4, WAVE_POINTS))
+        out.append((order, level, phase))
+    return out
+
+
+def wave_shape(name: str, duty: float = 50.0, harmonics=None) -> list:
+    """One period of a named shape as 100 samples (0..4094). `duty` is the high part of `pulse`
+    and the rising part of `triangle`, in percent."""
+    n = WAVE_POINTS
+    d = min(max(duty, 1.0), 99.0) / 100.0
+    t = [i / n for i in range(n)]
+    if name == "sine":
+        v = [math.sin(2 * math.pi * x) for x in t]
+    elif name == "triangle":
+        v = [x / d if x < d else (1 - x) / (1 - d) for x in t]
+    elif name == "ramp":
+        v = t
+    elif name == "ramp-down":
+        v = [1 - x for x in t]
+    elif name == "pulse":
+        v = [1.0 if x < d else 0.0 for x in t]
+    elif name == "sinc":
+        v = [1.0 if x == 0.5 else math.sin(12 * math.pi * (x - 0.5)) / (12 * math.pi * (x - 0.5)) for x in t]
+    elif name == "gauss":
+        v = [math.exp(-((x - 0.5) / 0.12) ** 2) for x in t]
+    elif name == "exp-decay":
+        v = [math.exp(-5 * x) for x in t]
+    elif name == "exp-rise":
+        v = [1 - math.exp(-5 * x) for x in t]
+    elif name == "half-sine":
+        v = [max(0.0, math.sin(2 * math.pi * x)) for x in t]
+    elif name == "abs-sine":
+        v = [abs(math.sin(2 * math.pi * x)) for x in t]
+    elif name == "stairs":
+        v = [int(x * 8) / 7 for x in t]
+    elif name == "burst":
+        v = [math.sin(2 * math.pi * 10 * x) if x < 0.5 else 0.0 for x in t]
+    elif name == "am":
+        v = [(1 + 0.8 * math.sin(2 * math.pi * x)) * math.sin(2 * math.pi * 10 * x) for x in t]
+    elif name == "harmonics":
+        if not harmonics:
+            raise LinkError("harmonics needs --harmonics, for instance 1:1,3:0.33,5:0.2")
+        v = [sum(a * math.sin(2 * math.pi * k * x + math.radians(ph)) for k, a, ph in harmonics) for x in t]
+    else:
+        raise LinkError("unknown shape %r: one of %s" % (name, ", ".join(WAVE_SHAPES)))
+    return wave_normalise(v)
+
+
+WAVE_SHAPES = ("sine", "triangle", "ramp", "ramp-down", "pulse", "sinc", "gauss", "exp-decay", "exp-rise",
+               "half-sine", "abs-sine", "stairs", "burst", "am", "harmonics")
+
+
 class HidTransport:
     """64-byte reports over hidapi."""
 
@@ -373,9 +503,11 @@ class Link:
         self.seq = 0
         self.on_event = on_event
 
-    def _request(self, cmd: int, length: int = 0, addr: int = 0, timeout_ms: int = 1000) -> bytes:
+    def _request(self, cmd: int, length: int = 0, addr: int = 0, timeout_ms: int = 1000, data: bytes = b"") -> bytes:
         self.seq = (self.seq + 1) & 0xFF
-        rq = bytes([cmd, self.seq, length, 0]) + struct.pack("<I", addr)
+        rq = bytes([cmd, self.seq, length, 0]) + struct.pack("<I", addr) + data
+        if len(rq) > REPORT_LEN:
+            raise LinkError("request does not fit in a report")
         self.t.write(rq + bytes(REPORT_LEN - len(rq)))
         deadline = time.monotonic() + timeout_ms / 1000.0
         while True:
@@ -433,6 +565,25 @@ class Link:
         p = self._request(CMD_STREAM, mask)
         return p[0]
 
+    def wave(self, samples) -> dict:
+        """Store one period (100 samples, 0..4094) in the generator's table. Returns the amplitude
+        the instrument scaled them by (tenths of a volt) and the waveform stock will go back to."""
+        samples = [int(v) for v in samples]
+        if len(samples) != WAVE_POINTS or min(samples) < 0 or max(samples) > WAVE_FULL_SCALE:
+            raise LinkError("a waveform is %d samples from 0 to %d" % (WAVE_POINTS, WAVE_FULL_SCALE))
+        seen = set()
+        for first in range(0, WAVE_POINTS, WAVE_CHUNK):
+            part = samples[first:first + WAVE_CHUNK]
+            p = self._request(CMD_WAVE, len(part), first, data=struct.pack("<%dH" % len(part), *part))
+            if len(p) != 2:
+                raise LinkError("unexpected answer to a waveform request")
+            seen.add((p[0], p[1]))
+        if len(seen) != 1:
+            raise LinkError("the amplitude or the waveform was changed on the instrument while the table was "
+                            "being written: write it again")
+        amplitude, waveform = seen.pop()
+        return {"amplitude": amplitude, "waveform_index": waveform}
+
     def events(self, timeout_ms: int = 500):
         """Yield event reports until the transport stays silent for timeout_ms."""
         while True:
@@ -489,6 +640,60 @@ def cmd_info(link: Link, args) -> int:
               % (i["meter_frames"], i["scope_records"], i["scope_skipped"]))
     print("status       %s" % ("streamed (subscribe with bit 2)" if i["features"] & FEATURE_STATUS
                                else "not streamed by this patch: read on request"))
+    print("waveforms    %s" % ("the generator's table can be written (wave)" if i["features"] & FEATURE_WAVE
+                               else "not with this patch: the link is read-only"))
+    return 0
+
+
+def wave_text_plot(stored: list, rows: int = 8, cols: int = 50) -> list:
+    """A small picture of one period, for the terminal."""
+    lo, hi = min(stored), max(stored)
+    span = max(hi - lo, 1)
+    picked = [stored[i * len(stored) // cols] for i in range(cols)]
+    level = [min(rows - 1, (v - lo) * rows // span) for v in picked]
+    return ["  " + "".join("#" if level[c] == r else " " for c in range(cols)).rstrip() for r in range(rows - 1, -1, -1)]
+
+
+def cmd_wave(link: Link, args) -> int:
+    info = link.info()
+    if args.show:
+        table = list(struct.unpack("<%dH" % WAVE_POINTS, link.read(WAVE_ADDR, 2 * WAVE_POINTS)))
+        g = decode_generator(link.read(GENERATOR_ADDR, GENERATOR_LEN))
+        print("generator    %s, %d Hz, amplitude %.1f V" % (g["waveform"] or "waveform %d" % g["waveform_index"],
+                                                            g["frequency_hz"], g["amplitude_v"]))
+        print("table        %d samples, %d to %d" % (len(table), min(table), max(table)))
+        print("\n".join(wave_text_plot(table)))
+        if args.out:
+            args.out.write_text("".join("%d\n" % v for v in table))
+            print("saved        %s" % args.out)
+        return 0
+    if not info["features"] & FEATURE_WAVE:
+        raise LinkError("this patch (%d) cannot write the generator's table: it takes patch 4" % info["patch"])
+    if (args.shape is None) == (args.file is None):
+        raise LinkError("give a shape or --file, one of the two")
+    if args.file is not None:
+        values = parse_wave_text(args.file.read_text())
+        samples = wave_normalise(wave_resample(values))
+        what = "%s (%d points)" % (args.file.name, len(values))
+    else:
+        samples = wave_shape(args.shape, args.duty, parse_harmonics(args.harmonics) if args.harmonics else None)
+        what = args.shape
+    if args.invert:
+        samples = [WAVE_FULL_SCALE - v for v in samples]
+    r = link.wave(samples)
+    want = wave_stored(samples, r["amplitude"])
+    got = list(struct.unpack("<%dH" % WAVE_POINTS, link.read(WAVE_ADDR, 2 * WAVE_POINTS)))
+    if got != want:
+        raise LinkError("the table read back differs from what was sent in %d of %d samples: a generator setting "
+                        "may have been changed meanwhile" % (sum(a != b for a, b in zip(got, want)), WAVE_POINTS))
+    stock = GENERATOR_WAVEFORMS.get(r["waveform_index"]) or "waveform %d" % r["waveform_index"]
+    print("written      %s: %d samples, read back identical (%d to %d in the table)" % (what, WAVE_POINTS, min(got), max(got)))
+    print("amplitude    %.1f V, the one set on the instrument" % (r["amplitude"] / 10.0))
+    if r["amplitude"] == 0:
+        print("             at 0 V the output is flat: raise the amplitude on the instrument and write again")
+    print("until        the waveform, the duty or the amplitude is changed on the instrument, or it is switched "
+          "off: then it plays %s again. Its screen keeps showing %s meanwhile." % (stock, stock))
+    print("\n".join(wave_text_plot(got)))
     return 0
 
 
@@ -958,6 +1163,16 @@ def main(argv=None, transport=None) -> int:
     p.add_argument("addr", type=lambda s: int(s, 0))
     p.add_argument("length", type=lambda s: int(s, 0))
     p.set_defaults(fn=cmd_read)
+    p = sub.add_parser("wave", help="store one period of a waveform in the signal generator's table (patch 4), or show the table")
+    p.add_argument("shape", nargs="?", choices=WAVE_SHAPES, help="a built-in shape")
+    p.add_argument("--file", type=Path, help="one period as numbers in a text or CSV file (any count from 2: resampled to 100, "
+                                             "lowest to highest stretched over the full amplitude)")
+    p.add_argument("--duty", type=float, default=50.0, help="pulse: high part; triangle: rising part; in percent (default 50)")
+    p.add_argument("--harmonics", help="for the shape `harmonics`: ORDER:LEVEL[:DEGREES],... for instance 1:1,3:0.33,5:0.2")
+    p.add_argument("--invert", action="store_true", help="upside down")
+    p.add_argument("--show", action="store_true", help="read the table that is being played and draw it; writes nothing")
+    p.add_argument("--out", type=Path, help="with --show: save the 100 values to this file")
+    p.set_defaults(fn=cmd_wave)
     p = sub.add_parser("status", help="generator settings, the scope's own measurements and the meter's "
                                       "MAX/MEAN/MIN, read from stock's RAM")
     p.add_argument("--watch", type=float, default=0, metavar="SECONDS",

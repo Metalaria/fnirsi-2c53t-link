@@ -15,6 +15,7 @@ SECTIONS
     .text :
     {
         KEEP(*(.text.stubs))
+        KEEP(*(.text.lang))
         *(.text*)
         *(.rodata*)
         . = ALIGN(4);

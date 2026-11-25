@@ -482,5 +482,88 @@ check("pair: CH2 clipped at both rails, still 1 kHz", m2["clipped"] and m2["freq
 check("ladders", fnlink.volts_per_div(0) == 0.01 and abs(fnlink.volts_per_div(5) - 0.5) < 1e-12
       and fnlink.volts_per_div(10) is None and abs(fnlink.seconds_per_div(13) - 200e-6) < 1e-15)
 
+# ---- the generator's table (patch 4): what the host tool sends and what the instrument stores ----
+shapes = {name: fnlink.wave_shape(name, 25.0, [(1, 1.0, 0.0), (3, 0.33, 0.0)]) for name in fnlink.WAVE_SHAPES}
+check("wave: every built-in shape is 100 samples from 0 to 4094",
+      all(len(v) == 100 and min(v) == 0 and max(v) == 4094 and all(isinstance(x, int) for x in v) for v in shapes.values()))
+sine = fnlink.wave_shape("sine")
+check("wave: the sine is stock's own table to within one count",
+      sine[0] in (2047, 2048) and sine[25] == 4094 and sine[75] == 0 and abs(sine[10] - 3250) <= 1, str(sine[:3]))
+check("wave: pulse and triangle follow the duty", sum(v == 4094 for v in fnlink.wave_shape("pulse", 25.0)) == 25
+      and fnlink.wave_shape("triangle", 25.0).index(4094) == 25 and fnlink.wave_shape("triangle", 50.0).index(4094) == 50)
+check("wave: what the instrument stores is stock's scaling, never above stock's top",
+      fnlink.wave_stored([0, 4094, 9999, 2047], 30) == [20, 3741, 3741, 1880]
+      and fnlink.wave_stored([4094], 10) == [1260] and fnlink.wave_stored([4094], 0) == [20] and fnlink.wave_stored([4094], 255) == [3741])
+check("wave: any numbers are stretched from lowest to highest, a flat list stays at mid scale",
+      fnlink.wave_normalise([-1.5] * 50 + [3.0] * 50) == [0] * 50 + [4094] * 50 and fnlink.wave_normalise([7] * 100) == [2047] * 100)
+four = fnlink.wave_resample([0, 1, 0, -1])
+check("wave: four points become a hundred, around the period", len(four) == 100 and four[0] == 0 and four[25] == 1
+      and four[75] == -1 and abs(four[99] + 0.04) < 1e-9 and abs(four[12] - 0.48) < 1e-9)
+check("wave: a file with comments, a header and mixed separators", fnlink.parse_wave_text(
+    "# one period\nvolts;x\n0, 1.5\n-2e-1;3\n\n4 5\n") == [0.0, 1.5, -0.2, 3.0, 4.0, 5.0])
+check("wave: harmonics as ORDER:LEVEL[:DEGREES]", fnlink.parse_harmonics("1:1, 3:0.33:90") == [(1, 1.0, 0.0), (3, 0.33, 90.0)])
+for bad, fn in (("99 points", lambda: fnlink.wave_normalise([1] * 99)), ("NaN", lambda: fnlink.wave_normalise([float("nan")] * 100)),
+                ("one point", lambda: fnlink.wave_resample([1])), ("a word among the numbers", lambda: fnlink.parse_wave_text("1\n2\n4 y")),
+                ("harmonic 0", lambda: fnlink.parse_harmonics("0:1")), ("harmonic 26", lambda: fnlink.parse_harmonics("26:1")),
+                ("a harmonic without a level", lambda: fnlink.parse_harmonics("3")),
+                ("an unknown shape", lambda: fnlink.wave_shape("heart")), ("harmonics without a list", lambda: fnlink.wave_shape("harmonics"))):
+    try:
+        got = fn()
+        refused = False
+    except fnlink.LinkError:
+        got, refused = None, True
+    check("wave refused: " + bad, refused, repr(got))
+
+
+class _Recorder:
+    """A transport that answers WAVE as patch 4 does and keeps the table."""
+
+    def __init__(self, features=3, amplitude=30):
+        self.table, self.features, self.amplitude, self.sent, self.queue = [0] * 100, features, amplitude, [], []
+
+    def write(self, rq):
+        self.sent.append(bytes(rq))
+        cmd, seq, n = rq[0], rq[1], rq[2]
+        addr = struct.unpack_from("<I", rq, 4)[0]
+        rs = bytearray(64)
+        rs[0], rs[1] = cmd | 0x80, seq
+        rs[4:8] = rq[4:8]
+        if cmd == 1:
+            rs[8:16] = b"2C53LINK"
+            rs[16], rs[17], rs[18], rs[44], rs[3] = 1, 4 if self.features & 2 else 3, 3, self.features, 40
+        elif cmd == 4:
+            vals = struct.unpack_from("<%dH" % n, rq, 8)
+            self.table[addr:addr + n] = fnlink.wave_stored(vals, self.amplitude)
+            rs[8], rs[9], rs[3] = self.amplitude, 1, 2
+        elif cmd == 2:
+            mem = struct.pack("<100H", *self.table) if addr >= fnlink.WAVE_ADDR else bytes([1, 1, 0, 0, 0xE8, 3, 0, 0, 50, self.amplitude]) + bytes(200)
+            base = fnlink.WAVE_ADDR if addr >= fnlink.WAVE_ADDR else fnlink.GENERATOR_ADDR
+            rs[8:8 + n], rs[3] = mem[addr - base:addr - base + n], n
+        self.queue.append(bytes(rs))
+
+    def read(self, timeout_ms):
+        return self.queue.pop(0) if self.queue else None
+
+
+rec = _Recorder()
+r = fnlink.Link(rec).wave(shapes["sinc"])
+waves = [x for x in rec.sent if x[0] == 4]
+check("wave: a table goes out as four requests of 28, 28, 28 and 16 samples at positions 0, 28, 56, 84",
+      [(x[2], struct.unpack_from("<I", x, 4)[0]) for x in waves] == [(28, 0), (28, 28), (28, 56), (16, 84)]
+      and r == {"amplitude": 30, "waveform_index": 1} and rec.table == fnlink.wave_stored(shapes["sinc"], 30))
+check("wave: the tool writes, reads back and reports", fnlink.main(["wave", "gauss", "--invert"], transport=_Recorder(amplitude=20)) == 0)
+old_patch = _Recorder(features=1)
+check("wave: a link without the feature bit is told so and nothing is sent", fnlink.main(["wave", "sine"], transport=old_patch) == 2
+      and not [x for x in old_patch.sent if x[0] == 4])
+check("wave --show works on any patch", fnlink.main(["wave", "--show"], transport=_Recorder(features=1)) == 0)
+for name, samples in (("101 samples", [0] * 101), ("a sample of 4095", [4095] * 100), ("a negative sample", [-1] + [0] * 99)):
+    rec = _Recorder()
+    try:
+        fnlink.Link(rec).wave(samples)
+        refused = False
+    except fnlink.LinkError:
+        refused = True
+    check("wave refused before sending: " + name, refused and not rec.sent)
+
 print("%d checks, %d failed" % (checks, failures))
 sys.exit(1 if failures else 0)
