@@ -628,6 +628,42 @@ def main() -> int:
 
         tr_status = EmuTransport(e, moving_clock)
         check("fnlink status: the four blocks by READ", fnlink.main(["status"], transport=tr_status) == 0)
+
+        # snapshot: labelled blocks into a text file, a pointer followed, the calibration refused
+        notes = Path(tmp) / "session.txt"
+        pointer_at, target = 0x20030000, 0x20030100
+        e.audit = False
+        e.w32(pointer_at, target)
+        e.w32(pointer_at + 4, 0)
+        for k in range(24):
+            e.w8(target - 8 + k, 0xA0 + k)
+        e.audit = True
+        rc = fnlink.main(["snapshot", "step one", "0x200000F8:56", "0x20000EA8:96", "--follow", "0x%X:8:16" % pointer_at,
+                          "--follow", "0x%X:8:16" % (pointer_at + 4), "--out", str(notes)], transport=tr)
+        text = notes.read_text() if notes.exists() else ""
+        rows = dict((x[:8], x.split()[2]) for x in text.splitlines() if len(x) > 9 and x[8] == " " and x[:2] in ("20", "08"))
+        check("fnlink snapshot: every block as it is in the instrument", rc == 0 and text.startswith("snapshot  step one")
+              and rows.get("200000F8") == bytes(e.r8(0x200000F8 + k) for k in range(56)).hex()
+              and rows.get("20000EA8") == bytes(e.r8(0x20000EA8 + k) for k in range(96)).hex(), text[:300])
+        check("fnlink snapshot: a pointer followed with the bytes before its target, a null one left alone",
+              rows.get("%08X" % (target - 8)) == bytes(0xA0 + k for k in range(24)).hex()
+              and "follow    %08X -> %08X" % (pointer_at, target) in text and "-> 00000000, not a RAM address: nothing read" in text, text[-400:])
+        check("fnlink snapshot: a second one is added to the same file",
+              fnlink.main(["snapshot", "step two", "0x200000F8:56", "--out", str(notes)], transport=tr) == 0
+              and notes.read_text().count("snapshot  ") == 2)
+        before = notes.read_text()
+        check("fnlink snapshot: the calibration is refused, in RAM and in flash, and nothing is written",
+              fnlink.main(["snapshot", "no", "0x20000350:64", "--out", str(notes)], transport=tr) == 2
+              and fnlink.main(["snapshot", "no", "0x08006000:16", "--out", str(notes)], transport=tr) == 2
+              and fnlink.main(["watch", "0x20000400:4", "--reads", "3"], transport=tr) == 2 and notes.read_text() == before)
+        check("fnlink snapshot: the display arrays right after the tables are not refused",
+              fnlink.main(["snapshot", "arrays", "0x2000044E:602", "--out", str(notes)], transport=tr) == 0)
+        seen = Path(tmp) / "watch.txt"
+        rc = fnlink.main(["watch", "0x%X:4" % X_TICK_COUNT, "--reads", "40", "--label", "the tick", "--out", str(seen)], transport=tr_status)
+        text = seen.read_text() if seen.exists() else ""
+        check("fnlink watch: a value that moves is reported change by change", rc == 0 and "the tick" in text
+              and text.count(" ms  ") >= 20 and "changes   " in text, text[:300])
+        check("fnlink watch: more than one report is refused", fnlink.main(["watch", "0x20000100:57", "--reads", "2"], transport=tr) == 2)
         check("fnlink status --events: the same from the status stream", fnlink.main(["status", "--events"], transport=tr_status) == 0)
         got = fnlink.status_from_events(fnlink.Link(tr_status), 2, 2000)
         check("fnlink status_from_events: generator and both channels in scope mode",

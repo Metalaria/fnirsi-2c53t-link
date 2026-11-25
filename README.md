@@ -113,6 +113,9 @@ python -m pip install hidapi
 python fnlink.py info
 python fnlink.py dump-cal cal_0x08006000.bin     # 4 KB settings/calibration page, read twice
 python fnlink.py cal-info before.bin after.bin   # where two such dumps differ (no device needed)
+python fnlink.py snapshot "stopped, 10us" 0x200000F8:56 0x20000EA8:96 --out session.txt
+                                                 # labelled RAM blocks added to a text file, one call per step
+python fnlink.py watch 0x2000013D:1 --seconds 5  # one small block read over and over: every change, with its time
 python fnlink.py verify APP_2C53T_V1.2.0_link.bin
 python fnlink.py read 0x20001060 16
 python fnlink.py status                          # generator settings, scope measurements, meter MAX/MEAN/MIN
@@ -190,6 +193,12 @@ USB ids default to `1209:0001`, the pid.codes test PID, which is for private tes
   the meter and scope streams. A host reads them with `READ` (`fnlink.py status`) or, from
   patch 3, subscribes to the status stream. Part of their layout is still assumed, see
   `docs/stock_v120_notes.md`.
+- `snapshot` and `watch` exist to look at stock while it runs without a debug probe: a set of
+  RAM blocks at each step of a procedure, or one counter followed in time (a `READ` takes about
+  2 ms, which is the resolution). What they save is meant to be passed on, so both refuse the
+  settings/calibration page and the RAM tables stock loads the calibration into
+  (`--allow-calibration` overrides). The link still only reads, and only flash and RAM: peripheral
+  registers are refused by the patch itself.
 - Going back to stock: flash `APP_2C53T_V1.2.0_251015.bin` through the factory IAP drive.
 
 ## Safety

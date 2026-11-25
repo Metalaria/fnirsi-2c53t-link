@@ -473,6 +473,152 @@ def cmd_read(link: Link, args) -> int:
     return 0
 
 
+# ---- snapshot and watch: stock's RAM for someone else to read ---------------------------------
+#
+# Both exist to answer questions about stock that otherwise need a debug probe on an opened unit:
+# `snapshot` saves a labelled set of RAM blocks at one moment (one per step of a procedure), `watch`
+# follows one small block and says when it changes. Their output is meant to be passed on, so they
+# refuse the two places that hold a unit's calibration unless told otherwise.
+
+RAM_START, RAM_END = 0x20000000, 0x20038000
+# (name, first address, end) of what is not to be shared: the settings/calibration page with the
+# bootloader's flag page, and the RAM tables stock loads the calibration into and saves it from.
+PRIVATE_REGIONS = (("the settings/calibration page in flash", CAL_ADDR, CAL_ADDR + CAL_LEN),
+                   ("stock's calibration tables in RAM", 0x20000358, 0x2000044E))
+
+
+def parse_range(text: str) -> tuple:
+    """'ADDR:LEN' -> (addr, length), both as Python writes numbers (0x2000013D:1)."""
+    try:
+        addr, length = (int(x, 0) for x in text.split(":"))
+    except ValueError:
+        raise LinkError("a range is ADDR:LEN, for example 0x200000F8:56 (got %r)" % text) from None
+    if length < 1 or addr < 0:
+        raise LinkError("a range needs a length of at least 1 (got %r)" % text)
+    return addr, length
+
+
+def private_region(addr: int, length: int):
+    """Name of the calibration region a block overlaps, or None."""
+    for name, start, end in PRIVATE_REGIONS:
+        if addr < end and addr + length > start:
+            return name
+    return None
+
+
+def _shareable(addr: int, length: int, allow: bool) -> None:
+    name = private_region(addr, length)
+    if name and not allow:
+        raise LinkError("0x%08X:%d overlaps %s, which is this unit's own and not for sharing; "
+                        "--allow-calibration reads it anyway" % (addr, length, name))
+
+
+def _block_line(addr: int, data: bytes) -> str:
+    return "%08X %4d  %s" % (addr, len(data), data.hex())
+
+
+def snapshot_lines(link: Link, label: str, ranges: list, follows: list, allow: bool = False) -> list:
+    """The text of one snapshot. `ranges` are (addr, length); `follows` are (addr, before, after):
+    the 32-bit pointer at addr is read and, if it points into RAM, so are `before` bytes ahead of
+    its target and `after` from it (a heap block with its header, for one)."""
+    for addr, length in ranges:
+        _shareable(addr, length, allow)
+    for addr, _, _ in follows:
+        _shareable(addr, 4, allow)
+    info = link.info()
+    out = ["snapshot  %s" % label,
+           "host      %s" % time.strftime("%Y-%m-%dT%H:%M:%S"),
+           "link      patch %d, mode %d (%s), tick %d" % (info["patch"], info["mode"], MODES.get(info["mode"], "unknown"), info["ticks"])]
+    for addr, length in ranges:
+        out.append(_block_line(addr, link.read(addr, length)))
+    for addr, before, after in follows:
+        target = struct.unpack("<I", link.read(addr, 4))[0]
+        if RAM_START + before <= target and target + after <= RAM_END:
+            _shareable(target - before, before + after, allow)
+            out.append("follow    %08X -> %08X, %d bytes before it and %d from it" % (addr, target, before, after))
+            out.append(_block_line(target - before, link.read(target - before, before + after)))
+        else:
+            out.append("follow    %08X -> %08X, not a RAM address: nothing read" % (addr, target))
+    out.append("")
+    return out
+
+
+def cmd_snapshot(link: Link, args) -> int:
+    follows = []
+    for text in args.follow or []:
+        try:
+            follows.append(tuple(int(x, 0) for x in text.split(":")))
+            if len(follows[-1]) != 3 or min(follows[-1]) < 0:
+                raise ValueError
+        except ValueError:
+            raise LinkError("--follow takes ADDR:BEFORE:AFTER, for example 0x20000EF4:8:64 (got %r)" % text) from None
+    lines = snapshot_lines(link, args.label, [parse_range(r) for r in args.ranges], follows, args.allow_calibration)
+    if args.out:
+        with args.out.open("a") as f:
+            f.write("\n".join(lines) + "\n")
+        blocks = sum(1 for x in lines if len(x) > 9 and x[8] == " " and all(c in "0123456789ABCDEF" for c in x[:8]))
+        print("snapshot %r: %d blocks added to %s" % (args.label, blocks, args.out))
+    else:
+        print("\n".join(lines))
+    return 0
+
+
+def watch_summary(samples: list, reads: int, elapsed: float, length: int) -> list:
+    """What `watch` says at the end. `samples` are (seconds, bytes), one per change, the first being
+    the value found at the start."""
+    out = ["reads     %d in %.2f s (%.2f ms each: no change shorter than that is seen)" % (reads, elapsed, 1000.0 * elapsed / max(reads, 1)),
+           "changes   %d" % (len(samples) - 1)]
+    if len(samples) > 2:
+        gaps = sorted(1000.0 * (b[0] - a[0]) for a, b in zip(samples[1:], samples[2:]))
+        out.append("interval  median %.1f ms, shortest %.1f, longest %.1f (between one change and the next)" % (
+            gaps[len(gaps) // 2], gaps[0], gaps[-1]))
+        span = samples[-1][0] - samples[1][0]
+        out.append("rate      %d changes in %.3f s: one every %.2f ms if none was missed" % (len(samples) - 2, span, 1000.0 * span / (len(samples) - 2)))
+    if length <= 4 and len(samples) > 1:
+        values = [int.from_bytes(v, "little") for _, v in samples]
+        ones = sum(1 for a, b in zip(values, values[1:]) if b - a == 1)
+        out.append("steps     %d of +1, %d other (as an unsigned little-endian number)" % (ones, len(values) - 1 - ones))
+        span = samples[-1][0] - samples[1][0]
+        if ones >= 2 and ones == len(values) - 1 and span > 0:
+            out.append("counter   +%d in %.3f s: one count every %.2f ms" % (ones - 1, span, 1000.0 * span / (ones - 1)))
+    return out
+
+
+def cmd_watch(link: Link, args) -> int:
+    """Read one block of at most 56 bytes over and over, as fast as the link answers, and report
+    every change with the host's clock."""
+    addr, length = parse_range(args.range)
+    if length > PAYLOAD_MAX:
+        raise LinkError("watch follows at most %d bytes (one report)" % PAYLOAD_MAX)
+    _shareable(addr, length, args.allow_calibration)
+    lines, samples, reads = [], [], 0
+    start = time.monotonic()
+    last = None
+    try:
+        while True:
+            value = link.read(addr, length)
+            now = time.monotonic() - start
+            reads += 1
+            if value != last:
+                samples.append((now, value))
+                lines.append("%10.1f ms  %s%s" % (1000.0 * now, value.hex(), "  = %d" % int.from_bytes(value, "little") if length <= 4 else ""))
+                if not args.out:
+                    print(lines[-1], flush=True)
+                last = value
+            if (args.reads and reads >= args.reads) or (not args.reads and now >= args.seconds):
+                break
+    except KeyboardInterrupt:
+        pass
+    summary = ["watch     0x%08X:%d" % (addr, length)] + watch_summary(samples, reads, time.monotonic() - start, length)
+    if args.out:
+        with args.out.open("a") as f:
+            f.write("\n".join(["watch     0x%08X:%d  %s  %s" % (addr, length, args.label, time.strftime("%Y-%m-%dT%H:%M:%S"))]
+                              + lines + summary[1:] + [""]) + "\n")
+        print("%d changes added to %s" % (len(samples) - 1, args.out))
+    print("\n".join(summary))
+    return 0
+
+
 def status_lines(mode: int, meter: bytes, scope: bytes, measured: bytes, generator: bytes) -> list:
     """What `status` prints, from the four RAM blocks. Stock only updates a block in its own mode:
     the others show what was there when the instrument last left that mode."""
@@ -762,6 +908,22 @@ def main(argv=None, transport=None) -> int:
     p.add_argument("--events", action="store_true",
                    help="take the blocks from the link's status stream (patch 3) instead of reading them")
     p.set_defaults(fn=cmd_status)
+    p = sub.add_parser("snapshot", help="save a labelled set of memory blocks, to pass on (one per step of a procedure)")
+    p.add_argument("label")
+    p.add_argument("ranges", nargs="+", metavar="ADDR:LEN")
+    p.add_argument("--follow", action="append", metavar="ADDR:BEFORE:AFTER",
+                   help="read the pointer at ADDR and, if it points into RAM, BEFORE bytes ahead of its target and AFTER from it")
+    p.add_argument("--out", type=Path, help="add the snapshot to this text file instead of printing it")
+    p.add_argument("--allow-calibration", action="store_true", help="do not refuse the blocks that hold this unit's calibration")
+    p.set_defaults(fn=cmd_snapshot)
+    p = sub.add_parser("watch", help="read one small block over and over and report every change with its time")
+    p.add_argument("range", metavar="ADDR:LEN")
+    p.add_argument("--seconds", type=float, default=10.0, help="how long (default 10)")
+    p.add_argument("--reads", type=int, default=0, help="stop after this many reads instead")
+    p.add_argument("--label", default="", help="a word about what was being done, for the file")
+    p.add_argument("--out", type=Path, help="add every change to this text file and print only the summary")
+    p.add_argument("--allow-calibration", action="store_true", help="do not refuse the blocks that hold this unit's calibration")
+    p.set_defaults(fn=cmd_watch)
     p = sub.add_parser("dump-cal", help="save the 4 KB settings/calibration page (0x08006000)")
     p.add_argument("out", type=Path)
     p.set_defaults(fn=cmd_dump_cal)
