@@ -199,6 +199,9 @@ USB ids default to `1209:0001`, the pid.codes test PID, which is for private tes
   settings/calibration page and the RAM tables stock loads the calibration into
   (`--allow-calibration` overrides). The link still only reads, and only flash and RAM: peripheral
   registers are refused by the patch itself.
+- [`sessions/`](sessions/2026-11-25_openscope_parity/README.md) holds what was saved that way
+  for OpenScope-2C53T's open questions about stock, and `tools/paused_view_check.py` compares
+  what stock draws while stopped with the record it captured.
 - Going back to stock: flash `APP_2C53T_V1.2.0_251015.bin` through the factory IAP drive.
 
 ## Safety

@@ -182,6 +182,14 @@ off: a frequency (tens of Hz, or about 1.7 MHz) and exactly its period, the rest
 they are CH2's is assumed from the layout. Outside the oscilloscope mode the shown block is
 all zeros.
 
+What the arrow keys do is the low nibble of state `+0x354` (`0x2000044C`): 0 changes the time
+base and the range, 2 moves the trace and the trigger level, 3 is for the cursors; SELECT
+steps it (code: handler `0x0800D2F8`, entry 4 of the key table at `0x08046548`; unit: 2 -> 0
+with one press). While stopped, the display array at `+0x356` is a slice of the record at the
+captured time base, the record through a 16-tap interpolator when zoomed in, and is left alone
+when zoomed out; the rules, checked on 56 snapshots, are in
+[`hardware_results_2026-11-25.md`](hardware_results_2026-11-25.md). (unit, code)
+
 ## Signal generator
 
 Settings from `0x20000F50` (ram: five dumps, one setting changed between each, compared with

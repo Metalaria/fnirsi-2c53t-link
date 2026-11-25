@@ -483,8 +483,11 @@ def cmd_read(link: Link, args) -> int:
 RAM_START, RAM_END = 0x20000000, 0x20038000
 # (name, first address, end) of what is not to be shared: the settings/calibration page with the
 # bootloader's flag page, and the RAM tables stock loads the calibration into and saves it from.
+# The RAM tables are the ones stock's settings saver reads (0x20000358-0x2000044A). The bytes
+# right after them are not calibration: 0x2000044C says what the arrow keys do (ARROWS_ADDR) and
+# the display arrays start at 0x2000044E.
 PRIVATE_REGIONS = (("the settings/calibration page in flash", CAL_ADDR, CAL_ADDR + CAL_LEN),
-                   ("stock's calibration tables in RAM", 0x20000358, 0x2000044E))
+                   ("stock's calibration tables in RAM", 0x20000358, 0x2000044B))
 
 
 def parse_range(text: str) -> tuple:
@@ -619,9 +622,28 @@ def cmd_watch(link: Link, args) -> int:
     return 0
 
 
-def status_lines(mode: int, meter: bytes, scope: bytes, measured: bytes, generator: bytes) -> list:
-    """What `status` prints, from the four RAM blocks. Stock only updates a block in its own mode:
-    the others show what was there when the instrument last left that mode."""
+# What the arrow keys do in the oscilloscope: the low nibble of one byte of stock's state, which
+# the SELECT key steps through (code: its handler, entry 4 of the key table at 0x08046548, adds one;
+# unit: SELECT took it from 2 to 0). 0 and 2 were watched on the unit, 3 is from the code alone,
+# 1 has not been looked at. Bit 7 is the channel the keys act on when both are shown (code).
+# In mode 2 up/down change ms[0x1C], which OpenScope-2C53T's map of the structure calls the
+# trigger level.
+ARROWS_ADDR = 0x2000044C
+ARROWS = {0: "scale: left/right change the time base, up/down the volts per division",
+          1: "mode 1 (not looked at)",
+          2: "move: left/right move the trace sideways, up/down the trigger level",
+          3: "cursors"}
+
+
+def arrows_text(value: int) -> str:
+    return "%s%s (byte 0x%02X; SELECT changes it)" % (
+        ARROWS.get(value & 0x0F, "mode %d (unknown)" % (value & 0x0F)), ", acting on CH2" if value & 0x80 else "", value)
+
+
+def status_lines(mode: int, meter: bytes, scope: bytes, measured: bytes, generator: bytes, arrows: int | None = None) -> list:
+    """What `status` prints, from the four RAM blocks (and the arrow keys' mode, when given).
+    Stock only updates a block in its own mode: the others show what was there when the instrument
+    last left that mode."""
     out = ["system mode  %d (%s)" % (mode, MODES.get(mode, "unknown"))]
     g = decode_generator(generator)
     out.append("generator    %s (index %d), %s, duty %d %%, %.1f V, byte0 %d   raw %s" % (
@@ -635,6 +657,8 @@ def status_lines(mode: int, meter: bytes, scope: bytes, measured: bytes, generat
             _eng(s["channels"][1]["volts_per_div"], "V"), s["channels"][1]["probe"],
             "+".join("CH%d" % (i + 1) for i, c in enumerate(s["channels"]) if c["enabled"]) or "none"),
         "   state %s" % scope.hex()))
+    if arrows is not None:
+        out.append("  arrows     %s" % arrows_text(arrows))
     for ch in (0, 1):
         block = measured[48 * ch:48 * ch + 48]
         m = decode_scope_measurements(block)
@@ -706,7 +730,8 @@ def cmd_status(link: Link, args) -> int:
             mode = link.info()["mode"]
             lines = status_lines(mode, link.read(METER_STATE_ADDR, METER_STATE_LEN),
                                  link.read(SCOPE_STATE_ADDR, SCOPE_STATE_LEN),
-                                 link.read(SCOPE_MEASURED_ADDR, 96), link.read(GENERATOR_ADDR, GENERATOR_LEN))
+                                 link.read(SCOPE_MEASURED_ADDR, 96), link.read(GENERATOR_ADDR, GENERATOR_LEN),
+                                 link.read(ARROWS_ADDR, 1)[0])
             if lines != shown:
                 if shown is not None:
                     print()

@@ -297,7 +297,10 @@ check("scope state: 5 us per division, 50 mV per division", abs(fnlink.scope_set
 lines = fnlink.status_lines(2, IDLE, SCOPE_STATE_STOPPED, STOPPED, bytes.fromhex("01040000b88800003214"))
 text = "\n".join(lines)
 check("status: says what it read", "STOP" in text and "Full Wave (index 4), 35kHz, duty 50 %, 2.0 V" in text
-      and "CH1 shown   40.2kHz" in text and "Vpp 114mV" in text and "MAX empty" in text, text)
+      and "CH1 shown   40.2kHz" in text and "Vpp 114mV" in text and "MAX empty" in text and "arrows" not in text, text)
+text = "\n".join(fnlink.status_lines(2, IDLE, SCOPE_STATE_STOPPED, STOPPED, bytes.fromhex("01040000b88800003214"), 0x02))
+check("status: with the arrow keys' mode when it was read", "  arrows     move: left/right move the trace sideways" in text
+      and "(byte 0x02; SELECT changes it)" in text, text)
 
 # ---------------------------------------------------------------- the settings/calibration page
 # Made-up pages only: a real one holds a unit's calibration and has no place in a repository.
@@ -352,8 +355,12 @@ for bad in ("0x20000100", "0x20000100:0", "x:4", "1:2:3"):
         check("range: %r is refused" % bad, True)
 check("private: the calibration page in flash and the tables in RAM, to the byte",
       [fnlink.private_region(a, n) is not None for a, n in ((0x08005FFF, 1), (0x08005FFF, 2), (0x08006FFF, 1), (0x08007000, 4),
-                                                           (0x20000357, 1), (0x20000357, 2), (0x2000044D, 1), (0x2000044E, 602))]
-      == [False, True, True, False, False, True, True, False])
+                                                           (0x20000357, 1), (0x20000357, 2), (0x2000044A, 1), (0x2000044B, 1),
+                                                           (fnlink.ARROWS_ADDR, 1), (0x2000044E, 602))]
+      == [False, True, True, False, False, True, True, False, False, False])
+check("arrows: the two modes seen on the unit, the channel bit, and a value never seen",
+      fnlink.arrows_text(0x00).startswith("scale: left/right change the time base") and fnlink.arrows_text(0x02).startswith("move:")
+      and ", acting on CH2" in fnlink.arrows_text(0x80) and fnlink.arrows_text(0x07).startswith("mode 7 (unknown)"))
 t0 = [(0.0, b"\x05"), (0.010, b"\x06"), (0.020, b"\x07"), (0.030, b"\x08"), (0.040, b"\x09")]
 text = "\n".join(fnlink.watch_summary(t0, 400, 1.0, 1))
 check("watch summary: a counter's period from its +1 steps", "changes   4" in text and "one count every 10.00 ms" in text and "4 of +1, 0 other" in text
