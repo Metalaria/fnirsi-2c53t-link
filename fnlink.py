@@ -40,6 +40,8 @@ EVENTS = (EVT_METER, EVT_SCOPE_HEADER, EVT_SCOPE_DATA, EVT_STATUS)
 STREAM_METER, STREAM_SCOPE, STREAM_STATUS = 0x01, 0x02, 0x04
 FEATURE_STATUS = 0x01                   # INFO feature bit: the link has the status stream (patch 3)
 FEATURE_WAVE = 0x02                     # INFO feature bit: the link can store the generator's table (patch 4)
+FEATURE_MENU = 0x04                     # INFO feature bit: entries were added to the generator's menu (patch 5)
+STOCK_WAVEFORMS = 13                    # entries 0..12 of the generator's list are stock's
 # Sub-kinds of a status event: which block of stock's SRAM it carries.
 STATUS_GENERATOR, STATUS_SCOPE_CH1, STATUS_SCOPE_CH2, STATUS_METER = 1, 2, 3, 4
 STATUS = {0: "ok", 1: "unknown command", 2: "address range not readable", 3: "bad length"}
@@ -539,7 +541,22 @@ class Link:
         if len(p) >= 36:
             d["meter_frames"], d["scope_records"], d["scope_skipped"] = struct.unpack_from("<III", p, 24)
         d["features"] = p[36] if len(p) >= 37 else 0
+        # patch 5: how many entries the image added to the generator's menu, which of them (if any)
+        # plays what `wave` sent, and where the pointers to their names are
+        d["menu_count"], d["menu_usb_index"] = (p[37], p[38]) if len(p) >= 44 else (0, 0)
+        d["menu_names_addr"] = struct.unpack_from("<I", p, 40)[0] if len(p) >= 44 else 0
         return d
+
+    def menu_names(self, info: dict) -> dict:
+        """{index: label} of the entries the image added to the generator's menu, read from the image."""
+        names = {}
+        if not info.get("features", 0) & FEATURE_MENU or not info.get("menu_count"):
+            return names
+        pointers = struct.unpack("<%dI" % info["menu_count"], self.read(info["menu_names_addr"], 4 * info["menu_count"]))
+        for k, at in enumerate(pointers):
+            text = self.read(at, 24)
+            names[STOCK_WAVEFORMS + k] = text.split(b"\0", 1)[0].decode("ascii", "replace")
+        return names
 
     def read(self, addr: int, length: int, progress=None) -> bytes:
         out = bytearray()
@@ -642,6 +659,9 @@ def cmd_info(link: Link, args) -> int:
                                else "not streamed by this patch: read on request"))
     print("waveforms    %s" % ("the generator's table can be written (wave)" if i["features"] & FEATURE_WAVE
                                else "not with this patch: the link is read-only"))
+    for index, label in link.menu_names(i).items():
+        print("menu         entry %d of the generator's list: %s%s" % (
+            index + 1, label, " (plays what `wave` sent last)" if index == i["menu_usb_index"] else ""))
     return 0
 
 
@@ -656,10 +676,11 @@ def wave_text_plot(stored: list, rows: int = 8, cols: int = 50) -> list:
 
 def cmd_wave(link: Link, args) -> int:
     info = link.info()
+    added = link.menu_names(info)
     if args.show:
         table = list(struct.unpack("<%dH" % WAVE_POINTS, link.read(WAVE_ADDR, 2 * WAVE_POINTS)))
         g = decode_generator(link.read(GENERATOR_ADDR, GENERATOR_LEN))
-        print("generator    %s, %d Hz, amplitude %.1f V" % (g["waveform"] or "waveform %d" % g["waveform_index"],
+        print("generator    %s, %d Hz, amplitude %.1f V" % (g["waveform"] or added.get(g["waveform_index"]) or "waveform %d" % g["waveform_index"],
                                                             g["frequency_hz"], g["amplitude_v"]))
         print("table        %d samples, %d to %d" % (len(table), min(table), max(table)))
         print("\n".join(wave_text_plot(table)))
@@ -686,13 +707,21 @@ def cmd_wave(link: Link, args) -> int:
     if got != want:
         raise LinkError("the table read back differs from what was sent in %d of %d samples: a generator setting "
                         "may have been changed meanwhile" % (sum(a != b for a, b in zip(got, want)), WAVE_POINTS))
-    stock = GENERATOR_WAVEFORMS.get(r["waveform_index"]) or "waveform %d" % r["waveform_index"]
+    stock = GENERATOR_WAVEFORMS.get(r["waveform_index"]) or added.get(r["waveform_index"]) or "waveform %d" % r["waveform_index"]
+    usb = info.get("menu_usb_index", 0)
     print("written      %s: %d samples, read back identical (%d to %d in the table)" % (what, WAVE_POINTS, min(got), max(got)))
     print("amplitude    %.1f V, the one set on the instrument" % (r["amplitude"] / 10.0))
     if r["amplitude"] == 0:
         print("             at 0 V the output is flat: raise the amplitude on the instrument and write again")
-    print("until        the waveform, the duty or the amplitude is changed on the instrument, or it is switched "
-          "off: then it plays %s again. Its screen keeps showing %s meanwhile." % (stock, stock))
+    if usb and r["waveform_index"] == usb:
+        print("until        another one is sent or the instrument is switched off: it is entry %d of its list, \"%s\", "
+              "which is the one selected." % (usb + 1, added.get(usb, "?")))
+    else:
+        print("until        the waveform, the duty or the amplitude is changed on the instrument, or it is switched "
+              "off: then it plays %s again. Its screen keeps showing %s meanwhile." % (stock, stock))
+        if usb:
+            print("in the menu  entry %d of the instrument's list, \"%s\", plays it from now until power-off."
+                  % (usb + 1, added.get(usb, "?")))
     print("\n".join(wave_text_plot(got)))
     return 0
 

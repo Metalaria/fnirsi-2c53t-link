@@ -189,6 +189,68 @@ def language_ok(image, ram, cursor, language):
     return at, mu.mem_read(STATE_BASE + 0xF60, 1)[0], regs, writes
 
 
+def run_code(image, ram, entry, stops, state=(), regs=(), follow=(), limit=200000):
+    """Run code of an image from `entry` until one of `stops` (or the return to the caller) on a
+    copy of `ram`, with the bytes of stock's state structure in `state` ({offset: value}) and
+    the registers in `regs` ({name: value}). A bl into stock is skipped, r0 untouched, unless
+    its target is in `follow`; a bl into the cave is always followed. `stops` may map an
+    address to a function called with the emulator before stopping there. Returns the
+    emulator, the address it stopped at and the list of SRAM writes below the test stack."""
+    from unicorn import Uc, UC_ARCH_ARM, UC_MODE_THUMB, UC_MODE_MCLASS, UC_HOOK_CODE, UC_HOOK_MEM_WRITE
+    from unicorn import arm_const as A
+    mu = Uc(UC_ARCH_ARM, UC_MODE_THUMB | UC_MODE_MCLASS)
+    mu.mem_map(0x08000000, 0x100000)
+    mu.mem_write(0x08007000, image)
+    mu.mem_map(0x20000000, 0x40000)
+    mu.mem_write(0x20000000, ram)
+    for off, v in dict(state).items():
+        mu.mem_write(STATE_BASE + off, bytes([v & 0xFF]))
+    mu.reg_write(A.UC_ARM_REG_SP, 0x20036F00)
+    mu.reg_write(A.UC_ARM_REG_LR, usbemu.RET_MAGIC | 1)
+    for name, v in dict(regs).items():
+        mu.reg_write(getattr(A, "UC_ARM_REG_" + name.upper()), v)
+    writes, steps, at = [], [0], [None]
+    stops = stops if isinstance(stops, dict) else {a: None for a in stops}
+
+    def code(mu, addr, size, _):
+        steps[0] += 1
+        if addr in stops or steps[0] > limit:
+            at[0] = addr
+            if stops.get(addr):
+                stops[addr](mu)
+            mu.emu_stop()
+        elif size == 4 and addr < CAVE_ADDR:
+            h1, h2 = struct.unpack("<HH", mu.mem_read(addr, 4))
+            if (h1 & 0xF800) == 0xF000 and (h2 & 0xD000) == 0xD000:      # bl
+                off = ((h1 & 0x3FF) << 12) | ((h2 & 0x7FF) << 1)
+                sgn = (h1 >> 10) & 1
+                off |= (sgn << 24) | (((~(((h2 >> 13) & 1) ^ sgn)) & 1) << 23) | (((~(((h2 >> 11) & 1) ^ sgn)) & 1) << 22)
+                if sgn:
+                    off -= 1 << 25
+                target = addr + 4 + off
+                if target in stops:                                      # a call to a stop: seen with its arguments
+                    at[0] = target
+                    if stops[target]:
+                        stops[target](mu)
+                    mu.emu_stop()
+                elif target < CAVE_ADDR and target not in follow:        # a call into stock: skipped
+                    mu.reg_write(A.UC_ARM_REG_PC, (addr + 4) | 1)
+
+    mu.hook_add(UC_HOOK_CODE, code)
+    mu.hook_add(UC_HOOK_MEM_WRITE, lambda mu, acc, addr, size, value, _: writes.append((addr, size, value)),
+                begin=0x20000000, end=0x20035FFF)
+    mu.emu_start(entry | 1, usbemu.RET_MAGIC, count=limit * 2)
+    return mu, at[0] if at[0] is not None else mu.reg_read(A.UC_ARM_REG_PC), writes
+
+
+REGS = ("r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "r12", "sp")
+
+
+def regs_of(mu, names=REGS):
+    from unicorn import arm_const as A
+    return tuple(mu.reg_read(getattr(A, "UC_ARM_REG_" + n.upper())) for n in names)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--stock", required=True, type=Path)
@@ -201,6 +263,7 @@ def main() -> int:
     vid, pid = (int(x, 16) for x in manifest["usb_vid_pid"].split(":"))
     has_scope = "0x0803e49a" in manifest["hooks"]
     has_languages = "0x0800beca" in manifest.get("calls", [])
+    menu = manifest.get("menu", [])
     print("image: %s, hooks %s" % (args.image.name, ", ".join(manifest["hooks"])))
     ram = usbemu.initial_ram(stock)
     check("patched image leaves stock's initial RAM unchanged", usbemu.initial_ram(image) == ram)
@@ -267,8 +330,8 @@ def main() -> int:
 
     # INFO
     rs = request(e, 0x01, seq=0x5A)
-    check("INFO: header", rs[0] == 0x81 and rs[1] == 0x5A and rs[2] == 0 and rs[3] == 40, rs[:8].hex())
-    check("INFO: tag 2C53LINK, proto 1, patch 4", rs[8:16] == b"2C53LINK" and rs[16] == 1 and rs[17] == 4)
+    check("INFO: header", rs[0] == 0x81 and rs[1] == 0x5A and rs[2] == 0 and rs[3] == 44, rs[:8].hex())
+    check("INFO: tag 2C53LINK, proto 1, patch 5", rs[8:16] == b"2C53LINK" and rs[16] == 1 and rs[17] == 5)
     check("INFO: reports system mode, not subscribed", rs[18] == 2 and rs[19] == 0)
     check("INFO: reports tick count", struct.unpack_from("<I", rs, 20)[0] == e.r32(X_TICK_COUNT))
 
@@ -479,7 +542,8 @@ def main() -> int:
                 out.append(rs)
         return out
 
-    check("INFO: 40 bytes, feature bits 0 and 1 say the status stream and WAVE exist", (lambda r: r[3] == 40 and r[44] == 3 and r[16] == 1 and r[17] == 4)(request(e, 1, 0x60)))
+    check("INFO: 44 bytes, feature bits 0 and 1 say the status stream and WAVE exist, bit 2 only with a menu",
+          (lambda r: r[3] == 44 and r[44] == (7 if menu else 3) and r[45] == len(menu) and r[16] == 1 and r[17] == 5)(request(e, 1, 0x60)))
     check("status: nothing is sent before the host subscribes", status_events(350) == [])
     rs = request(e, 0x03, 0x61, STREAM_STATUS)
     check("STREAM: subscribe to the status blocks", rs[2] == 0 and rs[8] == STREAM_STATUS)
@@ -925,6 +989,272 @@ def main() -> int:
         check("no language call in this image: the handler stores what stock stores", all(v[0] == v[1] for v in outcome.values()))
     check("language: r1-r12 and sp after the store are stock's, in all 22 cases", not regs_differ, str(regs_differ[:5]))
     check("language: the same SRAM writes as stock, in all 22 cases", not writes_differ, str(writes_differ[:5]))
+
+    # ---- the generator's menu (patch 5): stock's own code with and without the added entries ----
+    BUILDER, LIST, TABLE_AT, GEN_AT = 0x08029E14, 0x0801579C, 0x20000F5A, 0x20000F50
+    E_BYTES = len(menu)
+    LAST = 12 + E_BYTES
+    callee = ("r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "sp")
+    seed = {"r4": 0x44444444, "r5": 0x55555555, "r6": 0x66666666, "r7": 0x77777777, "r8": 0x88888888,
+            "r9": 0x99999999, "r10": 0xAAAAAAAA, "r11": 0xBBBBBBBB}
+
+    def table_of(mu):
+        return list(struct.unpack("<100H", mu.mem_read(TABLE_AT, 200)))
+
+    def build(img, index, duty, ampl, ram_now=ram):
+        mu, at, writes = run_code(img, ram_now, BUILDER, (), {0xE58: 1, 0xE59: index, 0xE60: duty, 0xE61: ampl}, seed)
+        return table_of(mu), at, regs_of(mu, callee), [w for w in writes if not 0x20035000 <= w[0]]
+
+    same, unbalanced, strays = [], [], []
+    for index in list(range(0, 13)) + [13 + E_BYTES, 40, 255]:
+        for duty, ampl in ((50, 30), (20, 10), (80, 1), (50, 0)):
+            ref, got = build(stock, index, duty, ampl), build(image, index, duty, ampl)
+            if ref != got:
+                same.append((index, duty, ampl))
+            if got[1] != usbemu.RET_MAGIC or got[2] != tuple(seed[r] for r in callee[:-1]) + (0x20036F00,):
+                unbalanced.append((index, duty, ampl))
+    check("menu: stock's builder gives the same table, registers and writes for every stock waveform and for an index past the list (%d cases)" % (16 * 4),
+          not same and not unbalanced, "%s %s" % (same[:4], unbalanced[:4]))
+    if menu:
+        import build_link_image as builder_module
+        entries = builder_module.parse_menu(["%s=%s@%d" % (m["label"], m["source"], m["icon"]) for m in menu if m["source"] != "usb"],
+                                            next(("%s@%d" % (m["label"], m["icon"]) for m in menu if m["source"] == "usb"), None))
+        sine = list(struct.unpack("<100H", stock[0x0804D848 - 0x08007000:0x0804D848 - 0x08007000 + 200]))
+        check("menu: the manifest describes %d added entries, indexes 13 to %d" % (len(menu), LAST),
+              [m["index"] for m in menu] == list(range(13, 13 + len(menu))) == [x["index"] for x in entries])
+        wrong = []
+        for x in entries:
+            for ampl in (30, 17, 1, 0, 200):
+                want = fnlink.wave_stored(x["samples"] if x["samples"] else sine, ampl)
+                tab, at, kept, writes = build(image, x["index"], 50, ampl)
+                outside = [w for w in writes if not (TABLE_AT <= w[0] and w[0] + w[1] <= TABLE_AT + 200) and w[0] < 0x20035000]
+                if tab != want or at != usbemu.RET_MAGIC or kept != tuple(seed[r] for r in callee[:-1]) + (0x20036F00,) or outside:
+                    wrong.append((x["index"], ampl, at, len(outside)))
+        check("menu: each added entry builds its own table with stock's scaling, writes only the table and returns with stock's registers",
+              not wrong, str(wrong[:4]))
+        check("menu: an added entry never stores above stock's own top",
+              max(max(build(image, x["index"], 50, 255)[0]) for x in entries) <= 3742)
+        garbage = bytearray(ram)
+        garbage[LINK_RAM - 0x20000000:LINK_RAM - 0x20000000 + 0xA00] = bytes((i * 37 + 11) & 0xFF for i in range(0xA00))
+        usb_entry = next((x for x in entries if x["samples"] is None), None)
+        if usb_entry:
+            check("menu: at start-up, with the link's SRAM not yet initialised, the USB entry plays stock's sine",
+                  build(image, usb_entry["index"], 50, 30, bytes(garbage))[0] == fnlink.wave_stored(sine, 30))
+
+        # the list: stock's own drawing routine, its text and picture calls recorded
+        def names(img, language, first, index):
+            """The six name pointers stock's list passes to its text routine, in order."""
+            got = []
+            from unicorn import arm_const as A
+
+            def grab(mu):
+                got.append(struct.unpack("<I", mu.mem_read(mu.reg_read(A.UC_ARM_REG_SP), 4))[0])
+            # the text routine is not run: its call is observed at the bl and skipped
+            mu = run_names(img, language, first, index, grab)
+            return got, mu
+
+        def run_names(img, language, first, index, grab):
+            from unicorn import Uc, UC_ARCH_ARM, UC_MODE_THUMB, UC_MODE_MCLASS, UC_HOOK_CODE
+            from unicorn import arm_const as A
+            mu = Uc(UC_ARCH_ARM, UC_MODE_THUMB | UC_MODE_MCLASS)
+            mu.mem_map(0x08000000, 0x100000)
+            mu.mem_write(0x08007000, img)
+            mu.mem_map(0x20000000, 0x40000)
+            mu.mem_write(0x20000000, ram)
+            for off, v in ((0xF60, language), (0xF6A, first), (0xE59, index)):
+                mu.mem_write(STATE_BASE + off, bytes([v]))
+            mu.reg_write(A.UC_ARM_REG_SP, 0x20036F00)
+            mu.reg_write(A.UC_ARM_REG_LR, usbemu.RET_MAGIC | 1)
+            steps = [0]
+
+            def code(mu, addr, size, _):
+                steps[0] += 1
+                if steps[0] > 20000:
+                    mu.emu_stop()
+                elif size == 4 and addr < CAVE_ADDR:
+                    h1, h2 = struct.unpack("<HH", mu.mem_read(addr, 4))
+                    if (h1 & 0xF800) == 0xF000 and (h2 & 0xD000) == 0xD000:
+                        off = ((h1 & 0x3FF) << 12) | ((h2 & 0x7FF) << 1)
+                        sgn = (h1 >> 10) & 1
+                        off |= (sgn << 24) | (((~(((h2 >> 13) & 1) ^ sgn)) & 1) << 23) | (((~(((h2 >> 11) & 1) ^ sgn)) & 1) << 22)
+                        if sgn:
+                            off -= 1 << 25
+                        target = addr + 4 + off
+                        if target < CAVE_ADDR:
+                            if target == 0x0800F154:
+                                grab(mu)
+                            mu.reg_write(A.UC_ARM_REG_PC, (addr + 4) | 1)
+            mu.hook_add(UC_HOOK_CODE, code)
+            mu.emu_start(LIST | 1, usbemu.RET_MAGIC, count=40000)
+            return mu
+
+        def cstring(at):
+            raw = image[at - 0x08007000:at - 0x08007000 + 40]
+            return raw.split(b"\0", 1)[0].decode("ascii", "replace")
+
+        differ, rows_wrong, not_returned = [], [], []
+        for language in range(1, 9):
+            for first in range(0, 8 + E_BYTES):
+                ref, mu_ref = names(stock, language, first, first)
+                got, mu_got = names(image, language, first, first)
+                from unicorn import arm_const as A
+                if mu_got.reg_read(A.UC_ARM_REG_PC) != usbemu.RET_MAGIC or len(got) != 6:
+                    not_returned.append((language, first))
+                    continue
+                for k in range(6):
+                    row = first + k
+                    if row < 13:
+                        if got[k] != ref[k]:
+                            differ.append((language, row))
+                    elif cstring(got[k]) != menu[row - 13]["label"]:
+                        rows_wrong.append((language, row, cstring(got[k])))
+        check("menu: stock's list returns and asks for six names in every language and at every scroll position", not not_returned, str(not_returned[:4]))
+        check("menu: rows 1 to 13 get exactly the name stock gives them, in all eight languages", not differ, str(differ[:4]))
+        check("menu: rows 14 to %d get the added names (%s)" % (LAST + 1, ", ".join(m["label"] for m in menu)), not rows_wrong, str(rows_wrong[:4]))
+
+        # the pictures: the three places that turn the index into a file number
+        def picture(img, entry, base_reg, index, on):
+            seen = []
+            from unicorn import arm_const as A
+            mu, at, _ = run_code(img, ram, entry, {0x080073B4: lambda mu: seen.append(mu.reg_read(A.UC_ARM_REG_R2))},
+                                 {0xE58: on, 0xE59: index}, {base_reg: STATE_BASE}, limit=3000)
+            return seen[0] if seen else None
+
+        sites = ((0x080108E6, "r0", lambda i, on: (0x5A if on else 0x67) + i), (0x080127B8, "r4", lambda i, on: 0x17 + i - 13 * on),
+                 (0x0801F8E0, "r0", lambda i, on: 0x17 + i - 13 * on))
+        pics_same, pics_wrong = [], []
+        for entry, reg, number in sites:
+            for on in (0, 1):
+                for index in range(0, 13):
+                    if picture(image, entry, reg, index, on) != picture(stock, entry, reg, index, on) or picture(image, entry, reg, index, on) != number(index, on):
+                        pics_same.append((hex(entry), index, on))
+                for m in menu:
+                    if picture(image, entry, reg, m["index"], on) != number(m["icon"], on):
+                        pics_wrong.append((hex(entry), m["index"], on, picture(image, entry, reg, m["index"], on)))
+        check("menu: the three picture sites ask for stock's file for every stock waveform", not pics_same, str(pics_same[:4]))
+        check("menu: for an added entry they ask for the picture of the waveform it borrows, never a file past stock's thirteen",
+              not pics_wrong, str(pics_wrong[:4]))
+
+        # the keys: next / previous waveform, as stock's handlers do it, the builder included
+        def key(img, handler, index, first):
+            mu, at, _ = run_code(img, ram, handler, (), {0xF68: 3, 0xF69: 0, 0xF6A: first, 0xF6B: 0, 0xE58: 1, 0xE59: index, 0xE60: 50, 0xE61: 30},
+                                 limit=60000)
+            return mu.mem_read(STATE_BASE + 0xE59, 1)[0], mu.mem_read(STATE_BASE + 0xF6A, 1)[0], table_of(mu), at
+
+        walk, index, first, lost = [], 0, 0, []
+        for _ in range(LAST + 4):
+            before = index
+            index, first, tab, at = key(image, 0x0800A900, index, first)
+            walk.append(index)
+            if not first <= index <= first + 5 or at != usbemu.RET_MAGIC:
+                lost.append((index, first, hex(at)))
+            x = next((x for x in entries if x["index"] == index), None)
+            # (a key that does not move the cursor does not rebuild the table, in stock either)
+            if x and index != before and tab != fnlink.wave_stored(x["samples"] if x["samples"] else sine, 30):
+                lost.append(("table", index))
+        check("menu: the next-waveform key walks 1 ... %d and stops there, the cursor always among the six rows shown, each added entry built on arrival" % LAST,
+              walk == list(range(1, LAST + 1)) + [LAST] * 4 and not lost, "%s %s" % (walk, lost[:4]))
+        back = []
+        for _ in range(LAST + 3):
+            index, first, tab, at = key(image, 0x0800A148, index, first)
+            back.append(index)
+            if not first <= index <= first + 5 or at != usbemu.RET_MAGIC:
+                lost.append((index, first, hex(at)))
+        check("menu: the previous-waveform key walks back to 0", back == list(range(LAST - 1, -1, -1)) + [0] * 3 and not lost, "%s %s" % (back, lost[:4]))
+        ref_walk, index, first = [], 0, 0
+        for _ in range(15):
+            index, first, _, _ = key(stock, 0x0800A900, index, first)
+            ref_walk.append(index)
+        check("menu: (stock, for reference: the same key stops at 12)", ref_walk == list(range(1, 13)) + [12] * 3, str(ref_walk))
+
+        # the first row shown when the list opens: four places, each min(index, first row of the last page)
+        opens = ((0x0800C2A6, 0x0800C2B4, "r5"), (0x0800D90E, 0x0800D91C, "r4"), (0x0800E5E6, 0x0800E602, "r4"), (0x0802DFFC, 0x0802E00A, "r10"))
+        bad_open = []
+        for start, stop, reg in opens:
+            for index in range(0, LAST + 1):
+                for img, top in ((image, 7 + E_BYTES), (stock, 7)):
+                    mu, at, _ = run_code(img, ram, start, (stop,), {0xE59: index, 0xF6A: 99}, {reg: STATE_BASE, "r0": 0}, limit=50)
+                    if at != stop or mu.mem_read(STATE_BASE + 0xF6A, 1)[0] != min(index, top):
+                        bad_open.append((hex(start), index, img is image))
+        check("menu: opening the list shows min(index, %d) as its first row (stock: 7), at the four places that set it" % (7 + E_BYTES),
+              not bad_open, str(bad_open[:4]))
+
+        # WAVE and the USB entry, through the emulated link
+        if usb_entry:
+            e.audit = False
+            e.w8(SYSTEM_MODE, 3)
+            stock_disconnect(e)
+            e.tick(SETTLE + 5)
+            e.enumerate()
+            e.mu.mem_write(GEN_AT, bytes([1, 1, 0, 0]) + struct.pack("<I", 1000) + bytes([50, 30]))
+            e.audit = True
+            rs = request(e, 0x01, 0x30)
+            names_at = struct.unpack_from("<I", rs, 48)[0]
+            labels = []
+            for k in range(rs[45]):
+                at = struct.unpack("<I", read_mem(e, names_at + 4 * k, 4))[0]
+                labels.append(read_mem(e, at, 24).split(b"\0", 1)[0].decode())
+            check("menu: INFO gives the count, the USB entry and where the names are; READ returns them",
+                  rs[44] == 7 and rs[45] == len(menu) and rs[46] == usb_entry["index"] and labels == [m["label"] for m in menu], str(labels))
+
+            def gen_set(index, ampl):
+                e.audit = False
+                e.mu.mem_write(GEN_AT, bytes([1, index, 0, 0]) + struct.pack("<I", 1000) + bytes([50, ampl]))
+                e.audit = True
+
+            def tab_now():
+                return list(struct.unpack("<100H", e.mu.mem_read(TABLE_AT, 200)))
+
+            def send(samples, order=(0, 28, 56, 84)):
+                for first in order:
+                    part = samples[first:first + 28]
+                    request(e, 0x04, 0x31, len(part), first, data=struct.pack("<%dH" % len(part), *part))
+
+            gen_set(usb_entry["index"], 30)
+            e.call(BUILDER)
+            earlier = fnlink.wave_normalise(fnlink.wave_resample([0, 1, 0, -1]))
+            check("menu: the USB entry plays the last waveform fnlink sent earlier in this run, at today's amplitude",
+                  tab_now() == fnlink.wave_stored(earlier, 30))
+            sent = fnlink.wave_shape("sinc")
+            gen_set(1, 30)
+            send(sent)
+            check("menu: WAVE still stores straight into the table that is playing", tab_now() == fnlink.wave_stored(sent, 30))
+            e.call(BUILDER)
+            check("menu: ...which stock rebuilds as its own waveform (square: 20 and 3742)", set(tab_now()) == {20, 3742})
+            gen_set(usb_entry["index"], 30)
+            e.call(BUILDER)
+            check("menu: selecting the USB entry plays what was sent", tab_now() == fnlink.wave_stored(sent, 30))
+            gen_set(usb_entry["index"], 12)
+            e.call(BUILDER)
+            check("menu: ...and a change of amplitude rescales it instead of losing it", tab_now() == fnlink.wave_stored(sent, 12))
+            other = fnlink.wave_shape("stairs")
+            gen_set(usb_entry["index"], 30)
+            request(e, 0x04, 0x32, 28, 0, data=struct.pack("<28H", *other[:28]))
+            e.call(BUILDER)
+            check("menu: a waveform only partly received does not count: stock's sine until it is whole",
+                  tab_now() == fnlink.wave_stored(sine, 30))
+            send(other, order=(0, 56, 28, 84))
+            e.call(BUILDER)
+            check("menu: nor does one received out of order", tab_now() == fnlink.wave_stored(sine, 30))
+            send(other)
+            e.call(BUILDER)
+            check("menu: received whole and in order, it is the USB entry's waveform", tab_now() == fnlink.wave_stored(other, 30))
+            for x in entries:
+                gen_set(x["index"], 30)
+                e.call(BUILDER)
+                if x["samples"] and tab_now() != fnlink.wave_stored(x["samples"], 30):
+                    check("menu: entry %d through the emulated instrument" % x["index"], False)
+            tr5 = type("T", (), {"write": lambda self, r: e.host_out(1, r), "read": lambda self, t: next((x for x in (poll_in(e) for _ in range(t)) if x is not None), None)})()
+            gen_set(1, 30)
+            check("menu: fnlink info and wave name the entries", fnlink.main(["info"], transport=tr5) == 0
+                  and fnlink.main(["wave", "gauss"], transport=tr5) == 0 and fnlink.main(["wave", "--show"], transport=tr5) == 0)
+            gen_set(usb_entry["index"], 30)
+            e.call(BUILDER)
+            check("menu: what fnlink sent is what the USB entry plays", tab_now() == fnlink.wave_stored(fnlink.wave_shape("gauss"), 30))
+    else:
+        check("no menu in this image: the builder, the list, the keys and the pictures are stock's bytes",
+              all(image[a - 0x08007000:a - 0x08007000 + 4] == stock[a - 0x08007000:a - 0x08007000 + 4]
+                  for a in (0x08029E14, 0x080157E6, 0x080108EA, 0x080127BC, 0x0801F8EE, 0x0800A9C0, 0x0800C2AA, 0x0802E000)))
 
     # ---- audit of every SRAM write made by cave code ---------------------------------------
     allowed_core = {UDEV + 4, UDEV + 8,                              # class / descriptor pointers

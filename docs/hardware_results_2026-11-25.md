@@ -236,11 +236,34 @@ were CH1's range and the trigger level; nothing else in `ms[0x00..0x37]`.
 waveform from a 100-point table in flash, `0x0804D848`, scaled by the amplitude; the table is
 a sine to within half a count. Its label on the screen was not noted.
 
+## Patch 4 on the unit
+
+Flashed in the afternoon over patch 3, from macOS through the factory IAP drive with
+OpenScope's `scripts/iap_flash.py`: the fifth update of this unit that way. The image is the
+one without `--languages` (`388bd8d7…773b`, as in `reference/APP_2C53T_V1.2.0_link_patch4.json`).
+
+| | |
+|---|---|
+| `fnlink.py info` | protocol 1, patch 4, "the generator's table can be written" |
+| `fnlink.py verify` | MATCH: the application area of the flash is exactly the image (754220 bytes) |
+| Settings and calibration page | dumped before and after the flash: identical, byte for byte |
+| Table before any write | Square Wave, 1000 Hz, 3.0 V: 100 samples, 20 to 3742, two levels |
+| `wave sinc`, `wave harmonics --harmonics 1:1,3:0.33,5:0.2` | each written and read back identical, 20 to 3741 |
+| On the instrument's own oscilloscope | the generator's output on CH1 shows the harmonics shape: a square with three ripples on each level (photograph) |
+| After changing the frequency to 2000 Hz on the instrument | `wave --show` reads the harmonics table still there, 20 to 3741: a change of frequency keeps the waveform, as the code says |
+
+What the photograph also shows: stock's own measurements on that shape read 1.20 kHz and a
+duty of 60.71 %, while the period on its screen is about five divisions of 200 us. Its
+frequency measurement is not reliable on a waveform with ripple; the record is.
+
+Not checked on the unit: that a change of duty or amplitude brings stock's waveform back
+(code and emulation only), and the image built with `--languages`, which has not been flashed.
+
 ## Not answered
 
 - What needs a write to the instrument's memory (the 20M limit, the per-channel "FFT" flag)
   or a read of peripheral registers (TMR10, TMR11, GPIO): the link reads flash and RAM only,
-  and only reads.
+  and the one thing it writes, from patch 4, is the generator's table.
 - The idle counter with USB disconnected: without USB there is no link.
 - Whether the unit really powers off at 900 counts with USB connected: not waited for.
 - The zoom-out sampling rule (above), mode 1 of the arrow keys, and all of this with both

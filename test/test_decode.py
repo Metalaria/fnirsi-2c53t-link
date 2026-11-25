@@ -565,5 +565,35 @@ for name, samples in (("101 samples", [0] * 101), ("a sample of 4095", [4095] * 
         refused = True
     check("wave refused before sending: " + name, refused and not rec.sent)
 
+# ---- the generator's menu (patch 5): what the builder accepts ----------------------------------
+import build_link_image as builder  # noqa: E402
+
+menu = builder.parse_menu(["Triangle 25/75=triangle:25@2", "Gauss Pulse=gauss@12", "Sum=harmonics:1:1,3:0.33"], "USB Wave@0")
+check("menu: entries take the indexes after stock's thirteen, in order, the USB one last",
+      [(m["index"], m["label"], m["icon"], m["source"]) for m in menu] == [
+          (13, "Triangle 25/75", 2, "triangle:25"), (14, "Gauss Pulse", 12, "gauss"), (15, "Sum", 0, "harmonics:1:1,3:0.33"),
+          (16, "USB Wave", 0, "usb")])
+check("menu: a shape is the one fnlink sends, its argument included", menu[0]["samples"] == fnlink.wave_shape("triangle", 25.0)
+      and menu[1]["samples"] == fnlink.wave_shape("gauss") and menu[3]["samples"] is None
+      and menu[2]["samples"] == fnlink.wave_shape("harmonics", harmonics=[(1, 1.0, 0.0), (3, 0.33, 0.0)]))
+header = builder.menu_header(menu)
+check("menu: the generated header has the counts, the names and one table per built-in entry",
+      "#define MENU_EXTRA      4u" in header and "#define MENU_BAKED      3" in header and "#define MENU_USB_INDEX  16u" in header
+      and '"Triangle 25/75", "Gauss Pulse", "Sum", "USB Wave"' in header and header.count("    { ") == 3)
+check("menu: with only the USB entry there is still a (dummy) table to compile",
+      "menu_wave_data[1][100]" in builder.menu_header(builder.parse_menu(None, "USB")))
+check("menu: no option, no entries", builder.parse_menu(None, None) == [])
+for bad, waves, usb in (("no shape", ["Label"], None), ("an unknown shape", ["A=heart"], None), ("a label of 18 characters", ["A" * 18 + "=sine"], None),
+                        ("an empty label", ["=sine"], None), ("a label that is not ASCII", ["Señal=sine"], None), ("a quote in a label", ['A"=sine'], None),
+                        ("a picture past stock's thirteen", ["A=sine@13"], None), ("a picture that is not a number", ["A=sine@x"], None),
+                        ("nine entries", ["A%d=sine" % k for k in range(9)], None), ("eight and the USB one", ["A%d=sine" % k for k in range(8)], "USB"),
+                        ("a bad USB label", None, "USB\\")):
+    try:
+        builder.parse_menu(waves, usb)
+        refused = False
+    except builder.BuildError:
+        refused = True
+    check("menu refused: " + bad, refused)
+
 print("%d checks, %d failed" % (checks, failures))
 sys.exit(1 if failures else 0)
