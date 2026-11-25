@@ -150,9 +150,10 @@ from `0x200000F8`) followed by 19 `0xA1` data events.
 
 | Offset | Content | Evidence |
 |---|---|---|
+| 0 | coupling of CH1: 1 DC, 0 AC. It does not say whether the channel is on (that is offset 20) | switched on the unit, 2026-11-25: the only byte that changed, and the trace dropped to straddle zero. CH2's coupling is not located (offset 1 was 0 throughout and was not switched) |
 | 2, 3 | volts per division of CH1, CH2 as an index: 0 = 10 mV, then 1-2-5 steps to 9 = 10 V | CH1 checked at 0, 2 and 5. CH2 at 3: 344 mV peak to peak from the record against 345 mV by stock's own measurement (2026-11-25); 2 was the step before it |
 | 4, 5 | vertical position of CH1, CH2, signed: zero volts is sample value 128 + position | CH1 checked in three sessions; CH2 assumed |
-| 6, 7 | probe setting of CH1, CH2: 0 = X1, 1 = X10 | CH1 checked both ways; CH2 assumed |
+| 6, 7 | probe setting of CH1, CH2: 0 = X1, 1 = X10 | both checked both ways (2026-11-25): at X10 the record scaled ten times larger gives 3.36 V and 3.30 V where stock's own measurement gives 3.35 V and 3.29 V |
 | 20 | channels on: bit 0 CH1, bit 1 CH2 | checked (1, 2 and 3) |
 | 21 | low nibble: trigger source, 1 CH1, 2 CH2. High nibble: 1 with CH2 alone | assumed; seen `0x01` with CH1 alone and `0x12` with CH2 alone |
 | 22 | 0 with CH1 alone, 1 with CH2 alone | seen; not established (the selected channel?) |
@@ -170,9 +171,11 @@ from `0x200000F8`) followed by 19 `0xA1` data events.
   20 µs per division the frequency computed from the record with this rule agreed with the
   instrument's own measurement (generator at 40 kHz on 2026-11-24 for 10 µs, at 50 kHz on
   2026-11-25 for the three; compared on the screen of the application that uses this format,
-  the figures of the second day were not written down). Below 5 µs and above 2 ms per
-  division this was not checked; the fastest time bases cannot have 25 real samples per
-  division.
+  the figures of the second day were not written down). At 2 µs per division `fnlink.py
+  scope` got 50 kHz from the record and stock's own measurement was 50 kHz (2026-11-25). Below
+  2 µs and above 2 ms per division this was not checked; the fastest time bases cannot have
+  25 real samples per division, and at 1 µs a 50 kHz wave leaves only two periods in the
+  record.
 - The screen is 12 by 8 divisions: 300 samples wide, 200 counts tall, centred on 128.
 
 ### Things to know

@@ -202,6 +202,38 @@ is mA and 12 A), and bytes 47 to 49 are 1 only for a box in volts. The unit is t
 50 to 52; `fnlink.py status` took it from 47 to 49 until now and printed "mV?" for a box in
 microamperes.
 
+## Coupling, the X10 setting, 2 us and the first waveform
+
+The last session of the day. Captures in
+[`sessions/2026-11-25_coupling_probe_time_bases/`](../sessions/2026-11-25_coupling_probe_time_bases/README.md).
+In each step `fnlink.py scope` measured the record with this repository's rules and
+`fnlink.py status` printed stock's own measurement of the same wave.
+
+**CH1's coupling is `ms[0]`**: 1 with DC, 0 with AC. Switching it changed that byte and no
+other of the 56, and the trace dropped to straddle zero (stock's Vmax went from 317 mV to
+170 mV). With CH2 alone on, `ms[0]` was still 1: it is not the channel's on flag, which is the
+mask at `ms[0x14]`. CH2's coupling was not switched; `ms[1]` was 0 throughout.
+
+**The X10 probe setting** is `ms[6]` for CH1 and `ms[7]` for CH2, and stock's own
+measurements carry the factor:
+
+| | record at X1 | stock at X1 | record at X10 | stock at X10 |
+|---|---|---|---|---|
+| CH1, peak to peak | 336 mV | 334 mV | 3.36 V | 3.35 V |
+| CH2, peak to peak | 330 mV | 329 mV | 3.30 V | 3.29 V |
+
+**2 us per division** (`ms[0x2D]` = 7): 50 kHz from the record, 50 kHz by stock. So 25
+samples to a division holds from 2 us to 2 ms. At 1 us the record holds two periods of the
+50 kHz wave and `scope` gives no frequency. The slow time bases were not captured: steps 10
+to 12 were taken at 5, 10 and 20 us instead of ms.
+
+**The trigger edge was not found.** In the step meant to switch it, the bytes that changed
+were CH1's range and the trigger level; nothing else in `ms[0x00..0x37]`.
+
+**The generator's menu starts one step before Square Wave**, at index 0. Stock builds that
+waveform from a 100-point table in flash, `0x0804D848`, scaled by the amplitude; the table is
+a sine to within half a count. Its label on the screen was not noted.
+
 ## Not answered
 
 - What needs a write to the instrument's memory (the 20M limit, the per-channel "FFT" flag)

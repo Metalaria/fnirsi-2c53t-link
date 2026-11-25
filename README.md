@@ -207,6 +207,8 @@ USB ids default to `1209:0001`, the pid.codes test PID, which is for private tes
   continuity test; `tools/exti3_gate.py` and `tools/buzzer_tail_check.py` go with it.
   [`sessions/2026-11-25_generator_ch2_boxes/`](sessions/2026-11-25_generator_ch2_boxes/README.md)
   has the generator's menu entry by entry, CH2 with a signal and the units of the meter's boxes.
+  [`sessions/2026-11-25_coupling_probe_time_bases/`](sessions/2026-11-25_coupling_probe_time_bases/README.md)
+  has CH1's coupling, the X10 probe setting of both channels and 2 us per division.
 - Going back to stock: flash `APP_2C53T_V1.2.0_251015.bin` through the factory IAP drive.
 
 ## Safety
