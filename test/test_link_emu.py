@@ -81,10 +81,10 @@ def poll_in(e):
         return None
 
 
-def request(e, cmd, seq=0, length=0, addr=0, events=None):
+def request(e, cmd, seq=0, length=0, addr=0, events=None, data=b""):
     """Send a request and return its response. Events queued ahead of it are appended to
     `events` if given, otherwise dropped."""
-    rq = bytes([cmd, seq, length, 0]) + struct.pack("<I", addr) + bytes(56)
+    rq = bytes([cmd, seq, length, 0]) + struct.pack("<I", addr) + data + bytes(56 - len(data))
     e.host_out(1, rq)
     for _ in range(100):
         try:
@@ -140,6 +140,55 @@ def read_mem(e, addr, n, seq=0):
     return out
 
 
+def language_ok(image, ram, cursor, language):
+    """Run stock's Settings OK handler (0x0800BD60) on the Language row with the cursor on
+    `cursor` and the language byte at `language`, up to the instruction after the one that
+    stores the language. Calls into stock are skipped (there is no scheduler here); a call
+    into the cave is followed. Returns the language stored, the registers stock still uses
+    and every SRAM write."""
+    from unicorn import Uc, UC_ARCH_ARM, UC_MODE_THUMB, UC_MODE_MCLASS, UC_HOOK_CODE, UC_HOOK_MEM_WRITE
+    from unicorn import arm_const as A
+    mu = Uc(UC_ARCH_ARM, UC_MODE_THUMB | UC_MODE_MCLASS)
+    mu.mem_map(0x08000000, 0x100000)
+    mu.mem_write(0x08007000, image)
+    mu.mem_map(0x20000000, 0x40000)
+    mu.mem_write(0x20000000, ram)
+    for off, v in ((0xF68, 4), (0xF69, 1), (0xF6A, 0), (0xF6B, cursor), (0xF60, language)):
+        mu.mem_write(STATE_BASE + off, bytes([v]))
+    mu.reg_write(A.UC_ARM_REG_SP, 0x20036F00)
+    mu.reg_write(A.UC_ARM_REG_LR, usbemu.RET_MAGIC | 1)
+    writes, steps = [], [0]
+
+    def code(mu, addr, size, _):
+        steps[0] += 1
+        if addr == 0x0800BEE0 or steps[0] > 5000:
+            mu.emu_stop()
+        elif size == 4 and addr < CAVE_ADDR:
+            h1, h2 = struct.unpack("<HH", mu.mem_read(addr, 4))
+            if (h1 & 0xF800) == 0xF000 and (h2 & 0xD000) == 0xD000:      # bl
+                off = ((h1 & 0x3FF) << 12) | ((h2 & 0x7FF) << 1)
+                sgn = (h1 >> 10) & 1
+                i1 = (~(((h2 >> 13) & 1) ^ sgn)) & 1
+                i2 = (~(((h2 >> 11) & 1) ^ sgn)) & 1
+                off |= (sgn << 24) | (i1 << 23) | (i2 << 22)
+                if sgn:
+                    off -= 1 << 25
+                if addr + 4 + off < CAVE_ADDR:                           # a call into stock: skipped
+                    mu.reg_write(A.UC_ARM_REG_R0, 1)
+                    mu.reg_write(A.UC_ARM_REG_PC, (addr + 4) | 1)
+
+    mu.hook_add(UC_HOOK_CODE, code)
+    mu.hook_add(UC_HOOK_MEM_WRITE, lambda mu, acc, addr, size, value, _: writes.append((addr, size)),
+                begin=0x20000000, end=0x20035FFF)
+    mu.emu_start(0x0800BD60 | 1, usbemu.RET_MAGIC, count=20000)
+    at = mu.reg_read(A.UC_ARM_REG_PC)
+    regs = tuple(mu.reg_read(r) for r in (A.UC_ARM_REG_R1, A.UC_ARM_REG_R2, A.UC_ARM_REG_R3, A.UC_ARM_REG_R4,
+                                          A.UC_ARM_REG_R5, A.UC_ARM_REG_R6, A.UC_ARM_REG_R7, A.UC_ARM_REG_R8,
+                                          A.UC_ARM_REG_R9, A.UC_ARM_REG_R10, A.UC_ARM_REG_R11, A.UC_ARM_REG_R12,
+                                          A.UC_ARM_REG_SP))
+    return at, mu.mem_read(STATE_BASE + 0xF60, 1)[0], regs, writes
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--stock", required=True, type=Path)
@@ -151,6 +200,7 @@ def main() -> int:
     sym = {k: int(v, 16) for k, v in manifest["symbols"].items()}
     vid, pid = (int(x, 16) for x in manifest["usb_vid_pid"].split(":"))
     has_scope = "0x0803e49a" in manifest["hooks"]
+    has_languages = "0x0800beca" in manifest.get("calls", [])
     print("image: %s, hooks %s" % (args.image.name, ", ".join(manifest["hooks"])))
     ram = usbemu.initial_ram(stock)
     check("patched image leaves stock's initial RAM unchanged", usbemu.initial_ram(image) == ram)
@@ -218,7 +268,7 @@ def main() -> int:
     # INFO
     rs = request(e, 0x01, seq=0x5A)
     check("INFO: header", rs[0] == 0x81 and rs[1] == 0x5A and rs[2] == 0 and rs[3] == 40, rs[:8].hex())
-    check("INFO: tag 2C53LINK, proto 1, patch 3", rs[8:16] == b"2C53LINK" and rs[16] == 1 and rs[17] == 3)
+    check("INFO: tag 2C53LINK, proto 1, patch 4", rs[8:16] == b"2C53LINK" and rs[16] == 1 and rs[17] == 4)
     check("INFO: reports system mode, not subscribed", rs[18] == 2 and rs[19] == 0)
     check("INFO: reports tick count", struct.unpack_from("<I", rs, 20)[0] == e.r32(X_TICK_COUNT))
 
@@ -271,6 +321,81 @@ def main() -> int:
     info3 = e.enumerate()
     check("bus reset with a response pending: clean re-enumeration",
           info3["device"] == d and request(e, 0x01, 0x11)[1] == 0x11)
+
+    # ---- WAVE (patch 4): the generator's table, and no other byte ----------------------------
+    GEN, TABLE, POINTS = 0x20000F50, 0x20000F5A, 100
+    SENTINEL = 0x0ABC
+
+    def table():
+        return list(struct.unpack("<%dH" % POINTS, e.mu.mem_read(TABLE, 2 * POINTS)))
+
+    def set_generator(waveform, amplitude, fill=True):
+        e.audit = False
+        e.mu.mem_write(GEN, bytes([1, waveform, 0, 0]) + struct.pack("<I", 1000) + bytes([50, amplitude]))
+        if fill:
+            e.mu.mem_write(TABLE, struct.pack("<%dH" % POINTS, *([SENTINEL] * POINTS)))
+        e.audit = True
+
+    def wave(first, samples, seq=0x70, count=None):
+        return request(e, 0x04, seq, len(samples) if count is None else count, first,
+                       data=struct.pack("<%dH" % len(samples), *samples))
+
+    set_generator(1, 30)
+    around = (bytes(e.mu.mem_read(GEN - 64, 64 + 10)), bytes(e.mu.mem_read(TABLE + 2 * POINTS, 64)))
+    n_writes = len(e.writes)
+    part = [0, 1, 33, 2047, 4094, 4095, 0xFFFF] + [100 * k for k in range(21)]
+    rs = wave(0, part, seq=0x71)
+    check("WAVE: answer header, the amplitude used and stock's waveform",
+          rs[0] == 0x84 and rs[1] == 0x71 and rs[2] == 0 and rs[3] == 2 and rs[8] == 30 and rs[9] == 1
+          and struct.unpack_from("<I", rs, 4)[0] == 0, rs[:12].hex())
+    check("WAVE: 28 samples stored with stock's scaling, values above 4094 held at 4094",
+          table()[:28] == fnlink.wave_stored(part, 30) and table()[4:7] == [3741, 3741, 3741] and table()[0] == 20,
+          str(table()[:8]))
+    check("WAVE: the rest of the table is untouched", table()[28:] == [SENTINEL] * 72)
+    ramp = [k * 4094 // 99 for k in range(POINTS)]
+    answers = [wave(first, ramp[first:first + 28], seq=0x72 + first // 28) for first in range(0, POINTS, 28)]
+    check("WAVE: the whole table in four requests", all(r[2] == 0 and r[3] == 2 for r in answers)
+          and table() == fnlink.wave_stored(ramp, 30) and min(table()) == 20 and max(table()) == 3741)
+    check("WAVE: the last sample is the last two bytes of the table", wave(99, [4094], seq=0x76)[2] == 0
+          and e.r16(TABLE + 198) == 3741)
+    done = table()
+    for name, first, samples, count, st in (
+            ("position 100", 100, [1], None, 2), ("two samples from position 99", 99, [1, 2], None, 2),
+            ("28 samples from position 73", 73, [7] * 28, None, 2), ("position 0xFFFFFFFF", 0xFFFFFFFF, [1], None, 2),
+            ("an address instead of a position", TABLE, [1], None, 2), ("position 0x80000000", 0x80000000, [1] * 28, None, 2),
+            ("no samples", 0, [], None, 3), ("29 samples", 0, [1] * 28, 29, 3), ("255 samples", 0, [1] * 28, 255, 3)):
+        rs = wave(first, samples, seq=0x77, count=count)
+        check("WAVE refused: " + name, rs[0] == 0x84 and rs[2] == st and rs[3] == 0 and rs[8:] == bytes(56), rs[:12].hex())
+    e.host_out(1, bytes([4, 0x78, 5, 0]) + struct.pack("<I", 0) + struct.pack("<H", 4094))
+    check("WAVE refused: a report shorter than the samples it announces", e.host_in(1)[2] == 3)
+    check("WAVE: nothing was stored by any refused request", table() == done)
+    check("WAVE: the generator's settings and the bytes after the table are as they were",
+          around == (bytes(e.mu.mem_read(GEN - 64, 64 + 10)), bytes(e.mu.mem_read(TABLE + 2 * POINTS, 64))))
+    stray = ["%08X (pc %08X)" % (a, pc) for a, size, _, pc in e.writes[n_writes:]
+             if pc >= CAVE_ADDR and 0x20000000 <= a < 0x20035000 and not (TABLE <= a and a + size <= TABLE + 2 * POINTS)
+             and a not in (UDEV + 4, UDEV + 8, UDEV + 0x17, UDEV + 0x117, UDEV + 0x26, UDEV + 0x28, UDEV + 0x220,
+                           UDEV + 0x13A, UDEV + 0x13C, UDEV + 0x140)]
+    stored = [a for a, size, _, pc in e.writes[n_writes:] if pc >= CAVE_ADDR and TABLE <= a < TABLE + 2 * POINTS]
+    check("WAVE: every store into stock's SRAM is 16 bits inside the table (%d stores)" % len(stored),
+          not stray and len(stored) == 28 + POINTS + 1 and all(a % 2 == 0 for a in stored), ", ".join(stray[:6]))
+    for ampl, used in ((10, 10), (1, 1), (0, 0), (31, 30), (200, 30)):
+        set_generator(4, ampl)
+        rs = wave(0, ramp[:28], seq=0x79)
+        check("WAVE: amplitude %d on the instrument -> scaled by %d" % (ampl, used),
+              rs[8] == used and rs[9] == 4 and table()[:28] == fnlink.wave_stored(ramp[:28], used)
+              and max(table()[:28]) <= 20 + 4094 * 30 // 33)
+    set_generator(1, 30, fill=False)
+    for first in range(0, POINTS, 28):
+        wave(first, ramp[first:first + 28])
+    e.audit = False
+    try:
+        e.call(0x08029E14)                              # stock's own table builder, as after a key
+        rebuilt = table()
+    except Exception as ex:
+        rebuilt = str(ex)
+    e.audit = True
+    check("WAVE: stock's builder rewrites the table when a setting changes (square: 20 and 3742)",
+          isinstance(rebuilt, list) and set(rebuilt) == {20, 3742} and rebuilt != fnlink.wave_stored(ramp, 30), str(rebuilt)[:80])
 
     # ---- multimeter stream: stock's real USART2 handler, fed real frames ----------------------
     f_5v = bytes.fromhex("5AA5C6F7EBEB0F000200014E")          # 5.008 V
@@ -354,7 +479,7 @@ def main() -> int:
                 out.append(rs)
         return out
 
-    check("INFO: 40 bytes, feature bit 0 says the status stream exists", (lambda r: r[3] == 40 and r[44] == 1 and r[16] == 1 and r[17] == 3)(request(e, 1, 0x60)))
+    check("INFO: 40 bytes, feature bits 0 and 1 say the status stream and WAVE exist", (lambda r: r[3] == 40 and r[44] == 3 and r[16] == 1 and r[17] == 4)(request(e, 1, 0x60)))
     check("status: nothing is sent before the host subscribes", status_events(350) == [])
     rs = request(e, 0x03, 0x61, STREAM_STATUS)
     check("STREAM: subscribe to the status blocks", rs[2] == 0 and rs[8] == STREAM_STATUS)
@@ -615,6 +740,31 @@ def main() -> int:
         check("fnlink dump-cal: saves the exact page", rc == 0 and cal.read_bytes() == want)
         check("fnlink dump-cal: refuses to overwrite a backup", fnlink.main(["dump-cal", str(cal)], transport=tr) == 2)
         check("fnlink info", fnlink.main(["info"], transport=tr) == 0)
+        e.audit = False
+        generator_before = bytes(e.mu.mem_read(0x20000F50, 10))
+        e.mu.mem_write(0x20000F50, bytes([1, 2, 0, 0]) + struct.pack("<I", 2000) + bytes([50, 25]))
+        e.audit = True
+        tab = lambda: list(struct.unpack("<100H", e.mu.mem_read(0x20000F5A, 200)))
+        check("fnlink wave: a built-in shape is stored and read back",
+              fnlink.main(["wave", "sinc"], transport=tr) == 0 and tab() == fnlink.wave_stored(fnlink.wave_shape("sinc"), 25))
+        check("fnlink wave: --invert", fnlink.main(["wave", "ramp", "--invert"], transport=tr) == 0
+              and tab() == fnlink.wave_stored(fnlink.wave_shape("ramp-down"), 25))
+        pts = Path(tmp) / "points.csv"
+        pts.write_text("# one period\nvolts\n0\n1\n0\n-1\n")
+        four = fnlink.wave_normalise(fnlink.wave_resample([0, 1, 0, -1]))
+        check("fnlink wave: a file with four points, resampled and stretched",
+              fnlink.main(["wave", "--file", str(pts)], transport=tr) == 0 and tab() == fnlink.wave_stored(four, 25)
+              and four[0] == 2047 and four[25] == 4094 and four[75] == 0)
+        shown = Path(tmp) / "table.txt"
+        check("fnlink wave --show: reads the table and writes nothing",
+              fnlink.main(["wave", "--show", "--out", str(shown)], transport=tr) == 0
+              and [int(x) for x in shown.read_text().split()] == tab() == fnlink.wave_stored(four, 25))
+        check("fnlink wave: a shape and a file together, or neither, is refused before anything is sent",
+              fnlink.main(["wave"], transport=tr) == 2 and fnlink.main(["wave", "sine", "--file", str(pts)], transport=tr) == 2
+              and tab() == fnlink.wave_stored(four, 25))
+        e.audit = False
+        e.mu.mem_write(0x20000F50, generator_before)
+        e.audit = True
         check("fnlink read: refused range reported", fnlink.main(["read", "0x40005C40", "4"], transport=tr) == 2)
         check("fnlink verify: flash equals the image", fnlink.main(["verify", str(args.image)], transport=tr) == 0)
         other = Path(tmp) / "stock.bin"
@@ -742,6 +892,40 @@ def main() -> int:
     check("fpga task: records were captured during those runs" if has_scope else "no scope hook: nothing captured",
           (captured > 0) == has_scope, str(captured))
 
+    # ---- languages: the tables and fonts of the stock image itself ----------------------------
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
+    import language_tables
+    lines, tables_ok = language_tables.report(language_tables.Image(stock))
+    check("language tables: eight valid rows in every table, 70 strings a language",
+          tables_ok and sum(" 70 strings" in x and "0 bad pointers" in x for x in lines) == 8, "; ".join(lines[1:]))
+    check("language tables: every character has a glyph (Spanish in all five fonts)",
+          any(x.startswith("Spanish") and x.endswith("every font has them all") for x in lines), "; ".join(lines))
+
+    # ---- --languages: stock's Settings OK handler with and without the call ------------------
+    stops, outcome, regs_differ, writes_differ = set(), {}, [], []
+    for cursor in (0, 1):
+        for language in (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 255):
+            ref = language_ok(stock, ram, cursor, language)
+            got = language_ok(image, ram, cursor, language)
+            stops |= {ref[0], got[0]}
+            outcome[cursor, language] = (ref[1], got[1])
+            if ref[2] != got[2]:
+                regs_differ.append((cursor, language))
+            if ref[3] != got[3]:
+                writes_differ.append((cursor, language))
+    check("language: the handler reaches the store in both images", stops == {0x0800BEE0}, str(sorted(stops)))
+    check("language: stock stores the row plus one", all(v[0] == c + 1 for (c, _), v in outcome.items()))
+    if has_languages:
+        cycle = {1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8, 8: 2, 0: 2, 9: 2, 255: 2}
+        check("language: the first row still gives Chinese", all(outcome[0, lang][1] == 1 for lang in cycle))
+        check("language: the second row steps English ... Korean and back to English",
+              all(outcome[1, lang][1] == nxt for lang, nxt in cycle.items()), str({k: v[1] for k, v in outcome.items() if k[0] == 1}))
+        check("language: never a value outside 1..8", all(1 <= v[1] <= 8 for v in outcome.values()))
+    else:
+        check("no language call in this image: the handler stores what stock stores", all(v[0] == v[1] for v in outcome.values()))
+    check("language: r1-r12 and sp after the store are stock's, in all 22 cases", not regs_differ, str(regs_differ[:5]))
+    check("language: the same SRAM writes as stock, in all 22 cases", not writes_differ, str(writes_differ[:5]))
+
     # ---- audit of every SRAM write made by cave code ---------------------------------------
     allowed_core = {UDEV + 4, UDEV + 8,                              # class / descriptor pointers
                     UDEV + 0x17, UDEV + 0x117,                       # endpoint 0 stall flags
@@ -755,9 +939,10 @@ def main() -> int:
         n_cave += 1
         in_block = LINK_RAM <= addr and addr + size <= LINK_RAM_LIMIT
         in_stack = 0x20036000 <= addr < usbemu.STACK_TOP or 0x20035000 <= addr < TASK_STACK_TOP
-        if not (in_block or in_stack or addr in allowed_core):
+        in_table = 0x20000F5A <= addr and addr + size <= 0x20000F5A + 200       # WAVE, patch 4
+        if not (in_block or in_stack or in_table or addr in allowed_core):
             bad.append("%08X<-%X (pc %08X)" % (addr, value, pc))
-    check("cave code writes only its block, its stack frames and the documented core fields (%d writes)" % n_cave,
+    check("cave code writes only its block, its stack frames, the documented core fields and the generator's table (%d writes)" % n_cave,
           n_cave > 0 and not bad, ", ".join(bad[:6]))
     cal = [w for w in e.writes if 0x20000358 <= w[0] < 0x2000044C]
     check("nothing wrote stock's calibration tables in RAM", not cal, str(cal[:3]))

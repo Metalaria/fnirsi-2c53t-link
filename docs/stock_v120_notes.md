@@ -43,6 +43,7 @@ One byte at `0x20001060` (state base `0x200000F8` + `0xF68`). (code)
 | 3 | Signal generator (per OpenScope-2C53T's notes; not checked here). |
 | 4 | Settings (per OpenScope-2C53T's notes). |
 | 7 | USB Sharing: full-screen image `3:/System file/87.jpg`, mass storage, no measuring. |
+| 8 | Set at power-on when the settings page does not start with `0x55` (code, `0x0802CD9A`): a first start. Its up and down keys step the language byte. Not seen on the unit. |
 
 USB Sharing is modal. On the unit, the drive exists only while that image is shown, and
 with USB Sharing off the host sees no device. (unit)
@@ -208,7 +209,7 @@ photographs of the generator screen):
 
 | Offset | Content |
 |---|---|
-| 0 | 0 or 1; it changes while the generator screen is operated. Not established |
+| 0 | 0 or 1; it changes while the generator screen is operated. The routine that programs the timer (`0x08029D40`) stops it when this byte or the frequency is 0, which makes it the output's on/off (code) |
 | 1 | waveform as its position in the menu, 0 to 12: 1 Square Wave, 2 Sawtooth wave (a triangle at 50 % duty), 3 Half-wave, 4 Full Wave, 5 Step Wave, 6 Reverse Step Wave, 7 Index Up, 8 Index Decrease, 9 Direct Current, 10 Multi-audio, 11 Sink Pulse, 12 Lorentz waves. All twelve were read one by one on 2026-11-25, the label from the screen and the index from this byte; the shapes of 7 to 12 were not looked at. Index 0 is one step before Square Wave in the menu (unit) and is the sine: stock builds it from the 100-point table at `0x0804D848`, a sine to within half a count (code: the builder at `0x08029E14` switches on this byte, 0 to 12), and stock's table of waveform names, thirteen per language from `0x0804C61C`, starts with "Sine Wave". The table spells entry 9 "Direct current". The samples are played by a circular DMA of 100 transfers from the table in RAM to the DAC, clocked by TMR7 (code: `0x0802CAC2`, `0x08029D40`). The timer's period register gets 1, or `0x13` when `200 * frequency` is under 4000, and its divider is computed from a clock frequency so that the updates come at `100 * frequency`: one pass of the table per period |
 | 4–7 | frequency in Hz, 32 bits (1000, 15000, 35000, 50000 seen) |
 | 8 | duty cycle in % (50 seen) |
@@ -217,6 +218,14 @@ photographs of the generator screen):
 
 The sample table follows the waveform and the amplitude: 20 to 3742 for a 3.0 V square,
 1880 to 3742 for a 3.0 V full wave, 1260 to 2501 at 2.0 V.
+
+Who rewrites the table (code): the builder `0x08029E14` is called from five places and no
+other: at start-up (`0x0802E284`), and from the two key handlers after a change of waveform
+(`0x0800A27C`, `0x0800AA38`) and of duty or amplitude (`0x0800A5DA`, `0x0800AFF6`). A change
+of frequency only reprograms the timer (`0x0800A468`, `0x0800AF52`) and jumps past the
+builder. The amplitude is held at 30 (3.0 V) by the handler (`0x0800A592`), and the sine is
+`table * amplitude / 33 + 20` (`0x0802A1CE`). Patch 4's `WAVE` request stores into this table
+with the same scaling; what it stores lasts until one of those five calls.
 
 ## User interface
 
@@ -243,26 +252,50 @@ the unit)
 
 - `ms[0xF60]`: 1 Chinese, 2 English, 3 Russian, 4 Japanese, 5 Spanish, 6 Portuguese, 7 German,
   8 Korean, by the order of the rows of every table.
-- What limits the menu to two: the handler that steps the language up, `0x0800AB12`, does it
-  only while the byte is at most 1 (`cmp r0, #1` at `0x0800AB16`). The one that steps it down,
-  `0x0800A340`, goes down to 1 from any value. A third writer, `0x0800BEDC`, stores a list's
-  row plus one.
-- 74 places read the byte. 55 use it as an index into a table (`table + 4 * language - 4`, or
-  a row of several pointers per language), with no check of its range; 5 only ask whether it
-  is 1 and 4 compare it with 2 (the two handlers above among them); the other 10 were not
-  classified.
-- Pointer tables to 606 strings were found, between `0x0804BF28` and `0x0804C9FC`. In all
-  eight languages: the settings menu (7 labels), the meter's twelve function names, the
-  generator's three labels and thirteen waveform names, the oscilloscope's menu (8 labels),
-  the messages for saving and deleting, version and model. In Chinese and English only: the
-  twelve measurement labels (`Freq:`, `Peri:` …), the trigger menu (`Mode:`, `Edge:`,
-  `Channel:`, `Normal`, `Auto`, `Single`) and the channel menu (`Channel:`, `Probe:`,
-  `Coupling:`, `FFT:`, `20M Limit:`), whose painter picks its row with "is it 1?".
-- Not looked at: whether the fonts still hold the glyphs of the other six (no file name in
-  the image looks like a font, so they are probably in the image itself: the files it names
-  are the JPEG screens of `3:/System file/`, the logo and the screenshots), whether any of
-  those JPEG screens carries text or is picked by language, and whether the settings loader
-  accepts a byte above 2 at power-up.
+- **What limits Settings > Language to two.** The list is drawn with two fixed rows, `中文`
+  and `English` (strings at `0x080BD09B` and `0x080BC6AE`), each with a mark that is on when
+  the byte is 1 or 2 (pictures `75.jpg` / `78.jpg`, and `74.jpg` / `77.jpg` off the cursor;
+  compares at `0x0801CFAA`, `0x0801DC8A`, `0x0801DDCE`). The OK handler `0x0800BD60` stores
+  the row under the cursor plus one (`ldrb.w r0, [r5, #0xf6b]` at `0x0800BECA`, `adds`, store
+  at `0x0800BEDC`).
+- The two handlers that step the byte directly, `0x0800AB12` (up, only while it is at most 1:
+  `cmp r0, #1` at `0x0800AB16`) and `0x0800A340` (down to 1), belong to system mode 8, not to
+  the settings menu (emulation of the key handlers over the menu's state bytes). Mode 8 is
+  set at power-on when the first byte of the settings page is `0xAA`, or is neither that nor
+  `0x55` (`0x0802CD9A`): the screen of a first start. An earlier version of this note took
+  that compare for what limits the menu; it is not.
+- **Nothing checks the byte's range.** The settings loader stores the word of the page that
+  holds it as it comes (`0x0802CE48`), the saver packs it back (`0x0802962A`), and a factory
+  reset writes 1 (`0x08029506`).
+- 74 places read the byte, all with `ldrb [base, #0xf60]`. 55 use it as an index, into 31
+  tables, and every one of those tables has all eight rows of valid strings (checked row by
+  row). 10 turn it into "is it 1?" and take the English row otherwise, so they show English
+  in the six other languages: the twelve measurement labels (`Freq:`, `Peri:` …), the trigger
+  menu and the channel menu among them. The other 9 compare it with 1 or 2: the two mode-8
+  handlers, the three marks above, `0x0801F4A6` (it draws `152.jpg` in English and takes
+  another path otherwise) and three that ask "is it 1?" and were not read one by one
+  (`0x08013642`, `0x0801D876`, `0x0801F332`).
+- In all eight languages, 70 strings each: the four mode names and the screen titles, the
+  settings menu (7 labels) with its start-up choices, version and model, the meter's twelve
+  function names, the generator's three labels and thirteen waveform names, the
+  oscilloscope's menu (8 labels), and the messages: battery low, auto shutdown, saving, saved,
+  save failed, the four "waiting" ones, exceeded limit, deleting, delete / confirm / cancel /
+  return, and the factory-reset warning.
+- **The fonts are in the image and still cover all of it.** Text is drawn by an LVGL-style
+  routine (`0x0800F154`) with five fonts whose descriptors are in RAM from `ms+0xFEC`
+  (`0x200010E4`, 0x30 bytes each: 16, 18, 20, 25 and 28 px) and whose glyphs are in the image
+  (`0x08077F9C` to `0x080BA1B8`). Each has one list of code points, searched for the
+  character itself (`0x0802F868`): 567 of them, 569 in the 25 px font. Every character of the
+  560 strings above is in all five fonts, except two that only the 25 px font has and only
+  the "over limit" message in Chinese and Japanese uses. A character without a glyph ends the
+  string there (`0x0800F19C`).
+- Not looked at: whether the longer strings fit where V1.2.0 draws them, and what mode 8
+  shows.
+
+`build_link_image.py --languages` uses this: it replaces the load at `0x0800BECA` by a call
+that returns the row for the first row and, on the second, the current language while that
+is 2 to 7, so that stock's own `adds` steps to the next one. `tools/language_tables.py`
+repeats the table and font checks on a stock image.
 
 ## FreeRTOS
 

@@ -50,6 +50,20 @@ HOOKS = (
     (0x0803E49A, bytes.fromhex("40f61040"), "link_stub_fpga", 0x0803E49E),
 )
 
+# (address, original bytes it replaces, stub symbol). The original instruction is replaced by
+# `bl <stub>`, which returns to the instruction after it. Only with --languages.
+LANGUAGE_CALLS = (
+    # Settings > Language, OK: ldrb.w r0, [r5, #0xf6b]  (the row, stored as the language + 1 below)
+    (0x0800BECA, bytes.fromhex("95f86b0f"), "link_stub_language"),
+)
+
+# What --languages relies on besides the bytes it replaces.
+LANGUAGE_FACTS = (
+    (0x0800BD60, bytes.fromhex("2de9f04186b040f2f805c2f20005"), "settings OK handler: push {r4-r8, lr}; r5 = state base"),
+    (0x0800BECE, bytes.fromhex("42f66c56013042f65354c2f2000685f8600f"),
+     "settings OK handler: adds r0, #1 and strb.w r0, [r5, #0xf60] after the call"),
+)
+
 # Stock facts the cave depends on, as (address, expected bytes, what it is). Checked against
 # the image so a mismatch stops the build instead of producing a wrong patch.
 STOCK_FACTS = (
@@ -107,11 +121,17 @@ def enc_bw(src: int, dst: int) -> bytes:
     return struct.pack("<HH", hw1, hw2)
 
 
-def dec_bw(src: int, code: bytes) -> int:
-    """Target of the `b.w` at src (inverse of enc_bw)."""
+def enc_bl(src: int, dst: int) -> bytes:
+    """`bl dst` placed at src (encoding T1): the b.w encoding with bit 14 of the second half set."""
+    hw1, hw2 = struct.unpack("<HH", enc_bw(src, dst))
+    return struct.pack("<HH", hw1, hw2 | 0x4000)
+
+
+def dec_bw(src: int, code: bytes, link: bool = False) -> int:
+    """Target of the `b.w` at src (inverse of enc_bw), or of the `bl` with link=True."""
     hw1, hw2 = struct.unpack("<HH", code[:4])
-    if (hw1 & 0xF800) != 0xF000 or (hw2 & 0xD000) != 0x9000:
-        raise BuildError("not a b.w: %04x %04x" % (hw1, hw2))
+    if (hw1 & 0xF800) != 0xF000 or (hw2 & 0xD000) != (0xD000 if link else 0x9000):
+        raise BuildError("not a %s: %04x %04x" % ("bl" if link else "b.w", hw1, hw2))
     s = (hw1 >> 10) & 1
     i1 = (~(((hw2 >> 13) & 1) ^ s)) & 1
     i2 = (~(((hw2 >> 11) & 1) ^ s)) & 1
@@ -123,7 +143,7 @@ def dec_bw(src: int, code: bytes) -> int:
 
 # --- the stock image ------------------------------------------------------------------------
 
-def validate_stock(stock: bytes, hooks) -> None:
+def validate_stock(stock: bytes, hooks, calls=()) -> None:
     got = sha256(stock)
     if got != STOCK_SHA256:
         raise BuildError("stock image sha256 is %s, not V1.2.0 (%s): refusing" % (got, STOCK_SHA256))
@@ -133,7 +153,11 @@ def validate_stock(stock: bytes, hooks) -> None:
         off = addr - APP_BASE
         if stock[off:off + len(orig)] != orig:
             raise BuildError("hook %#010x: found %s, expected %s" % (addr, stock[off:off + len(orig)].hex(), orig.hex()))
-    for addr, want, what in STOCK_FACTS:
+    for addr, orig, _ in calls:
+        off = addr - APP_BASE
+        if stock[off:off + len(orig)] != orig:
+            raise BuildError("call %#010x: found %s, expected %s" % (addr, stock[off:off + len(orig)].hex(), orig.hex()))
+    for addr, want, what in STOCK_FACTS + (LANGUAGE_FACTS if calls else ()):
         off = addr - APP_BASE
         if stock[off:off + len(want)] != want:
             raise BuildError("stock fact failed at %#010x (%s): found %s" % (addr, what, stock[off:off + len(want)].hex()))
@@ -159,14 +183,17 @@ def run(cmd: list[str]) -> str:
     return r.stdout
 
 
-def build_cave(tools: dict[str, str], vid: int, pid: int) -> tuple[bytes, dict[str, int]]:
+def build_cave(tools: dict[str, str], vid: int, pid: int, calls=()) -> tuple[bytes, dict[str, int]]:
     with tempfile.TemporaryDirectory() as tmp:
         t = Path(tmp)
         defs = ["-DLINK_USB_VID=%#x" % vid, "-DLINK_USB_PID=%#x" % pid]
         run([tools["gcc"], *CFLAGS, *defs, "-c", str(HERE / "link.c"), "-o", str(t / "link.o")])
         run([tools["gcc"], *CFLAGS, "-c", str(HERE / "stubs.S"), "-o", str(t / "stubs.o")])
-        run([tools["ld"], "-T", str(HERE / "cave.ld"), "--gc-sections", "-o", str(t / "cave.elf"),
-             str(t / "stubs.o"), str(t / "link.o")])
+        objects = [str(t / "stubs.o"), str(t / "link.o")]
+        if calls:                                       # the language stub is only linked in on request
+            run([tools["gcc"], *CFLAGS, "-c", str(HERE / "lang.S"), "-o", str(t / "lang.o")])
+            objects.append(str(t / "lang.o"))
+        run([tools["ld"], "-T", str(HERE / "cave.ld"), "--gc-sections", "-o", str(t / "cave.elf"), *objects])
         run([tools["objcopy"], "-O", "binary", str(t / "cave.elf"), str(t / "cave.bin")])
         syms = {}
         for line in run([tools["nm"], str(t / "cave.elf")]).splitlines():
@@ -176,7 +203,7 @@ def build_cave(tools: dict[str, str], vid: int, pid: int) -> tuple[bytes, dict[s
         cave = (t / "cave.bin").read_bytes()
     if not cave or len(cave) > CAVE_MAX:
         raise BuildError("cave is %d bytes, limit %d" % (len(cave), CAVE_MAX))
-    for need in [h[2] for h in HOOKS] + ["link_tick", "link_fpga_tail"]:
+    for need in [h[2] for h in HOOKS] + [c[2] for c in calls] + ["link_tick", "link_fpga_tail"]:
         if need not in syms:
             raise BuildError("symbol %s missing from the cave" % need)
         if not CAVE_ADDR <= syms[need] < CAVE_ADDR + len(cave):
@@ -186,7 +213,7 @@ def build_cave(tools: dict[str, str], vid: int, pid: int) -> tuple[bytes, dict[s
 
 # --- assembling and self-checking the image -------------------------------------------------
 
-def assemble(stock: bytes, cave: bytes, syms: dict[str, int], hooks) -> bytes:
+def assemble(stock: bytes, cave: bytes, syms: dict[str, int], hooks, calls=()) -> bytes:
     img = bytearray(stock)
     for addr, orig, stub, _ in hooks:
         off = addr - APP_BASE
@@ -194,18 +221,24 @@ def assemble(stock: bytes, cave: bytes, syms: dict[str, int], hooks) -> bytes:
         if len(patch) != len(orig):
             raise BuildError("hook %#010x: cannot fill %d bytes" % (addr, len(orig)))
         img[off:off + len(orig)] = patch
+    for addr, orig, stub in calls:
+        off = addr - APP_BASE
+        if len(orig) != 4:
+            raise BuildError("call %#010x: a bl replaces exactly 4 bytes" % addr)
+        img[off:off + 4] = enc_bl(addr, syms[stub])
     img += b"\xff" * (CAVE_ADDR - APP_BASE - len(img))
     img += cave
     return bytes(img)
 
 
-def self_check(stock: bytes, image: bytes, cave: bytes, syms: dict[str, int], hooks) -> list[int]:
+def self_check(stock: bytes, image: bytes, cave: bytes, syms: dict[str, int], hooks, calls=()) -> list[int]:
     if image[CAVE_ADDR - APP_BASE:] != cave:
         raise BuildError("cave bytes are not where they should be")
     if set(image[len(stock):CAVE_ADDR - APP_BASE]) - {0xFF}:
         raise BuildError("padding is not all 0xFF")
     diff = [APP_BASE + i for i in range(len(stock)) if stock[i] != image[i]]
     allowed = {addr + i for addr, orig, _, _ in hooks for i in range(len(orig))}
+    allowed |= {addr + i for addr, orig, _ in calls for i in range(len(orig))}
     stray = [a for a in diff if a not in allowed]
     if not diff or stray:
         raise BuildError("bytes changed outside the hooks: %s" % ", ".join("%#x" % a for a in stray[:8]))
@@ -218,6 +251,10 @@ def self_check(stock: bytes, image: bytes, cave: bytes, syms: dict[str, int], ho
         # The stub must hand control back to the instruction after the displaced ones.
         if struct.pack("<I", resume | 1) not in cave:
             raise BuildError("resume address %#x not found in the cave" % resume)
+    for addr, orig, stub in calls:
+        off = addr - APP_BASE
+        if dec_bw(addr, image[off:off + 4], link=True) != syms[stub]:
+            raise BuildError("call %#010x does not reach %s" % (addr, stub))
     return diff
 
 
@@ -230,14 +267,18 @@ def main() -> int:
     ap.add_argument("--without-scope-hook", action="store_true",
                     help="leave the fpga task untouched: link, memory read and meter stream only "
                          "(a first image to flash, with the SysTick hook as the only change)")
+    ap.add_argument("--languages", action="store_true",
+                    help="also make the six languages stock still carries selectable again: OK on the "
+                         "second row of Settings > Language steps through them (4 more stock bytes changed)")
     args = ap.parse_args()
     hooks = HOOKS[:1] if args.without_scope_hook else HOOKS
+    calls = LANGUAGE_CALLS if args.languages else ()
     try:
         stock = args.stock.read_bytes()
-        validate_stock(stock, hooks)
-        cave, syms = build_cave(find_tools(), args.vid, args.pid)
-        image = assemble(stock, cave, syms, hooks)
-        diff = self_check(stock, image, cave, syms, hooks)
+        validate_stock(stock, hooks, calls)
+        cave, syms = build_cave(find_tools(), args.vid, args.pid, calls)
+        image = assemble(stock, cave, syms, hooks, calls)
+        diff = self_check(stock, image, cave, syms, hooks, calls)
     except (BuildError, OSError) as e:
         print("error: %s" % e, file=sys.stderr)
         return 1
@@ -250,6 +291,7 @@ def main() -> int:
         "cave_len": len(cave),
         "cave_sha256": sha256(cave),
         "hooks": ["%#010x" % h[0] for h in hooks],
+        "calls": ["%#010x" % c[0] for c in calls],
         "changed_stock_bytes": ["%#010x" % a for a in diff],
         "usb_vid_pid": "%04x:%04x" % (args.vid, args.pid),
         "symbols": {k: "%#010x" % v for k, v in sorted(syms.items())},
@@ -257,7 +299,7 @@ def main() -> int:
     args.out.with_suffix(".json").write_text(json.dumps(manifest, indent=2) + "\n")
     print("stock   %s (%d bytes)" % (STOCK_SHA256, len(stock)))
     print("cave    %d bytes at %#010x (limit %d)" % (len(cave), CAVE_ADDR, CAVE_MAX))
-    print("hooks   %s: %d stock bytes changed" % (", ".join("%#010x" % h[0] for h in hooks), len(diff)))
+    print("hooks   %s: %d stock bytes changed" % (", ".join("%#010x" % h[0] for h in hooks + calls), len(diff)))
     print("image   %s (%d bytes) -> %s" % (manifest["image_sha256"], len(image), args.out))
     return 0
 

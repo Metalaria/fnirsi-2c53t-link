@@ -140,6 +140,21 @@ refreshed every 100 to 300 ms. A stopped oscilloscope sends no records; kinds 2 
 a host tells that from silence. The same blocks can be read on request with `READ`, which is
 all patch 2 offers.
 
+## The generator's table (patch 4)
+
+`0x20000F5A`, 100 samples of 16 bits, one period: what the DAC is given, in order, over and
+over. Stock's own values run from 20 to 3742 at 3.0 V (ram: five dumps). `READ` returns it on
+any patch; `WAVE` stores into it from patch 4, scaled as stock scales its sine:
+
+    stored = min(sample, 4094) * min(amplitude, 30) // 33 + 20
+
+with `amplitude` the byte at `0x20000F59` (tenths of a volt). So a full-scale sample is 3741
+at 3.0 V and 1260 at 1.0 V, and nothing stored is ever above what stock stores. (code and
+emulation; not on hardware)
+
+The last sample is at `0x20001020`, which is also where the 40 bytes of "meter state" that a
+meter event carries begin: the first two of those bytes are this sample, not meter state.
+
 ## Oscilloscope
 
 A record is one acquisition of one channel as stock has it after applying its calibration:

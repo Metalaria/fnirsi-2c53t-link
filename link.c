@@ -20,7 +20,8 @@
  *   stock's pointers back, so USB Sharing behaves exactly as before.
  *
  *   The HID class carries 64-byte reports:
- *     requests   INFO, READ (MCU flash / SRAM, read-only, range checked), STREAM (subscribe);
+ *     requests   INFO, READ (MCU flash / SRAM, read-only, range checked), STREAM (subscribe),
+ *                WAVE (patch 4: the generator's table of samples, and nothing else);
  *     events     meter frames, oscilloscope records and status blocks, only after the host
  *                subscribed to each.
  *
@@ -39,11 +40,18 @@
  *   queues the next block that applies to the current mode; it is copied when the report is
  *   built, in the USB interrupt, so each block is one instant. Nothing is hooked for this.
  *
+ *   Generator (patch 4): stock plays a table of 100 samples in SRAM through a circular DMA into
+ *   the DAC, and rewrites it only when a generator setting changes. WAVE stores samples there,
+ *   scaled the way stock scales its own (sample * amplitude / 33 + 20, the amplitude being the
+ *   one set on the instrument), so the output stays inside the range stock itself uses. The
+ *   host gives a position inside the table, never an address.
+ *
  * What it writes
  *   - its own SRAM block at LINK_RAM (above stock's stack top, below the IAP RAM magic);
  *   - the two core pointers named above, and the endpoint bookkeeping fields the stock class
  *     itself writes when it arms an endpoint;
- *   - USB device registers (connect/disconnect, endpoint status).
+ *   - USB device registers (connect/disconnect, endpoint status);
+ *   - on a WAVE request, the 200 bytes of the generator's table (state[0xE62..0xF29]).
  *   Nothing else in stock's SRAM, and never the flash.
  *
  * No .data/.bss, no libc, integer registers only (the linker script and -mgeneral-regs-only
@@ -80,6 +88,14 @@
 #define SCOPE_MEASURED_LEN   48u                           /* twelve words per channel        */
 #define GENERATOR_STATE      ((const volatile uint8_t *)0x20000F50u)  /* state[0xE58]            */
 #define GENERATOR_STATE_LEN  10u                           /* wave, frequency, duty, amplitude */
+#define GENERATOR_WAVEFORM   (*(volatile uint8_t *)0x20000F51u)   /* state[0xE59]: 0..12       */
+#define GENERATOR_AMPLITUDE  (*(volatile uint8_t *)0x20000F59u)   /* state[0xE61]: tenths of V */
+#define GENERATOR_TABLE      ((volatile uint16_t *)0x20000F5Au)   /* state[0xE62]: what the DMA plays */
+#define GENERATOR_POINTS     100u
+#define GENERATOR_SAMPLE_MAX 4094u                         /* top of stock's own sine table    */
+#define GENERATOR_AMPL_MAX   30u                           /* stock's menu stops at 3.0 V      */
+#define GENERATOR_DIVISOR    33u                           /* stock: sample * amplitude / 33   */
+#define GENERATOR_FLOOR      20u                           /* ... + 20                         */
 #define FPGA_OP_READ_CH1     4u
 #define FPGA_OP_READ_CH2     5u
 
@@ -123,8 +139,9 @@ typedef void (*ept_send_fn)(void *udev, uint32_t ept_addr, const uint8_t *buf, u
 #define LINK_RAM_LIMIT       0x20037FE0u                   /* factory IAP keeps a magic here   */
 #define LINK_MAGIC           0x4B4E4C33u                   /* "3LNK"                           */
 #define LINK_PROTO_VERSION   1u                            /* v1 requests and events unchanged */
-#define LINK_PATCH_VERSION   3u
-#define LINK_FEATURES        0x01u                         /* INFO: bit 0 = the status stream  */
+#define LINK_PATCH_VERSION   4u
+#define LINK_FEATURES        0x03u                         /* INFO: bit 0 = the status stream,
+                                                              bit 1 = the WAVE request         */
 #define LINK_BOOT_HOLDOFF    3000u                         /* ticks after boot: hands off      */
 #define LINK_SETTLE_TICKS    1000u                         /* bus must stay idle this long     */
 
@@ -136,6 +153,8 @@ typedef void (*ept_send_fn)(void *udev, uint32_t ept_addr, const uint8_t *buf, u
 #define CMD_INFO             0x01u
 #define CMD_READ             0x02u
 #define CMD_STREAM           0x03u
+#define CMD_WAVE             0x04u
+#define WAVE_MAX_SAMPLES     (PAYLOAD_MAX / 2u)            /* 28 samples of 16 bits a request  */
 #define EVT_METER            0x90u
 #define EVT_SCOPE_HEADER     0xA0u
 #define EVT_SCOPE_DATA       0xA1u
@@ -466,6 +485,32 @@ static void handle_request(uint32_t rx_len) {
             stream_reset(rq[2]);
             rs[8] = S->stream;
             n = 1u;
+        }
+    } else if (rq[0] == CMD_WAVE) {
+        /* rq[2] samples of 16 bits from rq[8], for positions addr.. of the table. Both are
+         * checked against the table's 100 points before anything is stored, and every value
+         * is brought into stock's own range: the request cannot reach another byte of SRAM
+         * nor make the DAC leave the span stock drives it over. */
+        uint32_t count = rq[2];
+        if (count == 0u || count > WAVE_MAX_SAMPLES || rx_len < 8u + 2u * count) {
+            status = ST_BAD_LEN;
+        } else if (addr >= GENERATOR_POINTS || count > GENERATOR_POINTS - addr) {
+            status = ST_BAD_RANGE;
+        } else {
+            uint32_t ampl = GENERATOR_AMPLITUDE;
+            if (ampl > GENERATOR_AMPL_MAX) {
+                ampl = GENERATOR_AMPL_MAX;
+            }
+            for (i = 0; i < count; ++i) {
+                uint32_t v = (uint32_t)rq[8u + 2u * i] | ((uint32_t)rq[9u + 2u * i] << 8);
+                if (v > GENERATOR_SAMPLE_MAX) {
+                    v = GENERATOR_SAMPLE_MAX;
+                }
+                GENERATOR_TABLE[addr + i] = (uint16_t)(v * ampl / GENERATOR_DIVISOR + GENERATOR_FLOOR);
+            }
+            rs[8] = (uint8_t)ampl;                  /* the amplitude the samples were scaled by */
+            rs[9] = GENERATOR_WAVEFORM;             /* the waveform stock will go back to       */
+            n = 2u;
         }
     } else {
         status = ST_BAD_CMD;
