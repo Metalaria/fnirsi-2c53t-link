@@ -211,10 +211,11 @@ SCOPE_MEASURED_WORDS = 12
 GENERATOR_ADDR, GENERATOR_LEN = 0x20000F50, 10
 # The generator's waveform, as its position in the menu (0 to 12). Names as the menu shows them: 1 to 12
 # were read on the unit one by one on 2026-11-25 (sessions/2026-11-25_generator_ch2_boxes). Index 0 is one
-# step before "Square Wave" in the menu; stock builds it from a 100-point table at 0x0804D848 that is a sine
-# (code), but its label on the screen was not noted, so it has no name here.
-GENERATOR_WAVEFORMS = {1: "Square Wave", 2: "Sawtooth wave", 3: "Half-wave", 4: "Full Wave", 5: "Step Wave",
-                       6: "Reverse Step Wave", 7: "Index Up", 8: "Index Decrease", 9: "Direct Current",
+# step before "Square Wave" in the menu; stock builds it from a 100-point table at 0x0804D848 that is a sine,
+# and its name is the first of stock's own table of thirteen waveform names per language (code). Spelled as
+# in that table.
+GENERATOR_WAVEFORMS = {0: "Sine Wave", 1: "Square Wave", 2: "Sawtooth wave", 3: "Half-wave", 4: "Full Wave", 5: "Step Wave",
+                       6: "Reverse Step Wave", 7: "Index Up", 8: "Index Decrease", 9: "Direct current",
                        10: "Multi-audio", 11: "Sink Pulse", 12: "Lorentz waves"}
 # Unit code of the MAX / MEAN / MIN boxes, state bytes 50 to 52. V and mV: by the screen and by
 # MEAN = (MAX + MIN) / 2 holding only with MIN in millivolts. uA: by a photograph of the screen in Small DC
@@ -264,7 +265,7 @@ def decode_meter_stats(state: bytes) -> list:
 # ---------------------------------------------------------------- oscilloscope records
 
 COUNTS_PER_DIV = 25         # sample counts per vertical division
-SAMPLES_PER_DIV = 25        # samples per horizontal division (checked from 2 us to 2 ms per division)
+SAMPLES_PER_DIV = 25        # samples per horizontal division (checked from 1 us to 2 ms per division)
 _STEPS = (1, 2, 5)
 
 
@@ -298,7 +299,7 @@ def scope_settings(state: bytes):
                          "probe": probe, "zero": 128 + position, "coupling": coupling})
     level = int.from_bytes(state[28:30], "little", signed=True)
     return {"channels": channels, "seconds_per_div": t, "sample_period": t / SAMPLES_PER_DIV,
-            "time_base_checked": 7 <= state[45] <= 16, "trigger_level": 128 + level}
+            "time_base_checked": 6 <= state[45] <= 16, "trigger_level": 128 + level}
 
 
 def measure_record(settings: dict, channel: int, data: bytes) -> dict:

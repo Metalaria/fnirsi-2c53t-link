@@ -172,10 +172,11 @@ from `0x200000F8`) followed by 19 `0xA1` data events.
   instrument's own measurement (generator at 40 kHz on 2026-11-24 for 10 µs, at 50 kHz on
   2026-11-25 for the three; compared on the screen of the application that uses this format,
   the figures of the second day were not written down). At 2 µs per division `fnlink.py
-  scope` got 50 kHz from the record and stock's own measurement was 50 kHz (2026-11-25). Below
-  2 µs and above 2 ms per division this was not checked; the fastest time bases cannot have
-  25 real samples per division, and at 1 µs a 50 kHz wave leaves only two periods in the
-  record.
+  scope` got 50 kHz from the record and stock's own measurement was 50 kHz (2026-11-25). At
+  1 µs the record holds two periods of that wave, too few for `scope` to give a frequency,
+  but its rising edges are 500 and 499 samples apart in the two records taken: 20 µs at
+  40 ns a sample. Below 1 µs and above 2 ms per division this was not checked; the fastest
+  time bases cannot have 25 real samples per division.
 - The screen is 12 by 8 divisions: 300 samples wide, 200 counts tall, centred on 128.
 
 ### Things to know

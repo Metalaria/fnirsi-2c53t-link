@@ -224,8 +224,10 @@ measurements carry the factor:
 
 **2 us per division** (`ms[0x2D]` = 7): 50 kHz from the record, 50 kHz by stock. So 25
 samples to a division holds from 2 us to 2 ms. At 1 us the record holds two periods of the
-50 kHz wave and `scope` gives no frequency. The slow time bases were not captured: steps 10
-to 12 were taken at 5, 10 and 20 us instead of ms.
+50 kHz wave and `scope` gives no frequency; counted by hand in the two saved records, the
+rising edges are at samples 287 and 787, and 210 and 709: 500 and 499 samples for 20 us, so
+the rule holds at 1 us too. The slow time bases were not captured: steps 10 to 12 were taken
+at 5, 10 and 20 us instead of ms.
 
 **The trigger edge was not found.** In the step meant to switch it, the bytes that changed
 were CH1's range and the trigger level; nothing else in `ms[0x00..0x37]`.
