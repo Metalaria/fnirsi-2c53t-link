@@ -161,9 +161,13 @@ from `0x200000F8`) followed by 19 `0xA1` data events.
   The generator's square wave measured 3.01 V peak to peak on the instrument's screen and
   spans 150–152 counts at 500 mV per division.
 - **Horizontal: 25 samples per division**, so the sample period is the time base over 25.
-  The 1 kHz wave is 125 samples long at 200 µs per division and 12.5 at 2 ms. Outside 50 µs
-  to 2 ms per division this was not checked; the fastest time bases cannot have 25 real
-  samples per division.
+  The 1 kHz wave is 125 samples long at 200 µs per division and 12.5 at 2 ms. At 5, 10 and
+  20 µs per division the frequency computed from the record with this rule agreed with the
+  instrument's own measurement (generator at 40 kHz on 2026-11-24 for 10 µs, at 50 kHz on
+  2026-11-25 for the three; compared on the screen of the application that uses this format,
+  the figures of the second day were not written down). Below 5 µs and above 2 ms per
+  division this was not checked; the fastest time bases cannot have 25 real samples per
+  division.
 - The screen is 12 by 8 divisions: 300 samples wide, 200 counts tall, centred on 128.
 
 ### Things to know
