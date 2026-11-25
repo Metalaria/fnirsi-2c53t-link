@@ -227,6 +227,29 @@ builder. The amplitude is held at 30 (3.0 V) by the handler (`0x0800A592`), and 
 `table * amplitude / 33 + 20` (`0x0802A1CE`). Patch 4's `WAVE` request stores into this table
 with the same scaling; what it stores lasts until one of those five calls.
 
+### The list of waveforms (code, and stock's own routines run in emulation)
+
+What in stock depends on there being thirteen waveforms, found by going through every access
+to the waveform byte `ms[0xE59]` (18 of them):
+
+- The "next waveform" key steps only from an index of at most 11 (`cmp r0, #0xb` at
+  `0x0800A9C2`); the "previous" one stops at 0. Both keep the first row shown, `ms[0xF6A]`,
+  so that the cursor is among the six rows of the list, for any length of list.
+- Four places set that first row when the list is opened or at start-up, as `min(index, 7)`:
+  `0x0800C2A6`, `0x0800D90E`, `0x0800E5F8`, `0x0802DFFC`.
+- The list itself (`0x0801579C`, called from `0x08010862`) draws six rows, each loading its
+  name with `ldr r0, [r0, #-0x34]` from `names + 52 * language + 4 * row`: a row past the
+  thirteenth would read the next language's names.
+- The builder `0x08029E14` returns without touching the table for an index above 12.
+- Three places turn the index into a picture on the drive, `3:/System file/N.jpg`:
+  `0x080108EA` (N = 90 + index with the output on, 103 + index off) and `0x080127BC`,
+  `0x0801F8EE` (N = 10 + index on, 23 + index off). An index above 12 would name a file that
+  is another picture.
+- Nothing else: the two places that ask whether the waveform has a duty test "index - 1 < 2",
+  the loader and the saver move the byte as it is.
+
+Patch 5's `--menu-wave` changes exactly these and is tested against them.
+
 ## User interface
 
 ### Keys

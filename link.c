@@ -46,6 +46,16 @@
  *   one set on the instrument), so the output stays inside the range stock itself uses. The
  *   host gives a position inside the table, never an address.
  *
+ *   Menu (patch 5, only in an image built with --menu-wave / --menu-usb-wave): entries added to
+ *   the generator's own list of waveforms, after stock's thirteen. Stock already copes with a
+ *   longer list everywhere but in five kinds of places, and each is patched or hooked by the
+ *   builder: the bound of the "next waveform" key, the first row shown when the list opens, the
+ *   builder of the table (link_wave_build() below fills it for the added entries), the six
+ *   loads of a row's name (link_wave_name()) and the three places that pick a waveform's
+ *   picture (link_wave_icon()). The samples of the added entries are constants in the cave; the
+ *   last entry can be "the waveform last received by WAVE", kept in the link's own SRAM until
+ *   power-off.
+ *
  * What it writes
  *   - its own SRAM block at LINK_RAM (above stock's stack top, below the IAP RAM magic);
  *   - the two core pointers named above, and the endpoint bookkeeping fields the stock class
@@ -96,6 +106,11 @@
 #define GENERATOR_AMPL_MAX   30u                           /* stock's menu stops at 3.0 V      */
 #define GENERATOR_DIVISOR    33u                           /* stock: sample * amplitude / 33   */
 #define GENERATOR_FLOOR      20u                           /* ... + 20                         */
+#define STOCK_WAVEFORMS      13u                           /* entries 0..12 of stock's list    */
+#define STOCK_SINE_TABLE     ((const uint16_t *)0x0804D848u)   /* 100 samples, 0..4094         */
+#define STOCK_WAVE_NAMES     0x0804C61Cu                   /* 13 pointers per language         */
+#define STOCK_NAMES_STRIDE   (4u * STOCK_WAVEFORMS)
+#define LANGUAGE             (*(volatile uint8_t *)0x20001058u)   /* state[0xF60]: 1..8        */
 #define FPGA_OP_READ_CH1     4u
 #define FPGA_OP_READ_CH2     5u
 
@@ -139,9 +154,18 @@ typedef void (*ept_send_fn)(void *udev, uint32_t ept_addr, const uint8_t *buf, u
 #define LINK_RAM_LIMIT       0x20037FE0u                   /* factory IAP keeps a magic here   */
 #define LINK_MAGIC           0x4B4E4C33u                   /* "3LNK"                           */
 #define LINK_PROTO_VERSION   1u                            /* v1 requests and events unchanged */
-#define LINK_PATCH_VERSION   4u
+#define LINK_PATCH_VERSION   5u
+#ifdef LINK_MENU
+#include "menu_waves.h"                                    /* written by build_link_image.py   */
+#define LINK_FEATURES        0x07u                         /* ... bit 2 = entries added to the
+                                                              generator's menu                 */
+#else
 #define LINK_FEATURES        0x03u                         /* INFO: bit 0 = the status stream,
                                                               bit 1 = the WAVE request         */
+#define MENU_EXTRA           0u
+#define MENU_USB_INDEX       0u
+#endif
+#define USER_WAVE_VALID      0xA5u
 #define LINK_BOOT_HOLDOFF    3000u                         /* ticks after boot: hands off      */
 #define LINK_SETTLE_TICKS    1000u                         /* bus must stay idle this long     */
 
@@ -239,6 +263,13 @@ typedef struct {
     uint8_t  tx[REPORT_LEN];
     uint8_t  resp[REPORT_LEN];
     scope_record_t rec[2];
+    /* The waveform last received by WAVE, as sent (0..4094), for the menu's "USB" entry. It
+     * counts only once all 100 samples have arrived in order: user_next is the position the
+     * next request must start at, user_valid is USER_WAVE_VALID when the table is whole. */
+    uint16_t user_wave[GENERATOR_POINTS];
+    uint8_t  user_next;
+    volatile uint8_t user_valid;
+    uint16_t user_rsvd;
 } link_state_t;
 
 _Static_assert(sizeof(link_state_t) % 4u == 0u, "state is cleared word by word");
@@ -437,6 +468,18 @@ static uint32_t readable(uint32_t addr, uint32_t len) {
     return 0u;
 }
 
+static uint16_t wave_scaled(uint32_t sample, uint32_t ampl) {
+    if (sample > GENERATOR_SAMPLE_MAX) {
+        sample = GENERATOR_SAMPLE_MAX;
+    }
+    return (uint16_t)(sample * ampl / GENERATOR_DIVISOR + GENERATOR_FLOOR);
+}
+
+static uint32_t wave_amplitude(void) {
+    uint32_t ampl = GENERATOR_AMPLITUDE;
+    return ampl > GENERATOR_AMPL_MAX ? GENERATOR_AMPL_MAX : ampl;
+}
+
 static void handle_request(uint32_t rx_len) {
     const uint8_t *rq = S->rx;
     uint8_t *rs = S->resp;
@@ -466,7 +509,12 @@ static void handle_request(uint32_t rx_len) {
         put32(rs + 36, S->n_scope);
         put32(rs + 40, S->n_scope_skipped);
         rs[44] = LINK_FEATURES;
-        n = 40u;
+        rs[45] = MENU_EXTRA;                        /* entries added after stock's thirteen     */
+        rs[46] = MENU_USB_INDEX;                    /* the entry that plays what WAVE sent, or 0 */
+#ifdef LINK_MENU
+        put32(rs + 48, (uint32_t)menu_wave_name);   /* MENU_EXTRA pointers to their names       */
+#endif
+        n = 44u;
     } else if (rq[0] == CMD_READ) {
         n = rq[2];
         if (n == 0u || n > PAYLOAD_MAX) {
@@ -497,16 +545,28 @@ static void handle_request(uint32_t rx_len) {
         } else if (addr >= GENERATOR_POINTS || count > GENERATOR_POINTS - addr) {
             status = ST_BAD_RANGE;
         } else {
-            uint32_t ampl = GENERATOR_AMPLITUDE;
-            if (ampl > GENERATOR_AMPL_MAX) {
-                ampl = GENERATOR_AMPL_MAX;
+            uint32_t ampl = wave_amplitude();
+            /* The copy for the menu is being rewritten: it is not whole again until a run
+             * of requests has covered positions 0 to 99 in order. */
+            S->user_valid = 0u;
+            if (addr == 0u) {
+                S->user_next = 0u;
             }
             for (i = 0; i < count; ++i) {
                 uint32_t v = (uint32_t)rq[8u + 2u * i] | ((uint32_t)rq[9u + 2u * i] << 8);
                 if (v > GENERATOR_SAMPLE_MAX) {
                     v = GENERATOR_SAMPLE_MAX;
                 }
-                GENERATOR_TABLE[addr + i] = (uint16_t)(v * ampl / GENERATOR_DIVISOR + GENERATOR_FLOOR);
+                S->user_wave[addr + i] = (uint16_t)v;
+                GENERATOR_TABLE[addr + i] = wave_scaled(v, ampl);
+            }
+            if (addr == S->user_next) {
+                S->user_next = (uint8_t)(addr + count);
+                if (S->user_next == GENERATOR_POINTS) {
+                    S->user_valid = USER_WAVE_VALID;
+                }
+            } else {
+                S->user_next = 0xFFu;               /* out of order: wait for a run from 0      */
             }
             rs[8] = (uint8_t)ampl;                  /* the amplitude the samples were scaled by */
             rs[9] = GENERATOR_WAVEFORM;             /* the waveform stock will go back to       */
@@ -519,6 +579,67 @@ static void handle_request(uint32_t rx_len) {
     rs[3] = (uint8_t)n;
     S->n_requests = S->n_requests + 1u;
 }
+
+/* ---- the generator's menu (patch 5) ------------------------------------------------------- */
+
+#ifdef LINK_MENU
+/* Called from link_stub_wave, which stands at the entry of stock's table builder (0x08029E14).
+ * For an added entry it fills the table and returns 1, and the stub returns to the builder's
+ * caller; for anything else it returns 0 and stock's builder runs as if nothing had happened.
+ * Runs wherever stock builds the table: the key task, and start-up, when the link's own state
+ * may not be initialised yet -- hence the check of the magic before the copy is trusted. */
+uint32_t link_wave_build(void) {
+    uint32_t index = GENERATOR_WAVEFORM;
+    uint32_t k, i, ampl;
+    const uint16_t *src;
+
+    if (index < STOCK_WAVEFORMS || index >= STOCK_WAVEFORMS + MENU_EXTRA) {
+        return 0u;
+    }
+    k = index - STOCK_WAVEFORMS;
+#if MENU_BAKED > 0
+    if (k < MENU_BAKED) {
+        src = menu_wave_data[k];
+    } else
+#endif
+    if (S->magic == LINK_MAGIC && S->user_valid == USER_WAVE_VALID) {
+        src = S->user_wave;
+    } else {
+        src = STOCK_SINE_TABLE;                     /* nothing received yet: stock's own sine   */
+    }
+    ampl = wave_amplitude();
+    for (i = 0; i < GENERATOR_POINTS; ++i) {
+        GENERATOR_TABLE[i] = wave_scaled(src[i], ampl);
+    }
+    return 1u;
+}
+
+/* Stands for the `ldr r0, [r0, #-0x34]` with which stock's list (0x0801579C) loads the name of
+ * a row: `at` is what stock had in r0, names + 52 * language + 4 * row. Rows past stock's
+ * thirteen get the added entry's name, the same in every language; any other row gets what
+ * stock would have loaded. */
+uint32_t link_wave_name(uint32_t at) {
+    uint32_t language = LANGUAGE;
+    uint32_t first = STOCK_WAVE_NAMES + STOCK_NAMES_STRIDE * language + STOCK_NAMES_STRIDE;
+
+    if (language >= 1u && language <= 8u && at >= first && at < first + 4u * MENU_EXTRA && ((at - first) & 3u) == 0u) {
+        return (uint32_t)menu_wave_name[(at - first) / 4u];
+    }
+    return *(const uint32_t *)(at - STOCK_NAMES_STRIDE);
+}
+
+/* Stands for the three loads of the waveform's index that pick its picture (stock has thirteen
+ * of each kind on its drive): an added entry borrows the picture of the stock waveform the
+ * builder was told, and any other index is returned as it is. */
+uint32_t link_wave_icon(void) {
+    uint32_t index = GENERATOR_WAVEFORM;
+
+    if (index >= STOCK_WAVEFORMS && index < STOCK_WAVEFORMS + MENU_EXTRA) {
+        return menu_wave_icon[index - STOCK_WAVEFORMS];
+    }
+    return index;
+}
+#endif
 
 /* ---- events ------------------------------------------------------------------------------ */
 

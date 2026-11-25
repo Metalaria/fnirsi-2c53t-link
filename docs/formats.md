@@ -150,7 +150,12 @@ any patch; `WAVE` stores into it from patch 4, scaled as stock scales its sine:
 
 with `amplitude` the byte at `0x20000F59` (tenths of a volt). So a full-scale sample is 3741
 at 3.0 V and 1260 at 1.0 V, and nothing stored is ever above what stock stores. (code and
-emulation; not on hardware)
+emulation; on the unit at 3.0 V, where two waveforms read back as 20 to 3741)
+
+With patch 5 and an image built with `--menu-usb-wave`, `WAVE` also keeps the samples as
+sent, and the added entry of the menu that INFO names plays them, rescaled whenever the
+instrument rebuilds its table, until power-off. They count only once positions 0 to 99 have
+arrived in order.
 
 The last sample is at `0x20001020`, which is also where the 40 bytes of "meter state" that a
 meter event carries begin: the first two of those bytes are this sample, not meter state.

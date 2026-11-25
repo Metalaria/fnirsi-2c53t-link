@@ -11,8 +11,9 @@ that can stream what it measures.
 | Multimeter: every frame of the meter chip, as it arrives (~6 per second) | yes |
 | Oscilloscope: each channel's 1024-sample record plus the scope state | yes |
 | Status (patch 3): the generator's settings, the scope's own measurements with RUN/STOP, the rest of the meter's state | yes |
-| Generator (patch 4): any waveform of 100 samples, played by stock's own generator | emulated only |
+| Generator (patch 4): any waveform of 100 samples, played by stock's own generator | yes |
 | Languages (patch 4, `--languages`): the six that stock still carries but no longer offers | emulated only |
+| Menu (patch 5, `--menu-wave`): waveforms added to the generator's own list, chosen on the instrument | emulated only |
 
 **Status: runs on one unit.** On 2026-11-23 both images were flashed on a retail 2C53T
 through the factory IAP drive. The flash read back identical to the image, the settings and
@@ -30,10 +31,20 @@ the image, the status blocks arrived in every mode with the values on the instru
 screen, and what worked with patch 2 still does. The record is at the end of
 [`docs/hardware_results_2026-11-24.md`](docs/hardware_results_2026-11-24.md).
 
-**Patch 4 has not been on hardware.** It adds one request, `WAVE`, which stores samples in the
-table that stock's signal generator plays, and with it the first write to stock's own data:
-those 200 bytes and no others. The builder's `--languages` is separate and optional. Both are
-described below and both pass the emulated tests; neither has been flashed.
+**Patch 4 runs on the same unit** since 2026-11-25. It adds one request, `WAVE`, which stores
+samples in the table that stock's signal generator plays, and with it the first write to
+stock's own data: those 200 bytes and no others. Flashed over patch 3, the flash read back
+identical to the image, the settings and calibration page was identical before and after, and
+two waveforms were written, read back and seen on the instrument's own oscilloscope; a change
+of frequency on the instrument kept them. The record is in
+[`docs/hardware_results_2026-11-25.md`](docs/hardware_results_2026-11-25.md). The builder's
+`--languages` is separate and optional: it passes the emulated tests and has not been flashed.
+
+**Patch 5 has not been on hardware.** Without options it is patch 4 with a longer INFO. With
+`--menu-wave` / `--menu-usb-wave` it adds entries to the generator's own list of waveforms,
+which takes the largest change to stock so far: 49 more bytes in 15 places, all in the
+generator's menu, its table builder and the three places that pick a waveform's picture.
+It passes the emulated tests, which run stock's own menu code with and without the change.
 
 > **One unit is not a guarantee.** The board revision of that unit is unknown and nothing
 > has been tried on another. If you flash this, read [Safety](#safety) first and keep the
@@ -44,9 +55,9 @@ described below and both pass the emulated tests; neither has been flashed.
 
 | | |
 |---|---|
-| Stock bytes changed | 10: 6 at `0x0802A994` (SysTick handler) and 4 at `0x0803E49A` (tail of the `fpga` task loop), each a `b.w` into the cave. With `--languages`, 4 more at `0x0800BECA` (a `bl` into the cave) |
-| Code added | ~2.9 KB at `0x080BE700`, after the stock image |
-| SRAM used | `0x20037000`–`0x20037987`, above stock's stack top and below the factory IAP's RAM magic |
+| Stock bytes changed | 10: 6 at `0x0802A994` (SysTick handler) and 4 at `0x0803E49A` (tail of the `fpga` task loop), each a `b.w` into the cave. With `--languages`, 4 more at `0x0800BECA` (a `bl` into the cave). With menu entries, 49 more: see below |
+| Code added | ~2.9 KB at `0x080BE700`, after the stock image; ~4.2 KB with five menu entries |
+| SRAM used | `0x20037000`–`0x20037A53`, above stock's stack top and below the factory IAP's RAM magic |
 | Stock SRAM written | the USB core's class and descriptor pointers (`0x20002B28`, `0x20002B2C`) and the endpoint bookkeeping the stock class itself writes. From patch 4, on a `WAVE` request only: the generator's table of samples, `0x20000F5A`–`0x20001021` |
 | Flash written at run time | none |
 
@@ -78,6 +89,28 @@ anything is stored, and each sample is scaled the way stock scales its own
 the DAC stays inside the span stock itself drives it over. The waveform lasts until stock
 rewrites the table; the instrument's screen keeps showing the waveform chosen in its menu.
 
+**Menu entries (`--menu-wave`, `--menu-usb-wave`, optional, patch 5).** Stock's list of
+waveforms has thirteen entries and the code around it mostly does not care how many there
+are. Five kinds of places do, and the builder changes each:
+
+| Where | What changes | Bytes |
+|---|---|---|
+| `0x0800A9C2`, the "next waveform" key | the last index it steps from: 11 becomes 11 + N | 1 |
+| `0x0800C2AA`, `0x0800D912`, `0x0800E5F8`, `0x0802E000` | the first row shown when the list opens: `min(index, 7)` becomes `min(index, 7 + N)` | 8 |
+| `0x08029E14`, the table builder's first instruction | a `b.w` to a stub that fills the table for an added entry and otherwise replays the instruction and goes on in stock | 4 |
+| six `ldr r0, [r0, #-0x34]` in the list (`0x080157E6` …) | a `bl` that returns the added entry's name for rows past the thirteenth and stock's pointer for the others | 24 |
+| `0x080108EA`, `0x080127BC`, `0x0801F8EE` | a `bl` that returns, for an added entry, the index of the stock waveform whose picture it borrows (stock has thirteen pictures of each kind on its drive) | 12 |
+
+An added entry's samples are constants in the cave, scaled like stock's own every time the
+table is built, so amplitude and frequency work as for any other waveform and the entry
+survives power-off. `--menu-usb-wave` adds a last entry that plays whatever `WAVE` received
+last, whole and in order; that copy is in the link's SRAM and lasts until power-off, and until
+one arrives the entry plays stock's sine. The names are ASCII and the same in every language.
+
+The instrument stores the selected index in its settings page as it always did. An image
+without these entries does not know an index above 12: before flashing one, select a stock
+waveform, or the generator stays silent until you do.
+
 **Languages (`--languages`, optional).** Stock V1.2.0 still has its texts in eight languages
 and its fonts still have every character they need, but Settings > Language lists two and
 stores the row number. With this option the instruction that loads the row is replaced by a
@@ -94,15 +127,26 @@ sudo apt install gcc-arm-none-eabi
 python3 build_link_image.py --stock APP_2C53T_V1.2.0_251015.bin --out APP_2C53T_V1.2.0_link.bin
 ```
 
-`--languages` adds the language call described above; without it the image has the link and
-nothing else. `--without-scope-hook` leaves the `fpga` task untouched (the SysTick hook is then the only
+`--languages` adds the language call described above, and the menu entries are added like
+this (each with the stock waveform, 0 to 12, whose picture it borrows after the `@`):
+
+```bash
+python3 build_link_image.py --stock APP_2C53T_V1.2.0_251015.bin --out APP_2C53T_V1.2.0_link.bin \
+    --menu-wave "Triangle 25/75=triangle:25@2" --menu-wave "Gauss Pulse=gauss@12" \
+    --menu-wave "Burst 10=burst@10" --menu-wave "AM 80%=am@10" --menu-usb-wave "USB Wave@0"
+```
+
+A shape is one of `fnlink.py wave`'s (`pulse:25` and `triangle:25` take a duty,
+`harmonics:1:1,3:0.33` a list) or a text or CSV file with one period. Up to eight entries.
+Without any of these options the image has the link and nothing else. `--without-scope-hook` leaves the `fpga` task untouched (the SysTick hook is then the only
 change, the same site OpenScope's stock_caplog uses on hardware). That image still offers
 the link, memory read and the meter stream, and is the one to flash first.
 
 The builder refuses any image whose sha256 is not V1.2.0 (`a17c5c35…c760`), checks the
 stock facts the cave relies on, and re-reads its own output. With Ubuntu 24.04's
 `gcc-arm-none-eabi 15:13.2.rel1-2` the results are in `reference/`: patch 3, the one that
-has been on hardware, and `*_patch4*.json` for patch 4 with and without `--languages`.
+has been on hardware, `*_patch4*.json` for patch 4 with and without `--languages`, and
+`*_patch5*.json` for patch 5 without options and with the five menu entries of the example above.
 
 No patched image is distributed: it contains FNIRSI's firmware.
 
@@ -182,7 +226,7 @@ the waveform; changing the waveform, the duty or the amplitude brings stock's ow
 
 Version 1. Patch 3 adds to it without changing anything a patch 2 host relies on: one more
 subscription bit, one more event type, and four more bytes at the end of INFO. Patch 4 adds
-one request and one feature bit.
+one request and one feature bit, patch 5 one feature bit and four more bytes of INFO.
 
 One 64-byte report each way, no report id.
 
@@ -197,7 +241,11 @@ Requests and responses pair up strictly; events may arrive ahead of a response.
 - `0x01` INFO: `"2C53LINK"`, protocol, patch, system mode, stream mask, tick count, link
   count, request count, meter frames seen, scope records captured, scope records skipped.
   From patch 3, a feature byte follows (payload byte 36): bit 0 = the link has the status
-  stream, bit 1 (patch 4) = it has `WAVE`. A shorter INFO means no features.
+  stream, bit 1 (patch 4) = it has `WAVE`, bit 2 (patch 5) = the image added entries to the
+  generator's menu. A shorter INFO means no features. From patch 5, three more fields follow:
+  the number of added entries (payload byte 37), the index of the one that plays what `WAVE`
+  sent, or 0 (byte 38), and the address of an array of pointers to their names (bytes 40–43),
+  which `READ` can follow.
 - `0x02` READ: up to 56 bytes from `0x08000000`–`0x080FFFFF` or `0x20000000`–`0x20037FFF`.
 - `0x03` STREAM: byte 2 is the subscription mask (1 meter, 2 scope, 4 status from patch 3;
   a link that does not know a bit answers status 3). Every session starts unsubscribed.
