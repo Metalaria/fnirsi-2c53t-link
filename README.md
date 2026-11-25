@@ -49,11 +49,13 @@ On the unit the flash reads back as the image, the calibration table is unchange
 entries are in the list with their names, and they play
 ([`docs/hardware_results_2026-11-25.md`](docs/hardware_results_2026-11-25.md)).
 
-**Patch 6 has not been on hardware.** It changes one thing the first evening with patch 5
-showed to be wrong: with a "USB" entry in the menu, `WAVE` used to overwrite whatever the
+**Patch 6 runs on the same unit** since later that evening, verified the same way. It changes
+one thing the first evening with patch 5 showed to be wrong: with a "USB" entry in the menu, `WAVE` used to overwrite whatever the
 instrument was playing, so a waveform sent while Square Wave was selected left the instrument
 saying "square" and playing something else. From patch 6 such an image stores what it
 receives for the USB entry and writes the playing table only while that entry is selected.
+On the unit, a sinc sent under Square Wave left the square playing, and a bell sent under
+the USB entry played at once.
 
 > **One unit is not a guarantee.** The board revision of that unit is unknown and nothing
 > has been tried on another. If you flash this, read [Safety](#safety) first and keep the
