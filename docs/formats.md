@@ -93,8 +93,12 @@ Offsets are into the 40 state bytes (add `0x20001020` for the address).
 The MIN box is the next float, at offset 40: outside the 40 bytes the link sends (read it
 with `fnlink.py read 0x20001048 4`). The three boxes scale on their own (9.193 V, 4.2962 V
 and -600.60 mV at the same time); their decimals are at offsets 44–46 and their unit codes at
-47–49, also outside. Their unit codes were seen as 1 (V) and 0 (with a value in millivolts);
-that 0 means mV is assumed.
+50–52, also outside: 0 mV, 1 V, 5 nF, 9 °C, 10 µA. V and mV are by the screen and by MEAN
+being (MAX + MIN) / 2 only with MIN in millivolts; µA by a photograph of the screen in Small
+DC current (2026-11-25), where the boxes are in µA while the reading is in mA; nF and °C
+because the boxes carry there the code the reading has at offset 16. Offsets 47–49 are not
+the unit, as an earlier version of this note said: they read 1 for a box in volts and 0 for
+every other unit seen, and what they are is not established.
 
 The frame's annunciators and the unit code at offset 16 come from different places. They
 agree on more than 98% of frames that show something; the exceptions are the frame or two
@@ -146,11 +150,12 @@ from `0x200000F8`) followed by 19 `0xA1` data events.
 
 | Offset | Content | Evidence |
 |---|---|---|
-| 2, 3 | volts per division of CH1, CH2 as an index: 0 = 10 mV, then 1-2-5 steps to 9 = 10 V | checked at 0, 2 and 5 |
+| 2, 3 | volts per division of CH1, CH2 as an index: 0 = 10 mV, then 1-2-5 steps to 9 = 10 V | CH1 checked at 0, 2 and 5. CH2 at 3: 344 mV peak to peak from the record against 345 mV by stock's own measurement (2026-11-25); 2 was the step before it |
 | 4, 5 | vertical position of CH1, CH2, signed: zero volts is sample value 128 + position | CH1 checked in three sessions; CH2 assumed |
 | 6, 7 | probe setting of CH1, CH2: 0 = X1, 1 = X10 | CH1 checked both ways; CH2 assumed |
-| 20 | channels on: bit 0 CH1, bit 1 CH2 | checked (1 and 3) |
-| 21 | trigger source: 1 CH1, 2 CH2 | assumed |
+| 20 | channels on: bit 0 CH1, bit 1 CH2 | checked (1, 2 and 3) |
+| 21 | low nibble: trigger source, 1 CH1, 2 CH2. High nibble: 1 with CH2 alone | assumed; seen `0x01` with CH1 alone and `0x12` with CH2 alone |
+| 22 | 0 with CH1 alone, 1 with CH2 alone | seen; not established (the selected channel?) |
 | 28–29 | trigger level, signed 16 bits, in counts from the middle (128) | inferred: it changed by 2 when an arrow key was pressed with the arrows not on the scales |
 | 45 | time per division as an index: 0 = 10 ns, then 1-2-5 steps | checked at 8 (5 µs, photograph of the screen) and 13 (200 µs); 11 and 16 fit 50 µs and 2 ms |
 | 46 | 1 running, 0 stopped (the RUN/STOP key) | checked: three RAM dumps running, one stopped |

@@ -113,7 +113,7 @@ Meter chip on USART2, 9600 8N1. (code, emu)
 Meter state, from `0x20001020` (unit; details in `formats.md`): menu entry `+5`, function
 `+6`, variant inside the entry `+14`, screen status `+13`, unit code `+16`, AC frequency `+18`,
 HOLD flag `+20` (`0x20001034`), MAX / MEAN / MIN floats `+32`, `+36`, `+40`, their decimals
-`+44..46` and unit codes `+47..49`.
+`+44..46` and unit codes `+50..52` (0 mV, 1 V, 5 nF, 9 °C, 10 µA).
 
 Buzzer. PC3 (EXTI line 3) carries the meter chip's own buzzer tone. Stock's handler at
 `0x08009C10` turns the buzzer on at each edge (duty 10 to TMR11 C1DT, `0x40015434`) only in
@@ -186,10 +186,12 @@ by twelve for CH2, in the units the screen's measurement boxes are computed from
 Compared with photographs of two stopped screens: 40232 with "40.23KHz", 6451 with "64.51%",
 114000 with "114.0mV"; and, on another day's wave, 50176 with "50.18KHz", 5050 with
 "50.50%", 220000 with "220.0mV". While stopped the shown block does not change. The running
-flag is scope state `+46` (`0x20000126`). CH2's twelve words were only seen with the channel
-off: a frequency (tens of Hz, or about 1.7 MHz) and exactly its period, the rest zero. That
-they are CH2's is assumed from the layout. Outside the oscilloscope mode the shown block is
-all zeros.
+flag is scope state `+46` (`0x20000126`). CH2's twelve words follow the same layout: with the
+generator's 50 kHz square wave on CH2 alone they read 50 kHz, 20 µs, 49.39 % and 329 mV peak
+to peak at 50 mV per division, and 345 mV at 100 mV per division, where the record itself
+gives 344 mV (2026-11-25). With a channel off its words hold a frequency and its period (0 Hz,
+tens of Hz, or about 1.7 MHz) and a few millivolts. Outside the oscilloscope mode the shown
+block is all zeros.
 
 What the arrow keys do is the low nibble of state `+0x354` (`0x2000044C`): 0 changes the time
 base and the range, 2 moves the trace and the trigger level, 3 is for the cursors; SELECT
@@ -207,7 +209,7 @@ photographs of the generator screen):
 | Offset | Content |
 |---|---|
 | 0 | 0 or 1; it changes while the generator screen is operated. Not established |
-| 1 | waveform as its position in the menu, 0 to 12: 1 Square Wave, 2 Sawtooth wave (a triangle at 50 % duty), 3 Half-wave, 4 Full Wave, 5 Step Wave, 6 Reverse Step Wave. 1 and 4 were checked on their own and 2 by its shape on the scope; 3, 5 and 6 follow from the menu's order. The first entry and the last six were not photographed |
+| 1 | waveform as its position in the menu, 0 to 12: 1 Square Wave, 2 Sawtooth wave (a triangle at 50 % duty), 3 Half-wave, 4 Full Wave, 5 Step Wave, 6 Reverse Step Wave, 7 Index Up, 8 Index Decrease, 9 Direct Current, 10 Multi-audio, 11 Sink Pulse, 12 Lorentz waves. All twelve were read one by one on 2026-11-25, the label from the screen and the index from this byte; the shapes of 7 to 12 were not looked at. The entry before Square Wave (index 0) was not captured |
 | 4–7 | frequency in Hz, 32 bits (1000, 15000, 35000, 50000 seen) |
 | 8 | duty cycle in % (50 seen) |
 | 9 | amplitude in tenths of a volt (30 and 20 seen for 3.0 V and 2.0 V) |
