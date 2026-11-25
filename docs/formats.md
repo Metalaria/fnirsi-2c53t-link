@@ -155,7 +155,9 @@ emulation; on the unit at 3.0 V, where two waveforms read back as 20 to 3741)
 With patch 5 and an image built with `--menu-usb-wave`, `WAVE` also keeps the samples as
 sent, and the added entry of the menu that INFO names plays them, rescaled whenever the
 instrument rebuilds its table, until power-off. They count only once positions 0 to 99 have
-arrived in order.
+arrived in order. From patch 6, in such an image, `WAVE` stores into the table that is playing
+only while that entry is selected (the second byte of its response says which waveform was);
+otherwise the samples are kept for the entry and the table is left as it is.
 
 The last sample is at `0x20001020`, which is also where the 40 bytes of "meter state" that a
 meter event carries begin: the first two of those bytes are this sample, not meter state.

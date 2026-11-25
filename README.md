@@ -13,7 +13,7 @@ that can stream what it measures.
 | Status (patch 3): the generator's settings, the scope's own measurements with RUN/STOP, the rest of the meter's state | yes |
 | Generator (patch 4): any waveform of 100 samples, played by stock's own generator | yes |
 | Languages (patch 4, `--languages`): the six that stock still carries but no longer offers | emulated only |
-| Menu (patch 5, `--menu-wave`): waveforms added to the generator's own list, chosen on the instrument | emulated only |
+| Menu (patch 5, `--menu-wave`): waveforms added to the generator's own list, chosen on the instrument | yes |
 
 **Status: runs on one unit.** On 2026-11-23 both images were flashed on a retail 2C53T
 through the factory IAP drive. The flash read back identical to the image, the settings and
@@ -40,11 +40,20 @@ of frequency on the instrument kept them. The record is in
 [`docs/hardware_results_2026-11-25.md`](docs/hardware_results_2026-11-25.md). The builder's
 `--languages` is separate and optional: it passes the emulated tests and has not been flashed.
 
-**Patch 5 has not been on hardware.** Without options it is patch 4 with a longer INFO. With
+**Patch 5 runs on the same unit** since the evening of 2026-11-25, built with the five menu
+entries of the example below. Without options it is patch 4 with a longer INFO; with
 `--menu-wave` / `--menu-usb-wave` it adds entries to the generator's own list of waveforms,
 which takes the largest change to stock so far: 49 more bytes in 15 places, all in the
 generator's menu, its table builder and the three places that pick a waveform's picture.
-It passes the emulated tests, which run stock's own menu code with and without the change.
+On the unit the flash reads back as the image, the calibration table is unchanged, the five
+entries are in the list with their names, and they play
+([`docs/hardware_results_2026-11-25.md`](docs/hardware_results_2026-11-25.md)).
+
+**Patch 6 has not been on hardware.** It changes one thing the first evening with patch 5
+showed to be wrong: with a "USB" entry in the menu, `WAVE` used to overwrite whatever the
+instrument was playing, so a waveform sent while Square Wave was selected left the instrument
+saying "square" and playing something else. From patch 6 such an image stores what it
+receives for the USB entry and writes the playing table only while that entry is selected.
 
 > **One unit is not a guarantee.** The board revision of that unit is unknown and nothing
 > has been tried on another. If you flash this, read [Safety](#safety) first and keep the
@@ -88,6 +97,7 @@ anything is stored, and each sample is scaled the way stock scales its own
 (`sample * amplitude / 33 + 20`, with the amplitude set on the instrument, held at 3.0 V), so
 the DAC stays inside the span stock itself drives it over. The waveform lasts until stock
 rewrites the table; the instrument's screen keeps showing the waveform chosen in its menu.
+(This is how an image without a "USB" menu entry behaves; with one, see the next paragraph.)
 
 **Menu entries (`--menu-wave`, `--menu-usb-wave`, optional, patch 5).** Stock's list of
 waveforms has thirteen entries and the code around it mostly does not care how many there
@@ -105,7 +115,9 @@ An added entry's samples are constants in the cave, scaled like stock's own ever
 table is built, so amplitude and frequency work as for any other waveform and the entry
 survives power-off. `--menu-usb-wave` adds a last entry that plays whatever `WAVE` received
 last, whole and in order; that copy is in the link's SRAM and lasts until power-off, and until
-one arrives the entry plays stock's sine. The names are ASCII and the same in every language.
+one arrives the entry plays stock's sine. From patch 6, in an image with that entry, `WAVE`
+writes the table that is playing only while the entry is selected: sent under any other
+waveform, the samples are kept for the entry and the output does not change. The names are ASCII and the same in every language.
 
 The instrument stores the selected index in its settings page as it always did. An image
 without these entries does not know an index above 12: before flashing one, select a stock
@@ -133,7 +145,7 @@ this (each with the stock waveform, 0 to 12, whose picture it borrows after the 
 ```bash
 python3 build_link_image.py --stock APP_2C53T_V1.2.0_251015.bin --out APP_2C53T_V1.2.0_link.bin \
     --menu-wave "Triangle 25/75=triangle:25@2" --menu-wave "Gauss Pulse=gauss@12" \
-    --menu-wave "Burst 10=burst@10" --menu-wave "AM 80%=am@10" --menu-usb-wave "USB Wave@0"
+    --menu-wave "Burst 10=burst@10" --menu-wave "AM 80%=am@11" --menu-usb-wave "USB Wave@0"
 ```
 
 A shape is one of `fnlink.py wave`'s (`pulse:25` and `triangle:25` take a duty,
@@ -146,7 +158,8 @@ The builder refuses any image whose sha256 is not V1.2.0 (`a17c5c35…c760`), ch
 stock facts the cave relies on, and re-reads its own output. With Ubuntu 24.04's
 `gcc-arm-none-eabi 15:13.2.rel1-2` the results are in `reference/`: patch 3, the one that
 has been on hardware, `*_patch4*.json` for patch 4 with and without `--languages`, and
-`*_patch5*.json` for patch 5 without options and with the five menu entries of the example above.
+`*_patch5*.json` for patch 5 without options and with five menu entries (`AM 80%=am@10` there),
+and `*_patch6*.json` for patch 6 with the example above.
 
 No patched image is distributed: it contains FNIRSI's firmware.
 

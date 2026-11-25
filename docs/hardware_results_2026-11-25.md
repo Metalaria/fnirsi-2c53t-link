@@ -259,6 +259,31 @@ frequency measurement is not reliable on a waveform with ripple; the record is.
 Not checked on the unit: that a change of duty or amplitude brings stock's waveform back
 (code and emulation only), and the image built with `--languages`, which has not been flashed.
 
+## Patch 5 on the unit
+
+Flashed in the evening over patch 4, the same way (sixth update of this unit), built with
+five menu entries: `Triangle 25/75=triangle:25@2`, `Gauss Pulse=gauss@12`, `Burst 10=burst@10`,
+`AM 80%=am@10` and the USB entry `USB Wave@0` (`3d27625e…d8b4`, as in
+`reference/APP_2C53T_V1.2.0_link_patch5_menu.json`).
+
+| | |
+|---|---|
+| `fnlink.py info` | protocol 1, patch 5, the five entries listed as 14 to 18 with their names |
+| `fnlink.py verify` | MATCH (755540 bytes) |
+| Settings and calibration page | the calibration table is identical before and after; 68 bytes differ after it, where stock keeps its settings |
+| The list on the instrument | the five entries follow Lorentz waves, each name on one line of its row; the cursor stays in view down to the last (photograph, with Burst 10 selected) |
+| Pictures | each added entry shows the picture of the stock waveform it borrows; Burst 10 and AM 80% both borrowed Multi-audio's and so looked the same |
+| `wave sinc` with Gauss Pulse selected, 3.0 V | written and read back, 20 to 3741; the tool reports entry 18 as its place in the menu |
+| `wave sinc` with USB Wave selected, 2.0 V | 20 to 2501: the USB entry at the amplitude set on the instrument |
+| On its own oscilloscope | the sinc, 50 kHz, four divisions of 5 us apart (photograph) |
+
+What went wrong, and it was the design and not the unit: the third `wave sinc` was sent with
+Square Wave selected. Patch 5 writes the playing table whatever is selected, so the
+instrument went on showing "Square Wave" and playing a sinc until a generator setting was
+changed. Patch 6 stores such a waveform for the USB entry only.
+
+Not checked on the unit: a power cycle with an added entry selected.
+
 ## Not answered
 
 - What needs a write to the instrument's memory (the 20M limit, the per-channel "FFT" flag)

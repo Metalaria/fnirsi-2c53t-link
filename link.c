@@ -40,6 +40,9 @@
  *   queues the next block that applies to the current mode; it is copied when the report is
  *   built, in the USB interrupt, so each block is one instant. Nothing is hooked for this.
  *
+ *   (From patch 6, in an image whose menu has a "USB" entry, WAVE stores into the playing
+ *   table only while that entry is selected; see "Menu" below.)
+ *
  *   Generator (patch 4): stock plays a table of 100 samples in SRAM through a circular DMA into
  *   the DAC, and rewrites it only when a generator setting changes. WAVE stores samples there,
  *   scaled the way stock scales its own (sample * amplitude / 33 + 20, the amplitude being the
@@ -154,7 +157,7 @@ typedef void (*ept_send_fn)(void *udev, uint32_t ept_addr, const uint8_t *buf, u
 #define LINK_RAM_LIMIT       0x20037FE0u                   /* factory IAP keeps a magic here   */
 #define LINK_MAGIC           0x4B4E4C33u                   /* "3LNK"                           */
 #define LINK_PROTO_VERSION   1u                            /* v1 requests and events unchanged */
-#define LINK_PATCH_VERSION   5u
+#define LINK_PATCH_VERSION   6u
 #ifdef LINK_MENU
 #include "menu_waves.h"                                    /* written by build_link_image.py   */
 #define LINK_FEATURES        0x07u                         /* ... bit 2 = entries added to the
@@ -546,6 +549,11 @@ static void handle_request(uint32_t rx_len) {
             status = ST_BAD_RANGE;
         } else {
             uint32_t ampl = wave_amplitude();
+            /* With a "USB" entry in the menu (patch 6) the table that is playing is only
+             * touched while that entry is the one selected: sending a waveform no longer
+             * replaces, say, the square the instrument says it is playing. Without such an
+             * entry the table is the only place the samples can go, as in patch 4. */
+            uint32_t play = (MENU_USB_INDEX == 0u) || (GENERATOR_WAVEFORM == MENU_USB_INDEX);
             /* The copy for the menu is being rewritten: it is not whole again until a run
              * of requests has covered positions 0 to 99 in order. */
             S->user_valid = 0u;
@@ -558,7 +566,9 @@ static void handle_request(uint32_t rx_len) {
                     v = GENERATOR_SAMPLE_MAX;
                 }
                 S->user_wave[addr + i] = (uint16_t)v;
-                GENERATOR_TABLE[addr + i] = wave_scaled(v, ampl);
+                if (play) {
+                    GENERATOR_TABLE[addr + i] = wave_scaled(v, ampl);
+                }
             }
             if (addr == S->user_next) {
                 S->user_next = (uint8_t)(addr + count);
