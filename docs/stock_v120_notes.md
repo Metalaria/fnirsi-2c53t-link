@@ -332,6 +332,14 @@ its own takes it from there. (code)
   `ms[0xF62]` when that is not 0 (the click, see the buzzer above) and the idle counter
   `ms[0xF6C]` is zeroed.
 
+What the owner sees on the unit (2026-11-26; not looked up in the code). Holding MENU for a
+few seconds brings the screen where the mode is chosen: left and right move between modes,
+the blue key in the middle of the arrows enters one. In the multimeter a short press of
+MENU shows nothing, the up and down arrows and SELECT do nothing, and the right arrow goes
+through the functions and from the last one back to Automatic. In the generator no key
+changes anything until the blue key has been pressed; then up and down go to the previous
+and the next waveform (read back: index 1 to 0 and to 1 again), and SELECT does nothing.
+
 ### Languages
 
 V1.2.0 offers Chinese and English, but the tables of eight languages that V1.1.0 added are

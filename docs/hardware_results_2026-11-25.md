@@ -691,6 +691,35 @@ session directory.
   arrow, the screen where the mode is changed and the generator's keys are still to be
   described.
 
+## The mode screen, the generator's keys and its list in Spanish, 2026-11-26
+
+The owner's description of the unit, three photographs and `fnlink.py status` after single
+key presses (its `generator` line). The image is the one above.
+
+- **Changing mode.** Holding MENU brings a screen with one picture per mode, the current
+  one in the middle with its name under it ("Multímetro" in the photograph) and four
+  dots above, the first filled. The left and right arrows move between modes and the blue
+  key in the middle of the arrows enters the one shown.
+- **The multimeter.** Going through the functions past the last one returns to Automatic.
+  Two `status` lines taken around presses of the right and left arrows both read menu 0,
+  Automatic, so they do not show what each arrow did; the owner had said before that the
+  right arrow changes what is measured.
+- **The generator's keys.** Nothing changes until the blue key has been pressed: `status`
+  reads Square Wave, index 1, before and after a press of the right arrow and of the left
+  one. Then the up arrow gave Sine Wave, index 0, and the down arrow Square Wave, index 1,
+  again. SELECT does nothing there (`status` unchanged). What a short press of MENU does
+  in the generator, how the frequency, the duty and the amplitude are reached and changed,
+  and how that state is left were not described.
+- **The generator in Spanish.** One photograph shows the list from its second entry,
+  "Onda cuadrada" under the cursor, then "Diente de sierra", "Media onda", "Onda
+  completa", "Escalera" and "Escalera inversa", and the three settings: "Frecuen / cia",
+  "Ciclo de / trabajo" and "Amplit.". Another shows the end of the list with the cursor
+  on index 16: "Pulso sinc", "Ondas de / Lorentz", "Triangular / 25/75", "Campana de /
+  Gauss", "Ráfaga de 10 / ciclos" and "Portadora / modulada (AM)", each whole. So four of
+  the five names given with `--menu-names` have been seen on the unit; the last entry,
+  "Onda USB", is below what that photograph shows. In it the row of the duty is drawn in
+  grey and the other two in white; with Square Wave under the cursor the three are white.
+
 ## Not answered
 
 - What needs a write to the instrument's memory (the 20M limit; the per-channel "FFT" flag
