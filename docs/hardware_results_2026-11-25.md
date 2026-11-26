@@ -720,6 +720,26 @@ key presses (its `generator` line). The image is the one above.
   "Onda USB", is below what that photograph shows. In it the row of the duty is drawn in
   grey and the other two in white; with Square Wave under the cursor the three are white.
 
+## Editing a value in the generator, and what the manual says, 2026-11-26
+
+The owner's account of changing the frequency on the unit: the blue key selects the
+waveform under the cursor; the blue key again goes to the frequency; the left and right
+arrows go to the digit, the up and down arrows change it; MENU leaves the frequency and
+goes straight back. `status` afterwards: index 16, 2 kHz, duty 50 %, 3.0 V (it had been
+1 kHz).
+
+FNIRSI's manual for the 2C53T (the four-language PDF on its site, read as text, where the
+keys are pictures without names) has, for the generator: a short press for back, a long
+one for the home page, a short one to confirm, a long one for run/stop, the up and down
+keys to choose the waveform, and then one key to enter its parameters, which the English
+text calls the centre key and the Chinese one the right arrow. For the multimeter: a long
+press for the home page, short presses for automatic measurement, for data hold and for
+AC/DC and diode/continuity, and two that move the selection left and right. It does not
+describe the home page. Which key each of those rows is cannot be told from the text.
+
+`fnlink.py keys` was written after this, so that a sequence of keys can be followed in
+one log instead of a `status` after each press.
+
 ## Not answered
 
 - What needs a write to the instrument's memory (the 20M limit; the per-channel "FFT" flag

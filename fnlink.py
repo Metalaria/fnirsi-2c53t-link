@@ -998,6 +998,114 @@ def arrows_text(value: int) -> str:
         ARROWS.get(value & 0x0F, "mode %d (unknown)" % (value & 0x0F)), ", acting on CH2" if value & 0x80 else "", value)
 
 
+# ---- keys: what the instrument's state does while its keys are pressed ------------------------
+# Nothing here presses a key: the tool reads a few small blocks of stock's RAM over and over and
+# prints what changed, so that someone working the instrument by hand gets the whole sequence in
+# one file. A line typed on the computer goes into the log as a note, between the changes.
+UI_ADDR, UI_LEN = 0x20001058, 16        # ms[0xF60..0xF6F]: language, sound, system mode (0xF68), the menus' cursors
+KEYS_METER_BYTES = (5, 6, 14, 20)       # menu entry, function, variant, HOLD: the rest of the meter state moves with the reading
+KEYS_BLOCKS = (("generator", GENERATOR_ADDR, GENERATOR_LEN, None, 0),
+               ("meter", METER_STATE_ADDR, METER_STATE_LEN, KEYS_METER_BYTES, 0),
+               ("ui", UI_ADDR, UI_LEN, None, 0xF60),
+               ("arrows", ARROWS_ADDR, 1, None, 0),
+               ("scope", SCOPE_STATE_ADDR, 56, None, 0))
+
+
+def keys_changes(name: str, old: bytes, new: bytes, only, base: int) -> list:
+    """[(offset as written, old byte, new byte)] of the bytes of one block that changed; `only`
+    limits it to some offsets, `base` is added to the offset written (the ui block is given as
+    offsets into stock's state structure)."""
+    return [(base + i, old[i], new[i]) for i in range(min(len(old), len(new)))
+            if old[i] != new[i] and (only is None or i in only)]
+
+
+def keys_line(now: float, name: str, changed: list, block: bytes) -> str:
+    """One line of the log for the changes of one block, with what the block says when it is known."""
+    text = " ".join("[%s] %02x>%02x" % ("0x%X" % o if o > 99 else str(o), a, b) for o, a, b in changed)
+    if name == "generator":
+        g = decode_generator(block)
+        text += "   %s (index %d), %s, duty %d %%, %.1f V" % (g["waveform"] or "?", g["waveform_index"],
+                                                             _eng(g["frequency_hz"], "Hz"), g["duty_percent"], g["amplitude_v"])
+    elif name == "ui" and any(o == 0xF68 for o, _, _ in changed):
+        text += "   system mode %d (%s)" % (block[8], MODES.get(block[8], "unknown"))
+    elif name == "arrows":
+        text += "   " + arrows_text(block[0])
+    return "%9.3f s  %-9s %s" % (now, name, text)
+
+
+def _typed_line():
+    """A line typed on the keyboard since the last call, without waiting; None when there is none."""
+    try:
+        import select
+        if select.select([sys.stdin], [], [], 0)[0]:
+            line = sys.stdin.readline()
+            return line.strip() if line else None
+    except (OSError, ValueError, ImportError):
+        pass
+    return None
+
+
+def cmd_keys(link: Link, args) -> int:
+    """Log every change of the generator's settings, the meter's menu bytes, the menus' cursors,
+    the arrows' mode and the scope state while the instrument is worked by hand."""
+    out = []
+
+    def say(line: str) -> None:
+        out.append(line)
+        print(line, flush=True)
+
+    def read_all() -> dict:
+        return {name: link.read(addr, length) for name, addr, length, _, _ in KEYS_BLOCKS}
+
+    say("keys      %s  %s" % (time.strftime("%Y-%m-%dT%H:%M:%S"), args.label))
+    last = read_all()
+    for name, addr, length, _, _ in KEYS_BLOCKS:
+        say("%08X  %3d  %s" % (addr, length, last[name].hex()))
+    say("            a line typed here and Enter is kept as a note; Ctrl-C ends")
+    start, polls = time.monotonic(), 0
+    try:
+        while not (args.polls and polls >= args.polls) and not (args.seconds and time.monotonic() - start >= args.seconds):
+            note = _typed_line()
+            if note:
+                say("%9.3f s  note      %s" % (time.monotonic() - start, note))
+            try:
+                now_blocks = read_all()
+            except (LinkError, OSError, ValueError) as e:
+                if not isinstance(link.t, HidTransport):
+                    raise
+                say("%9.3f s  link      lost (%s)" % (time.monotonic() - start, e))
+                while True:                              # the link goes away while the instrument changes mode
+                    time.sleep(0.5)
+                    try:
+                        try:
+                            link.t.close()
+                        except (OSError, ValueError):
+                            pass
+                        link.t = HidTransport()
+                        now_blocks = read_all()
+                        break
+                    except (LinkError, OSError, ValueError):
+                        continue
+                say("%9.3f s  link      back" % (time.monotonic() - start))
+            polls += 1
+            now = time.monotonic() - start
+            for name, _, _, only, base in KEYS_BLOCKS:
+                changed = keys_changes(name, last[name], now_blocks[name], only, base)
+                if changed:
+                    say(keys_line(now, name, changed, now_blocks[name]))
+            last = now_blocks
+            if args.interval:
+                time.sleep(args.interval)
+    except KeyboardInterrupt:
+        pass
+    say("end       %.1f s, %d reads of the five blocks" % (time.monotonic() - start, polls))
+    if args.out:
+        with args.out.open("a") as f:
+            f.write("\n".join(out) + "\n\n")
+        print("added to %s" % args.out)
+    return 0
+
+
 def status_lines(mode: int, meter: bytes, scope: bytes, measured: bytes, generator: bytes, arrows: int | None = None) -> list:
     """What `status` prints, from the four RAM blocks (and the arrow keys' mode, when given).
     Stock only updates a block in its own mode: the others show what was there when the instrument
@@ -1328,6 +1436,14 @@ def main(argv=None, transport=None) -> int:
     p.add_argument("--out", type=Path, help="add every change to this text file and print only the summary")
     p.add_argument("--allow-calibration", action="store_true", help="do not refuse the blocks that hold this unit's calibration")
     p.set_defaults(fn=cmd_watch)
+    p = sub.add_parser("keys", help="log what stock's state does while the instrument's keys are pressed by hand "
+                                    "(read-only); lines typed meanwhile are kept as notes")
+    p.add_argument("--label", default="", help="a word about what is being done, for the first line")
+    p.add_argument("--out", type=Path, help="add the log to this text file as well")
+    p.add_argument("--interval", type=float, default=0.05, help="seconds between reads (default 0.05)")
+    p.add_argument("--seconds", type=float, default=0, help="stop after this long (default: until Ctrl-C)")
+    p.add_argument("--polls", type=int, default=0, help="stop after this many reads")
+    p.set_defaults(fn=cmd_keys)
     p = sub.add_parser("dump-cal", help="save the 4 KB settings/calibration page (0x08006000)")
     p.add_argument("out", type=Path)
     p.set_defaults(fn=cmd_dump_cal)
