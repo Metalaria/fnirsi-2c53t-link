@@ -305,6 +305,24 @@ The square on the oscilloscope has a peak after each edge that settles onto the 
 (photograph: 10X probe, channel set to X1). Its table is exactly two values, so that shape
 is made after the DAC; an over-compensated probe draws it. Not pursued further.
 
+## Patch 6 with `--languages` on the unit
+
+The same image built with `--languages` as well (`cef60d62…51a5`, as in
+`reference/APP_2C53T_V1.2.0_link_patch6_menu_languages.json`), flashed over patch 6 (eighth
+update). It is the first time the language call has run on hardware.
+
+| | |
+|---|---|
+| `fnlink.py info` | protocol 1, patch 6, the five entries |
+| `fnlink.py verify` | MATCH (755576 bytes) |
+| Settings and calibration page | against the dump taken after patch 6: the calibration table is identical; 1 byte of settings differs and 207 in the scratch area after the table |
+| Settings > Language | OK on the second row steps through the languages; the instrument was left in Spanish and works in it |
+
+What it does not give is a list: the panel goes on showing its two rows, 中文 and English
+(by the code, neither is marked while a third language is in use), and the language is chosen
+by counting presses. The owner's verdict was that each language should have its own entry;
+`--language-menu` was written after this.
+
 ## Not answered
 
 - What needs a write to the instrument's memory (the 20M limit, the per-channel "FFT" flag)

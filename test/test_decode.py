@@ -566,6 +566,35 @@ for name, samples in (("101 samples", [0] * 101), ("a sample of 4095", [4095] * 
     check("wave refused before sending: " + name, refused and not rec.sent)
 
 # ---- the generator's menu (patch 5): what the builder accepts ----------------------------------
+# ---- tasks: FreeRTOS control blocks found in a block of RAM ----------------------------------
+def made_up_heap():
+    base = 0x20006000
+    block = bytearray(0x400)
+
+    def task(stack, size, name, priority, used_now, deepest):
+        tcb = stack + size + 8
+        struct.pack_into("<I", block, tcb - base, tcb - 8 - used_now)
+        struct.pack_into("<II", block, tcb - base + 0x2C, priority, stack)
+        block[tcb - base + 0x34:tcb - base + 0x34 + len(name)] = name
+        for a in range(tcb - 8 - deepest, tcb - 8):
+            block[a - base] = 0x5A
+        return tcb
+
+    task(0x20006010, 0x100, b"display", 1, 0x40, 0x90)
+    task(0x20006180, 0x80, b"key", 4, 0x30, 0x30)
+    struct.pack_into("<I", block, 0x300, 0x20006320)        # a pointer into the block that is no task
+    return base, bytes(block)
+
+
+heap_base, heap = made_up_heap()
+found = fnlink.find_tasks(heap, heap_base)
+check("tasks: both control blocks found and nothing else, with name, priority, stack and size",
+      [(t["name"], t["priority"], t["stack"], t["size"]) for t in found]
+      == [("display", 1, 0x20006010, 0x100), ("key", 4, 0x20006180, 0x80)], str(found))
+check("tasks: what is in use now and what was never reached",
+      [(t["in_use"], t["untouched"]) for t in found] == [(0x40, 0x100 - 0x90), (0x30, 0x80 - 0x30)], str(found))
+check("tasks: an empty block has none", fnlink.find_tasks(bytes(0x400), heap_base) == [])
+
 import build_link_image as builder  # noqa: E402
 
 menu = builder.parse_menu(["Triangle 25/75=triangle:25@2", "Gauss Pulse=gauss@12", "Sum=harmonics:1:1,3:0.33"], "USB Wave@0")

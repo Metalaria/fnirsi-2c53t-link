@@ -600,16 +600,15 @@ static void handle_request(uint32_t rx_len) {
  * may not be initialised yet -- hence the check of the magic before the copy is trusted. */
 uint32_t link_wave_build(void) {
     uint32_t index = GENERATOR_WAVEFORM;
-    uint32_t k, i, ampl;
+    uint32_t i, ampl;
     const uint16_t *src;
 
     if (index < STOCK_WAVEFORMS || index >= STOCK_WAVEFORMS + MENU_EXTRA) {
         return 0u;
     }
-    k = index - STOCK_WAVEFORMS;
 #if MENU_BAKED > 0
-    if (k < MENU_BAKED) {
-        src = menu_wave_data[k];
+    if (index - STOCK_WAVEFORMS < MENU_BAKED) {
+        src = menu_wave_data[index - STOCK_WAVEFORMS];
     } else
 #endif
     if (S->magic == LINK_MAGIC && S->user_valid == USER_WAVE_VALID) {

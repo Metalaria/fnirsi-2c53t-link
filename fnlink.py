@@ -744,6 +744,54 @@ def cmd_read(link: Link, args) -> int:
     return 0
 
 
+# ---- tasks: stock's FreeRTOS tasks and how much of each stack was ever used --------------------
+#
+# Stock V1.2.0 creates its tasks once, at start-up, from a heap that starts zeroed: each task's
+# stack is allocated just before its control block, and the part of a stack that was never
+# reached is still zero. Reading the heap therefore says how close each task has come to the
+# end of its stack since power-on, which is the question to ask after adding code that runs
+# in one of them.
+
+TASK_HEAP = (0x20006000, 0x2000)        # V1.2.0: every stack and control block is in here
+TCB_PRIORITY, TCB_STACK, TCB_NAME, TCB_NAME_LEN = 0x2C, 0x30, 0x34, 16
+HEAP_BLOCK_HEADER = 8                   # heap_4: between the end of the stack and the control block
+
+
+def find_tasks(block: bytes, base: int) -> list:
+    """The FreeRTOS control blocks in a block of RAM read at `base`: the saved top of stack
+    first, then, at fixed offsets, the priority, the start of the stack and the name."""
+    tasks = []
+    for off in range(0, len(block) - TCB_NAME - TCB_NAME_LEN, 4):
+        top, = struct.unpack_from("<I", block, off)
+        priority, stack = struct.unpack_from("<II", block, off + TCB_PRIORITY)
+        name = block[off + TCB_NAME:off + TCB_NAME + TCB_NAME_LEN]
+        text = name.split(b"\0")[0]
+        end = base + off - HEAP_BLOCK_HEADER
+        if not (base <= stack < top <= end and priority < 32 and len(text) >= 2
+                and all(0x20 < c < 0x7F for c in text) and len(text) < TCB_NAME_LEN):
+            continue
+        untouched = 0                   # zeros from the bottom up, but never into what is in use now
+        while stack + untouched < top and block[stack - base + untouched] == 0:
+            untouched += 1
+        tasks.append({"name": text.decode("ascii"), "priority": priority, "tcb": base + off, "stack": stack,
+                      "size": end - stack, "in_use": end - top, "untouched": untouched})
+    return tasks
+
+
+def cmd_tasks(link: Link, args) -> int:
+    base, length = TASK_HEAP
+    tasks = find_tasks(link.read(base, length), base)
+    if not tasks:
+        print("no task found in 0x%08X..0x%08X: not stock V1.2.0's heap?" % (base, base + length))
+        return 1
+    print("task          prio  stack at    size  in use now  deepest ever  never reached")
+    for t in tasks:
+        print("%-12s  %4d  0x%08X  %4d  %10d  %12d  %13d" % (
+            t["name"], t["priority"], t["stack"], t["size"], t["in_use"], t["size"] - t["untouched"], t["untouched"]))
+    print("bytes; 'never reached' counts the zeros left at the bottom of each stack since power-on")
+    return 0
+
+
 # ---- snapshot and watch: stock's RAM for someone else to read ---------------------------------
 #
 # Both exist to answer questions about stock that otherwise need a debug probe on an opened unit:
@@ -1201,6 +1249,8 @@ def main(argv=None, transport=None) -> int:
     p.add_argument("addr", type=lambda s: int(s, 0))
     p.add_argument("length", type=lambda s: int(s, 0))
     p.set_defaults(fn=cmd_read)
+    sub.add_parser("tasks", help="stock's tasks and how much of each stack was ever used since power-on (read-only)"
+                   ).set_defaults(fn=cmd_tasks)
     p = sub.add_parser("wave", help="store one period of a waveform in the signal generator's table (patch 4), or show the table")
     p.add_argument("shape", nargs="?", choices=WAVE_SHAPES, help="a built-in shape")
     p.add_argument("--file", type=Path, help="one period as numbers in a text or CSV file (any count from 2: resampled to 100, "

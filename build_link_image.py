@@ -66,6 +66,44 @@ LANGUAGE_FACTS = (
      "settings OK handler: adds r0, #1 and strb.w r0, [r5, #0xf60] after the call"),
 )
 
+# ---- Settings > Language with one entry per language (--language-menu) ----------------------
+# The first instruction of the Language case of stock's options routine, ldrb.w r0, [r3, #0xf69],
+# becomes `b.w link_stub_langpanel`; the stub's placeholder becomes `b.w LANGMENU_RESUME`, the
+# routine's own exit.
+LANGMENU_SITE = (0x0801CF7E, bytes.fromhex("93f8690f"), "link_stub_langpanel")
+LANGMENU_RESUME = 0x0801D28C
+# (address, stock value, new value, what): the last row the cursor reaches in the options of
+# the first setting
+LANGMENU_LIMIT = (0x0800B1D8, 0x01, 0x07, "last option of the Language setting")
+# The names shown, in the order of the language byte (1 Chinese ... 8 Korean): each language's
+# own. Stock's fonts have no glyph for the first character of the usual name of Japanese, so
+# that one is in hiragana.
+LANGMENU_NAMES = ("中文", "English", "Русский", "にほんご", "Español", "Português", "Deutsch", "한국어")
+# stock's five fonts: {height in px: address of the character map}; the map has a pointer to a
+# sorted list of 16-bit code points at +8 and their number at +16
+FONT_CMAPS = {16: 0x080819A8, 18: 0x0808C3CC, 20: 0x0809A194, 25: 0x080A1630, 28: 0x080BA1B8}
+LANGMENU_FACTS = (
+    (0x0801CF50, bytes.fromhex("2de9f04f8bb0"), "options routine: push {r4-r11, lr}; sub sp, #0x2c"),
+    (0x0801CF5E, bytes.fromhex("93f86a0f00f00f00062800f29081dfe810f00700"),
+     "options routine: seven cases on the settings row, the first at 0x0801CF7E"),
+    (0x0801D28C, bytes.fromhex("0bb0bde8f08f"), "options routine: add sp, #0x2c; pop {r4-r11, pc}"),
+    (0x0801D26E, bytes.fromhex("41f21412c2f20002"), "options routine: text with the font at 0x20001114"),
+    (0x0801D480, bytes.fromhex("48f250323e204ff03f0ec2f2"), "options routine: the band descriptor at 0x20008350"),
+    (0x0800ABC2, bytes.fromhex("96f86a1f0ff2106201f00f0196f86b0f515c884280f0ec82"),
+     "next-option key: stops at the byte of the table at 0x0800B1D8 for the settings row"),
+    (0x0800B1D8, bytes.fromhex("01010303000001"), "last option of each of the seven settings"),
+    (0x0800BECA, bytes.fromhex("95f86b0f42f66c56013042f65354c2f2000685f8600f"),
+     "settings OK handler: the language is the option under the cursor plus one"),
+    (0x0800F154, bytes.fromhex("2de9f04f93b0dde9"), "text routine: string and font at [sp], [sp, #4]"),
+    (0x08039F6C, bytes.fromhex("2de9f04385b00446"), "picture routine (path, x, y)"),
+    (0x0804C180, bytes.fromhex("738cffff5f05"), "menu colours: [1] white, [2] the cursor's"),
+    (0x080BC499, b"3:/System file/72.jpg\0", "picture: bar under the cursor"),
+    (0x080BC54A, b"3:/System file/75.jpg\0", "picture: mark, chosen, on the bar"),
+    (0x080BC5FC, b"3:/System file/78.jpg\0", "picture: mark, not chosen, on the bar"),
+    (0x080BC4F2, b"3:/System file/74.jpg\0", "picture: mark, chosen"),
+    (0x080BC5CF, b"3:/System file/77.jpg\0", "picture: mark, not chosen"),
+)
+
 # ---- entries added to the generator's menu (--menu-wave, --menu-usb-wave) -------------------
 STOCK_WAVEFORMS = 13
 MENU_MAX = 8
@@ -166,6 +204,47 @@ static const char * const menu_wave_name[MENU_EXTRA] = { %s };
        ", ".join(str(e["icon"]) for e in entries), ", ".join('"%s"' % e["label"] for e in entries)))
 
 
+def font_characters(stock: bytes, cmap: int) -> set:
+    """The code points one of stock's fonts has a glyph for."""
+    off = cmap - APP_BASE
+    listed, count = struct.unpack_from("<I", stock, off + 8)[0], struct.unpack_from("<H", stock, off + 16)[0]
+    return set(struct.unpack_from("<%dH" % count, stock, listed - APP_BASE))
+
+
+def check_language_names(stock: bytes) -> None:
+    """Stock's text routine ends a string at a character without a glyph: refuse such a name."""
+    for px, cmap in FONT_CMAPS.items():
+        have = font_characters(stock, cmap)
+        if len(have) < 500:
+            raise BuildError("the %d px font lists %d characters: not the font expected" % (px, len(have)))
+        for name in LANGMENU_NAMES:
+            missing = [c for c in name if ord(c) not in have]
+            if missing:
+                raise BuildError("language name %s: the %d px font has no %s" % (
+                    name, px, " ".join("U+%04X" % ord(c) for c in missing)))
+
+
+def language_header() -> str:
+    def literal(name):
+        out, escaped = "", False
+        for c in name:
+            if ord(c) < 0x80:
+                # a hex escape runs on through hex digits: close the literal before one
+                out += ('""' if escaped and c in "0123456789abcdefABCDEF" else "") + c
+                escaped = False
+            else:
+                out += "".join("\\x%02X" % b for b in c.encode("utf-8"))
+                escaped = True
+        return out
+    rows = "\n".join('    "%s",%s/* %s */' % (literal(n), " " * max(1, 44 - len(literal(n))), n) for n in LANGMENU_NAMES)
+    return ("""/* generated by build_link_image.py: the names of Settings > Language, UTF-8 */
+#define LANGUAGES %du
+static const char * const language_name[LANGUAGES] = {
+%s
+};
+""" % (len(LANGMENU_NAMES), rows))
+
+
 # Stock facts the cave depends on, as (address, expected bytes, what it is). Checked against
 # the image so a mismatch stops the build instead of producing a wrong patch.
 STOCK_FACTS = (
@@ -245,7 +324,7 @@ def dec_bw(src: int, code: bytes, link: bool = False) -> int:
 
 # --- the stock image ------------------------------------------------------------------------
 
-def validate_stock(stock: bytes, hooks, calls=(), menu=()) -> None:
+def validate_stock(stock: bytes, hooks, calls=(), menu=(), langmenu=False) -> None:
     got = sha256(stock)
     if got != STOCK_SHA256:
         raise BuildError("stock image sha256 is %s, not V1.2.0 (%s): refusing" % (got, STOCK_SHA256))
@@ -267,7 +346,17 @@ def validate_stock(stock: bytes, hooks, calls=(), menu=()) -> None:
         for addr, value, what in MENU_IMMEDIATES:
             if stock[addr - APP_BASE] != value:
                 raise BuildError("menu immediate %#010x (%s): found %#x, expected %#x" % (addr, what, stock[addr - APP_BASE], value))
-    for addr, want, what in STOCK_FACTS + (LANGUAGE_FACTS if calls else ()) + (MENU_FACTS if menu else ()):
+    if langmenu:
+        addr, orig, _ = LANGMENU_SITE
+        if stock[addr - APP_BASE:addr - APP_BASE + len(orig)] != orig:
+            raise BuildError("language menu site %#010x: found %s, expected %s" % (
+                addr, stock[addr - APP_BASE:addr - APP_BASE + len(orig)].hex(), orig.hex()))
+        addr, value, _, what = LANGMENU_LIMIT
+        if stock[addr - APP_BASE] != value:
+            raise BuildError("%#010x (%s): found %#x, expected %#x" % (addr, what, stock[addr - APP_BASE], value))
+        check_language_names(stock)
+    for addr, want, what in (STOCK_FACTS + (LANGUAGE_FACTS if calls else ()) + (MENU_FACTS if menu else ())
+                             + (LANGMENU_FACTS if langmenu else ())):
         off = addr - APP_BASE
         if stock[off:off + len(want)] != want:
             raise BuildError("stock fact failed at %#010x (%s): found %s" % (addr, what, stock[off:off + len(want)].hex()))
@@ -293,7 +382,7 @@ def run(cmd: list[str]) -> str:
     return r.stdout
 
 
-def build_cave(tools: dict[str, str], vid: int, pid: int, calls=(), menu=()) -> tuple[bytes, dict[str, int]]:
+def build_cave(tools: dict[str, str], vid: int, pid: int, calls=(), menu=(), langmenu=False) -> tuple[bytes, dict[str, int]]:
     with tempfile.TemporaryDirectory() as tmp:
         t = Path(tmp)
         defs = ["-DLINK_USB_VID=%#x" % vid, "-DLINK_USB_PID=%#x" % pid]
@@ -309,6 +398,11 @@ def build_cave(tools: dict[str, str], vid: int, pid: int, calls=(), menu=()) -> 
         if menu:                                        # ... and so are the menu's stubs
             run([tools["gcc"], *CFLAGS, "-c", str(HERE / "menu.S"), "-o", str(t / "menu.o")])
             objects.append(str(t / "menu.o"))
+        if langmenu:                                    # ... and the list of languages
+            (t / "language_names.h").write_text(language_header(), encoding="utf-8")
+            run([tools["gcc"], *CFLAGS, "-I", str(t), "-c", str(HERE / "langmenu.c"), "-o", str(t / "langmenu_c.o")])
+            run([tools["gcc"], *CFLAGS, "-c", str(HERE / "langmenu.S"), "-o", str(t / "langmenu_s.o")])
+            objects += [str(t / "langmenu_s.o"), str(t / "langmenu_c.o")]
         run([tools["ld"], "-T", str(HERE / "cave.ld"), "--gc-sections", "-o", str(t / "cave.elf"), *objects])
         run([tools["objcopy"], "-O", "binary", str(t / "cave.elf"), str(t / "cave.bin")])
         syms = {}
@@ -328,6 +422,12 @@ def build_cave(tools: dict[str, str], vid: int, pid: int, calls=(), menu=()) -> 
         if not 0 <= at <= len(cave) - 4 or cave[at:at + 4] != bytes.fromhex("aff30080"):
             raise BuildError("link_stub_wave_resume is not the nop.w placeholder")
         cave = cave[:at] + enc_bw(CAVE_ADDR + at, MENU_BUILDER_RESUME) + cave[at + 4:]
+    if langmenu:
+        needed += [LANGMENU_SITE[2], "link_stub_langpanel_resume", "link_language_panel"]
+        at = syms.get("link_stub_langpanel_resume", 0) - CAVE_ADDR
+        if not 0 <= at <= len(cave) - 4 or cave[at:at + 4] != bytes.fromhex("aff30080"):
+            raise BuildError("link_stub_langpanel_resume is not the nop.w placeholder")
+        cave = cave[:at] + enc_bw(CAVE_ADDR + at, LANGMENU_RESUME) + cave[at + 4:]
     for need in needed:
         if need not in syms:
             raise BuildError("symbol %s missing from the cave" % need)
@@ -338,7 +438,7 @@ def build_cave(tools: dict[str, str], vid: int, pid: int, calls=(), menu=()) -> 
 
 # --- assembling and self-checking the image -------------------------------------------------
 
-def assemble(stock: bytes, cave: bytes, syms: dict[str, int], hooks, calls=(), menu=()) -> bytes:
+def assemble(stock: bytes, cave: bytes, syms: dict[str, int], hooks, calls=(), menu=(), langmenu=False) -> bytes:
     img = bytearray(stock)
     for addr, orig, stub, _ in hooks:
         off = addr - APP_BASE
@@ -358,12 +458,16 @@ def assemble(stock: bytes, cave: bytes, syms: dict[str, int], hooks, calls=(), m
             img[addr - APP_BASE:addr - APP_BASE + 4] = enc_bl(addr, syms[stub])
         for addr, value, _ in MENU_IMMEDIATES:
             img[addr - APP_BASE] = value + len(menu)
+    if langmenu:
+        addr, _, stub = LANGMENU_SITE
+        img[addr - APP_BASE:addr - APP_BASE + 4] = enc_bw(addr, syms[stub])
+        img[LANGMENU_LIMIT[0] - APP_BASE] = LANGMENU_LIMIT[2]
     img += b"\xff" * (CAVE_ADDR - APP_BASE - len(img))
     img += cave
     return bytes(img)
 
 
-def self_check(stock: bytes, image: bytes, cave: bytes, syms: dict[str, int], hooks, calls=(), menu=()) -> list[int]:
+def self_check(stock: bytes, image: bytes, cave: bytes, syms: dict[str, int], hooks, calls=(), menu=(), langmenu=False) -> list[int]:
     if image[CAVE_ADDR - APP_BASE:] != cave:
         raise BuildError("cave bytes are not where they should be")
     if set(image[len(stock):CAVE_ADDR - APP_BASE]) - {0xFF}:
@@ -374,6 +478,8 @@ def self_check(stock: bytes, image: bytes, cave: bytes, syms: dict[str, int], ho
     if menu:
         allowed |= {addr + i for addr, orig, _ in (MENU_BUILDER,) + MENU_CALLS for i in range(len(orig))}
         allowed |= {addr for addr, _, _ in MENU_IMMEDIATES}
+    if langmenu:
+        allowed |= {LANGMENU_SITE[0] + i for i in range(4)} | {LANGMENU_LIMIT[0]}
     stray = [a for a in diff if a not in allowed]
     if not diff or stray:
         raise BuildError("bytes changed outside the hooks: %s" % ", ".join("%#x" % a for a in stray[:8]))
@@ -403,6 +509,18 @@ def self_check(stock: bytes, image: bytes, cave: bytes, syms: dict[str, int], ho
         for addr, value, what in MENU_IMMEDIATES:
             if image[addr - APP_BASE] != value + len(menu) or image[addr - APP_BASE + 1] != stock[addr - APP_BASE + 1]:
                 raise BuildError("menu immediate %#010x (%s) is not %#x" % (addr, what, value + len(menu)))
+    if langmenu:
+        addr, _, stub = LANGMENU_SITE
+        if dec_bw(addr, image[addr - APP_BASE:addr - APP_BASE + 4]) != syms[stub]:
+            raise BuildError("the Language case does not branch to %s" % stub)
+        back = syms["link_stub_langpanel_resume"]
+        if dec_bw(back, image[back - APP_BASE:back - APP_BASE + 4]) != LANGMENU_RESUME:
+            raise BuildError("the language stub does not leave through %#x" % LANGMENU_RESUME)
+        if image[LANGMENU_LIMIT[0] - APP_BASE] != LANGMENU_LIMIT[2]:
+            raise BuildError("the last option of the Language setting is not %d" % LANGMENU_LIMIT[2])
+        for name in LANGMENU_NAMES:
+            if name.encode("utf-8") + b"\0" not in cave:
+                raise BuildError("language name %s is not in the cave" % name)
     return diff
 
 
@@ -418,6 +536,9 @@ def main() -> int:
     ap.add_argument("--languages", action="store_true",
                     help="also make the six languages stock still carries selectable again: OK on the "
                          "second row of Settings > Language steps through them (4 more stock bytes changed)")
+    ap.add_argument("--language-menu", action="store_true",
+                    help="Settings > Language lists the eight languages stock still carries, one entry each, "
+                         "in two pages of four (5 stock bytes changed). Instead of --languages")
     ap.add_argument("--menu-wave", action="append", metavar="LABEL=SHAPE[:ARG][@ICON]",
                     help="add an entry to the generator's own list of waveforms, after stock's thirteen (repeatable). "
                          "SHAPE is one of fnlink.py's (pulse:25 and triangle:25 take a duty, harmonics:1:1,3:0.33 a list) or a "
@@ -428,13 +549,16 @@ def main() -> int:
     args = ap.parse_args()
     hooks = HOOKS[:1] if args.without_scope_hook else HOOKS
     calls = LANGUAGE_CALLS if args.languages else ()
+    langmenu = args.language_menu
     try:
+        if langmenu and calls:
+            raise BuildError("--language-menu and --languages are two ways of choosing the language: give one")
         menu = parse_menu(args.menu_wave, args.menu_usb_wave)
         stock = args.stock.read_bytes()
-        validate_stock(stock, hooks, calls, menu)
-        cave, syms = build_cave(find_tools(), args.vid, args.pid, calls, menu)
-        image = assemble(stock, cave, syms, hooks, calls, menu)
-        diff = self_check(stock, image, cave, syms, hooks, calls, menu)
+        validate_stock(stock, hooks, calls, menu, langmenu)
+        cave, syms = build_cave(find_tools(), args.vid, args.pid, calls, menu, langmenu)
+        image = assemble(stock, cave, syms, hooks, calls, menu, langmenu)
+        diff = self_check(stock, image, cave, syms, hooks, calls, menu, langmenu)
     except (BuildError, OSError) as e:
         print("error: %s" % e, file=sys.stderr)
         return 1
@@ -451,14 +575,18 @@ def main() -> int:
         "menu": [{"index": e["index"], "label": e["label"], "icon": e["icon"], "source": e["source"]} for e in menu],
         "menu_sites": (["%#010x" % MENU_BUILDER[0]] + ["%#010x" % c[0] for c in MENU_CALLS]
                        + ["%#010x" % i[0] for i in MENU_IMMEDIATES]) if menu else [],
+        "language_menu": list(LANGMENU_NAMES) if langmenu else [],
+        "language_menu_sites": ["%#010x" % LANGMENU_SITE[0], "%#010x" % LANGMENU_LIMIT[0]] if langmenu else [],
         "changed_stock_bytes": ["%#010x" % a for a in diff],
         "usb_vid_pid": "%04x:%04x" % (args.vid, args.pid),
         "symbols": {k: "%#010x" % v for k, v in sorted(syms.items())},
     }
-    args.out.with_suffix(".json").write_text(json.dumps(manifest, indent=2) + "\n")
+    args.out.with_suffix(".json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print("stock   %s (%d bytes)" % (STOCK_SHA256, len(stock)))
     print("cave    %d bytes at %#010x (limit %d)" % (len(cave), CAVE_ADDR, CAVE_MAX))
     print("hooks   %s: %d stock bytes changed" % (", ".join("%#010x" % h[0] for h in hooks + calls), len(diff)))
+    if langmenu:
+        print("language %s" % ", ".join(LANGMENU_NAMES))
     for e in menu:
         print("menu    %d %-17s %s, picture of waveform %d" % (e["index"], e["label"], e["source"], e["icon"]))
     print("image   %s (%d bytes) -> %s" % (manifest["image_sha256"], len(image), args.out))
