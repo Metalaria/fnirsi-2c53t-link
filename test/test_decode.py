@@ -604,6 +604,20 @@ check("texts: placed after the code, one copy of each, NUL-terminated, the cave 
       with_texts == b"\x70\x47" * 5 + "Tensión continua".encode("utf-8") + b"\0Diodo\0" + b"\0" * 2
       and [t["at"] - builder.CAVE_ADDR for t in placed] == [10, 28, 10], str(placed))
 
+# ---- --menu-names: a C literal for a name that is not ASCII -------------------------------------
+check("menu names: non-ASCII as hex escapes, and the literal closed before a hex digit that follows one",
+      builder.c_literal("R\u00e1faga de 10") == "R\\xC3\\xA1\"\"faga de 10" and builder.c_literal("Onda USB") == "Onda USB"
+      and builder.c_literal("a\u00f1o") == "a\\xC3\\xB1o", builder.c_literal("R\u00e1faga de 10"))
+named = builder.parse_menu(["Gauss Pulse=gauss@12"], "USB Wave@0")
+builder.parse_menu_names([], named, b"")
+check("menu names: none given, no entry has any and the header is as before",
+      all(not e.get("names") for e in named) and "MENU_TRANSLATED" not in builder.menu_header(named))
+named[0]["names"] = {"es": "Campana de Gauss"}
+named[1]["names"] = {}
+header = builder.menu_header(named)
+check("menu names: the header has a row of pointers for each of the eight languages, null where there is no name",
+      "#define MENU_TRANSLATED 1" in header and header.count("{ 0, 0 }") == 7 and '{ "Campana de Gauss", 0 }' in header, header[-400:])
+
 menu = builder.parse_menu(["Triangle 25/75=triangle:25@2", "Gauss Pulse=gauss@12", "Sum=harmonics:1:1,3:0.33"], "USB Wave@0")
 check("menu: entries take the indexes after stock's thirteen, in order, the USB one last",
       [(m["index"], m["label"], m["icon"], m["source"]) for m in menu] == [

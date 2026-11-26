@@ -364,6 +364,49 @@ a word one pixel wider than its box (see `stock_v120_notes.md`), the second a tr
 cut short by its author. `texts/es.txt` has since gained that label and six waveform
 names; that image has not been flashed.
 
+## The thirteen texts on the unit, 2026-11-26
+
+The image built from `texts/es.txt` with its thirteen texts (`4e7de994…7097`, 756236 bytes,
+as in `reference/APP_2C53T_V1.2.0_link_patch6_menu_langmenu_es.json` at that commit),
+flashed over the one above (eleventh update).
+
+| | |
+|---|---|
+| `fnlink.py info` | protocol 1, patch 6, the five entries |
+| `fnlink.py verify` | MATCH (756236 bytes) |
+| Settings and calibration page | against the dump taken after the image above: the calibration table is identical; 1 byte of settings and 103 of the scratch area differ |
+| The generator in Spanish | the owner's only remark is that an added entry still says "Gauss Pulse" |
+| An added entry and power-off | the step was: select Gauss Pulse, switch off and on. `wave --show` then says `Gauss Pulse, 1000 Hz, amplitude 3.0 V` and draws the bell (20 to 3741) |
+| The square that did not look square (patch 6, above) | it was the probe: with its compensation adjusted the square is square on the instrument; the table reads 20 to 3742, two levels |
+
+The added entries have one name each, whatever the language, because that is all the
+builder took. `--menu-names` was written after this; the fonts turned out to have á, í, ó,
+ñ and ü but no é or ú.
+
+## The trigger edge and the slow time bases, 2026-11-26
+
+Captures in
+[`sessions/2026-11-26_trigger_edge_slow_time_bases/`](../sessions/2026-11-26_trigger_edge_slow_time_bases/README.md).
+
+**The trigger edge is not where the snapshots looked.** This time the edge did change: in
+the snapshot taken with the falling edge the drawn arrays are in the opposite phase and
+stock's positive and negative measurements have changed places, and in the third
+both are back. Of the 3796 bytes read, 385 are the same in the first and third snapshots
+and different in the second. All but one are samples, drawn points and those measurements
+(the positive and negative duty and width, 49.60 and 50.40 %, 4.96 and 5.04 ms). The one is `ms[0xDB8]` (4, 12, 4), and the code says it is not the edge: a
+16-bit counter that `0x0804067E` increments and the `fpga` task compares with a value from
+the time base and zeroes (`0x0803E55A`, `0x0803FF76`). So the edge is in neither block. What
+was not read is `ms[0x00..0x37]`, left out because the session of the 25th had found nothing
+else changing there, when the edge had not in fact been switched, and the calibration
+tables. OpenScope's `STATE_STRUCTURE.md` has it at `ms[0x18]`, 0 rising and 1 falling; the
+`status` lines of this session, taken with the rising edge, show 0 there. A `status` with
+the falling edge is still to be taken.
+
+**5 and 20 ms per division.** With the generator's square wave at 100 Hz, `fnlink.py scope`
+gets 100 Hz from each of the two records saved at 5 ms and at 20 ms per division, so 25
+samples to a division holds there as well (at 20 ms a period is 12.5 samples). Stock's own
+measurement says 100 Hz at 5 ms and 104 Hz at 20 ms.
+
 ## Not answered
 
 - What needs a write to the instrument's memory (the 20M limit, the per-channel "FFT" flag)

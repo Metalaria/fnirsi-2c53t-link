@@ -632,6 +632,14 @@ uint32_t link_wave_name(uint32_t at) {
     uint32_t first = STOCK_WAVE_NAMES + STOCK_NAMES_STRIDE * language + STOCK_NAMES_STRIDE;
 
     if (language >= 1u && language <= 8u && at >= first && at < first + 4u * MENU_EXTRA && ((at - first) & 3u) == 0u) {
+#ifdef MENU_TRANSLATED
+        /* a name of its own in this language (build_link_image.py --menu-names), or the label */
+        const char *own = menu_wave_name_in[language - 1u][(at - first) / 4u];
+
+        if (own != 0) {
+            return (uint32_t)own;
+        }
+#endif
         return (uint32_t)menu_wave_name[(at - first) / 4u];
     }
     return *(const uint32_t *)(at - STOCK_NAMES_STRIDE);

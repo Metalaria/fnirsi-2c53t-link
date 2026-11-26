@@ -1110,8 +1110,10 @@ def main() -> int:
             return mu
 
         def cstring(at):
-            raw = image[at - 0x08007000:at - 0x08007000 + 40]
-            return raw.split(b"\0", 1)[0].decode("ascii", "replace")
+            raw = image[at - 0x08007000:at - 0x08007000 + 100]
+            return raw.split(b"\0", 1)[0].decode("utf-8", "replace")
+
+        CODES = ("zh", "en", "ru", "ja", "es", "pt", "de", "ko")         # --menu-names: a name of its own in a language
 
         differ, rows_wrong, not_returned = [], [], []
         renamed = {int(t["slot"], 16): int(t["at"], 16) for t in manifest.get("texts", [])}     # --texts, below
@@ -1128,7 +1130,7 @@ def main() -> int:
                     if row < 13:
                         if got[k] != renamed.get(0x0804C61C + 52 * (language - 1) + 4 * row, ref[k]):
                             differ.append((language, row))
-                    elif cstring(got[k]) != menu[row - 13]["label"]:
+                    elif cstring(got[k]) != menu[row - 13].get("names", {}).get(CODES[language - 1], menu[row - 13]["label"]):
                         rows_wrong.append((language, row, cstring(got[k])))
         check("menu: stock's list returns and asks for six names in every language and at every scroll position", not not_returned, str(not_returned[:4]))
         check("menu: rows 1 to 13 get exactly the name stock gives them (or the one --texts puts in its slot), in all eight languages",
@@ -1546,6 +1548,11 @@ def main() -> int:
     check("stock's text routine: a word one pixel too wide (55 in 54) loses its last letter to a line below the box, as on the unit",
           builder.text_width(stock, 18, "Amplitud") == 55 and any(y >= TEXT_Y + 22 for _, y in spill)
           and not any(y >= TEXT_Y + 22 for _, y in draw("Amplit.", 18, 54, 22)[1]))
+    own_names = sorted({name for e in manifest.get("menu", []) for name in e.get("names", {}).values()})
+    if own_names:
+        drawn = [(name, whole(name, 18, 100, 36)) for name in own_names]
+        check("menu names: stock's own routine draws each of the %d names given for a language whole, inside a row of the list" % len(own_names),
+              all(ok for _, (ok, _) in drawn), str([(name, why) for name, (ok, why) in drawn if not ok][:3]))
     if texts:
         bad = []
         for t in texts:

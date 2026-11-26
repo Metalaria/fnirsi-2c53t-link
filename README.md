@@ -14,7 +14,8 @@ that can stream what it measures.
 | Generator (patch 4): any waveform of 100 samples, played by stock's own generator | yes |
 | Languages (`--languages`): the six that stock still carries but no longer offers, by pressing OK on the second row | yes |
 | Languages (`--language-menu`): the same eight as entries of Settings > Language, one each | yes |
-| Texts (`--texts`): Spanish texts that stock cuts or mistranslates | the multimeter's six titles yes; the generator's seven emulated only |
+| Texts (`--texts`): Spanish texts that stock cuts or mistranslates | yes: the thirteen of `texts/es.txt` |
+| Names of the added menu entries in a language (`--menu-names`) | emulated only |
 | Menu (patch 5, `--menu-wave`): waveforms added to the generator's own list, chosen on the instrument | yes |
 
 **Status: runs on one unit.** On 2026-11-23 both images were flashed on a retail 2C53T
@@ -71,7 +72,9 @@ multimeter's title for the voltages and the currents is too long for its box and
 before the word that tells DC from AC. `--texts` replaces such texts: with the six titles
 of `texts/es.txt` as it was then, the image was flashed the same morning, reads back as
 built, and the titles are whole on the unit. The generator's label and names added to
-that file since have not been flashed.
+that file since were flashed later that morning, with the same checks; the owner's one
+remark was that the added entries were still in English, which is what `--menu-names` is
+for.
 
 > **One unit is not a guarantee.** The board revision of that unit is unknown and nothing
 > has been tried on another. If you flash this, read [Safety](#safety) first and keep the
@@ -210,6 +213,20 @@ python3 build_link_image.py --stock APP_2C53T_V1.2.0_251015.bin --out APP_2C53T_
 
 A shape is one of `fnlink.py wave`'s (`pulse:25` and `triangle:25` take a duty,
 `harmonics:1:1,3:0.33` a list) or a text or CSV file with one period. Up to eight entries.
+
+An entry's label is what the list shows in every language, and what `INFO` reports. To
+give the entries a name of their own in one language, add `--menu-names` with the
+language's code (`zh en ru ja es pt de ko`) and one name per entry, in order, an empty one
+to keep the label:
+
+```bash
+    --menu-names "es=Triangular 25/75|Campana de Gauss|Ráfaga de 10 ciclos|Portadora modulada (AM)|Onda USB"
+```
+
+The builder checks each name against the 18 px font and the row of the list (100 x 36: two
+lines at most, broken at a space) as it does the texts above. Stock's fonts have á, í, ó, ñ
+and ü, but no é or ú: a name with one of those is refused, because the routine would stop
+the text there.
 Without any of these options the image has the link and nothing else. `--without-scope-hook` leaves the `fpga` task untouched (the SysTick hook is then the only
 change, the same site OpenScope's stock_caplog uses on hardware). That image still offers
 the link, memory read and the meter stream, and is the one to flash first.
@@ -220,7 +237,7 @@ stock facts the cave relies on, and re-reads its own output. With Ubuntu 24.04's
 has been on hardware, `*_patch4*.json` for patch 4 with and without `--languages`, and
 `*_patch5*.json` for patch 5 without options and with five menu entries (`AM 80%=am@10` there),
 and `*_patch6*.json` for patch 6: without options, with the example above, with it and
-`--languages`, with it and `--language-menu`, with those two and `--texts texts/es.txt`, and
+`--languages`, with it and `--language-menu`, with those two, `--texts texts/es.txt` and the `--menu-names` line above (`*_es.json`), and
 with `--language-menu` alone.
 
 No patched image is distributed: it contains FNIRSI's firmware.

@@ -1,10 +1,10 @@
 {
   "stock_sha256": "a17c5c35c97bb898f15672a1747bc1041d8ed507c16999ddba0d1e4e2ec0c760",
-  "image_sha256": "4e7de994c8e8665cccb2b3f1e737b3e100b565a8eb86ac7ea0e91fc7270e7097",
-  "image_len": 756236,
+  "image_sha256": "3cc7e0c816ccee76c2c88456d230671de4e37717b59c39efbd96a94f27505308",
+  "image_len": 756504,
   "cave_addr": "0x080be700",
-  "cave_len": 4876,
-  "cave_sha256": "f25b6bad57f3e17f5b14b5390b808c98b95381924c8b30283dd2c4e0f4ae6750",
+  "cave_len": 5144,
+  "cave_sha256": "b52a0046be8ef92f9fd9f6ded4fe09aa81535cfe6d6c37926ab55b146b86711c",
   "hooks": [
     "0x0802a994",
     "0x0803e49a"
@@ -15,31 +15,46 @@
       "index": 13,
       "label": "Triangle 25/75",
       "icon": 2,
-      "source": "triangle:25"
+      "source": "triangle:25",
+      "names": {
+        "es": "Triangular 25/75"
+      }
     },
     {
       "index": 14,
       "label": "Gauss Pulse",
       "icon": 12,
-      "source": "gauss"
+      "source": "gauss",
+      "names": {
+        "es": "Campana de Gauss"
+      }
     },
     {
       "index": 15,
       "label": "Burst 10",
       "icon": 10,
-      "source": "burst"
+      "source": "burst",
+      "names": {
+        "es": "Ráfaga de 10 ciclos"
+      }
     },
     {
       "index": 16,
       "label": "AM 80%",
       "icon": 11,
-      "source": "am"
+      "source": "am",
+      "names": {
+        "es": "Portadora modulada (AM)"
+      }
     },
     {
       "index": 17,
       "label": "USB Wave",
       "icon": 0,
-      "source": "usb"
+      "source": "usb",
+      "names": {
+        "es": "Onda USB"
+      }
     }
   ],
   "menu_sites": [
@@ -81,7 +96,7 @@
     {
       "slot": "0x0804c500",
       "was": "0x080bbf63",
-      "at": "0x080bf93c",
+      "at": "0x080bfa48",
       "font": 28,
       "box": [
         216,
@@ -95,7 +110,7 @@
     {
       "slot": "0x0804c504",
       "was": "0x080bbed1",
-      "at": "0x080bf94e",
+      "at": "0x080bfa5a",
       "font": 28,
       "box": [
         216,
@@ -109,7 +124,7 @@
     {
       "slot": "0x0804c51c",
       "was": "0x080bbf99",
-      "at": "0x080bf95f",
+      "at": "0x080bfa6b",
       "font": 28,
       "box": [
         216,
@@ -123,7 +138,7 @@
     {
       "slot": "0x0804c520",
       "was": "0x080bbf05",
-      "at": "0x080bf971",
+      "at": "0x080bfa7d",
       "font": 28,
       "box": [
         216,
@@ -137,7 +152,7 @@
     {
       "slot": "0x0804c524",
       "was": "0x080bbf81",
-      "at": "0x080bf983",
+      "at": "0x080bfa8f",
       "font": 28,
       "box": [
         216,
@@ -151,7 +166,7 @@
     {
       "slot": "0x0804c528",
       "was": "0x080bbeee",
-      "at": "0x080bf994",
+      "at": "0x080bfaa0",
       "font": 28,
       "box": [
         216,
@@ -165,7 +180,7 @@
     {
       "slot": "0x0804c5f4",
       "was": "0x080bc085",
-      "at": "0x080bf9a5",
+      "at": "0x080bfab1",
       "font": 18,
       "box": [
         54,
@@ -179,7 +194,7 @@
     {
       "slot": "0x0804c6f4",
       "was": "0x080bc29f",
-      "at": "0x080bf9ad",
+      "at": "0x080bfab9",
       "font": 18,
       "box": [
         100,
@@ -193,7 +208,7 @@
     {
       "slot": "0x0804c700",
       "was": "0x080bca5f",
-      "at": "0x080bf9be",
+      "at": "0x080bfaca",
       "font": 18,
       "box": [
         100,
@@ -207,7 +222,7 @@
     {
       "slot": "0x0804c704",
       "was": "0x080bca6c",
-      "at": "0x080bf9c7",
+      "at": "0x080bfad3",
       "font": 18,
       "box": [
         100,
@@ -221,7 +236,7 @@
     {
       "slot": "0x0804c708",
       "was": "0x080bbd34",
-      "at": "0x080bf9d8",
+      "at": "0x080bfae4",
       "font": 18,
       "box": [
         100,
@@ -236,7 +251,7 @@
     {
       "slot": "0x0804c70c",
       "was": "0x080bc6f2",
-      "at": "0x080bf9eb",
+      "at": "0x080bfaf7",
       "font": 18,
       "box": [
         100,
@@ -251,7 +266,7 @@
     {
       "slot": "0x0804c718",
       "was": "0x080bc6c9",
-      "at": "0x080bf9fe",
+      "at": "0x080bfb0a",
       "font": 18,
       "box": [
         100,
@@ -359,33 +374,33 @@
   "symbols": {
     "arm_rx": "0x080be81c",
     "clear_report": "0x080be7c2",
-    "config_desc": "0x080bf518",
+    "config_desc": "0x080bf584",
     "copy_bytes": "0x080be7b0",
     "ctrl_send": "0x080be860",
     "ctrl_stall": "0x080be898",
-    "d_config": "0x080bf4dc",
-    "d_device": "0x080bf4d4",
-    "d_lang": "0x080bf4e4",
-    "d_manufacturer": "0x080bf4ec",
-    "d_product": "0x080bf4f4",
-    "device_desc": "0x080bf908",
-    "fill_row": "0x080bf2f0",
+    "d_config": "0x080bf548",
+    "d_device": "0x080bf540",
+    "d_lang": "0x080bf550",
+    "d_manufacturer": "0x080bf558",
+    "d_product": "0x080bf560",
+    "device_desc": "0x080bfa14",
+    "fill_row": "0x080bf304",
     "get_config": "0x080be788",
     "get_device": "0x080be780",
     "get_lang": "0x080be790",
     "get_manufacturer": "0x080be798",
     "get_none": "0x080be7a8",
     "get_product": "0x080be7a0",
-    "lang_desc": "0x080bf904",
-    "language_name": "0x080bf91c",
-    "link_class_table": "0x080bf880",
+    "lang_desc": "0x080bfa10",
+    "language_name": "0x080bfa28",
+    "link_class_table": "0x080bf98c",
     "link_clear": "0x080be8f0",
-    "link_desc_table": "0x080bf8a8",
+    "link_desc_table": "0x080bf9b4",
     "link_ept0": "0x080be908",
-    "link_fpga_tail": "0x080bf144",
+    "link_fpga_tail": "0x080bf158",
     "link_in": "0x080bec9c",
     "link_init": "0x080be95c",
-    "link_language_panel": "0x080bf364",
+    "link_language_panel": "0x080bf378",
     "link_out": "0x080bedc0",
     "link_setup": "0x080be99c",
     "link_sof": "0x080becc0",
@@ -398,18 +413,19 @@
     "link_stub_tick": "0x080be700",
     "link_stub_wave": "0x080be72c",
     "link_stub_wave_resume": "0x080be740",
-    "link_tick": "0x080bf1d8",
+    "link_tick": "0x080bf1ec",
     "link_wave_build": "0x080bf044",
-    "link_wave_icon": "0x080bf124",
+    "link_wave_icon": "0x080bf138",
     "link_wave_name": "0x080bf0d4",
-    "manufacturer_desc": "0x080bf8f4",
-    "menu_wave_data": "0x080bf558",
-    "menu_wave_icon": "0x080bf878",
-    "menu_wave_name": "0x080bf544",
-    "product_desc": "0x080bf8d0",
+    "manufacturer_desc": "0x080bfa00",
+    "menu_wave_data": "0x080bf5c4",
+    "menu_wave_icon": "0x080bf984",
+    "menu_wave_name": "0x080bf5b0",
+    "menu_wave_name_in": "0x080bf8e4",
+    "product_desc": "0x080bf9dc",
     "pump": "0x080bea20",
     "put32": "0x080be7ac",
-    "report_desc": "0x080bf4fc",
+    "report_desc": "0x080bf568",
     "state_check": "0x080be92c",
     "stream_reset": "0x080be7d4",
     "usb_connected": "0x080be90c"
