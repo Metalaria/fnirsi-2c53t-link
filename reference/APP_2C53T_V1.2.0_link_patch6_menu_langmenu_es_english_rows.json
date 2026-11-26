@@ -1,10 +1,10 @@
 {
   "stock_sha256": "a17c5c35c97bb898f15672a1747bc1041d8ed507c16999ddba0d1e4e2ec0c760",
-  "image_sha256": "537feee8860186a926b0ebaf04bec107fd2638279e037235f4ef1032c9e50b09",
-  "image_len": 756620,
+  "image_sha256": "98b5d1b7eb6058c619a99da3198689ce1392433e7e94f7e190a15564c9a0f2d9",
+  "image_len": 756668,
   "cave_addr": "0x080be700",
-  "cave_len": 5260,
-  "cave_sha256": "5f35d514f24e04551766c93b3168eea01d4d4b88b299ee0edaa4afbcc1433df6",
+  "cave_len": 5308,
+  "cave_sha256": "5229e2f56e4a4b00ef63bdb5039de0b30eec7acecbfa3249700101395d3b1477",
   "hooks": [
     "0x0802a994",
     "0x0803e49a"
@@ -278,9 +278,54 @@
       "text": "Pulso sinc"
     },
     {
+      "slot": "0x0804c890",
+      "was": "0x080bb933",
+      "at": "0x080bfb15",
+      "font": 18,
+      "box": [
+        76,
+        36
+      ],
+      "lines": [
+        "Ajustes de ",
+        "CH1"
+      ],
+      "text": "Ajustes de CH1"
+    },
+    {
+      "slot": "0x0804c894",
+      "was": "0x080bb983",
+      "at": "0x080bfb24",
+      "font": 18,
+      "box": [
+        76,
+        36
+      ],
+      "lines": [
+        "Ajustes de ",
+        "CH2"
+      ],
+      "text": "Ajustes de CH2"
+    },
+    {
+      "slot": "0x0804c898",
+      "was": "0x080bca39",
+      "at": "0x080bfb33",
+      "font": 18,
+      "box": [
+        76,
+        36
+      ],
+      "lines": [
+        "Ajustes de ",
+        "disparo"
+      ],
+      "text": "Ajustes de disparo"
+    },
+    {
       "slot": "0x080141ac",
       "was": "0x080bba5a",
-      "at": "0x080bfb15",
+      "at": "0x080bfb46",
       "font": 18,
       "box": [
         100,
@@ -294,7 +339,7 @@
     {
       "slot": "0x080141b0",
       "was": "0x080bba2a",
-      "at": "0x080bfb1c",
+      "at": "0x080bfb4d",
       "font": 18,
       "box": [
         100,
@@ -308,7 +353,7 @@
     {
       "slot": "0x080141b4",
       "was": "0x080bba3d",
-      "at": "0x080bfb23",
+      "at": "0x080bfb54",
       "font": 18,
       "box": [
         100,
@@ -322,7 +367,7 @@
     {
       "slot": "0x0804c7d8",
       "was": "0x080bba31",
-      "at": "0x080bfb31",
+      "at": "0x080bfb62",
       "font": 18,
       "box": [
         100,
@@ -336,7 +381,7 @@
     {
       "slot": "0x0804c7dc",
       "was": "0x080bba37",
-      "at": "0x080bfb37",
+      "at": "0x080bfb68",
       "font": 18,
       "box": [
         100,
@@ -350,7 +395,7 @@
     {
       "slot": "0x0804c7e0",
       "was": "0x080bba5a",
-      "at": "0x080bfb15",
+      "at": "0x080bfb46",
       "font": 18,
       "box": [
         100,
@@ -364,7 +409,7 @@
     {
       "slot": "0x0804c7f8",
       "was": "0x080bc184",
-      "at": "0x080bfb3f",
+      "at": "0x080bfb70",
       "font": 18,
       "box": [
         66,
@@ -378,7 +423,7 @@
     {
       "slot": "0x0804c3e8",
       "was": "0x080bbc4c",
-      "at": "0x080bfb46",
+      "at": "0x080bfb77",
       "font": 20,
       "box": [
         100,
@@ -392,7 +437,7 @@
     {
       "slot": "0x0804bf28",
       "was": "0x080bbaa0",
-      "at": "0x080bfb4c",
+      "at": "0x080bfb7d",
       "font": 15,
       "box": [
         36,
@@ -406,7 +451,7 @@
     {
       "slot": "0x0804bf2c",
       "was": "0x080bba4c",
-      "at": "0x080bfb52",
+      "at": "0x080bfb83",
       "font": 15,
       "box": [
         36,
@@ -420,7 +465,7 @@
     {
       "slot": "0x0804bf30",
       "was": "0x080bb9f8",
-      "at": "0x080bfb57",
+      "at": "0x080bfb88",
       "font": 15,
       "box": [
         36,
@@ -434,7 +479,7 @@
     {
       "slot": "0x0804bf34",
       "was": "0x080bba05",
-      "at": "0x080bfb5f",
+      "at": "0x080bfb90",
       "font": 15,
       "box": [
         36,
@@ -448,7 +493,7 @@
     {
       "slot": "0x0804bf38",
       "was": "0x080bb9f2",
-      "at": "0x080bfb67",
+      "at": "0x080bfb98",
       "font": 15,
       "box": [
         36,
@@ -462,7 +507,7 @@
     {
       "slot": "0x0804bf3c",
       "was": "0x080bb9ff",
-      "at": "0x080bfb6d",
+      "at": "0x080bfb9e",
       "font": 15,
       "box": [
         36,
@@ -476,7 +521,7 @@
     {
       "slot": "0x0804bf40",
       "was": "0x080bbab7",
-      "at": "0x080bfb73",
+      "at": "0x080bfba4",
       "font": 15,
       "box": [
         36,
@@ -490,7 +535,7 @@
     {
       "slot": "0x0804bf44",
       "was": "0x080bba6b",
-      "at": "0x080bfb7a",
+      "at": "0x080bfbab",
       "font": 15,
       "box": [
         36,
@@ -504,7 +549,7 @@
     {
       "slot": "0x0804bf50",
       "was": "0x080bbaa6",
-      "at": "0x080bfb81",
+      "at": "0x080bfbb2",
       "font": 15,
       "box": [
         36,
@@ -518,7 +563,7 @@
     {
       "slot": "0x0804bf54",
       "was": "0x080bba47",
-      "at": "0x080bfb86",
+      "at": "0x080bfbb7",
       "font": 15,
       "box": [
         36,
@@ -649,12 +694,20 @@
     "0x0804c70d",
     "0x0804c718",
     "0x0804c719",
+    "0x0804c7d8",
     "0x0804c7d9",
+    "0x0804c7dc",
     "0x0804c7dd",
     "0x0804c7e0",
     "0x0804c7e1",
     "0x0804c7f8",
-    "0x0804c7f9"
+    "0x0804c7f9",
+    "0x0804c890",
+    "0x0804c891",
+    "0x0804c894",
+    "0x0804c895",
+    "0x0804c898",
+    "0x0804c899"
   ],
   "usb_vid_pid": "1209:0001",
   "symbols": {

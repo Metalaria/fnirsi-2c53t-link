@@ -435,6 +435,15 @@ repeats the table and font checks on a stock image.
   six of them drawn at a time by `0x0801579C` in boxes of 100 x 36 in the 18 px font, so
   two lines fit and stock's longer names break at their space. The generator's title is
   one text per language at `0x0804C398` (box of 216 x 20, 20 px font); all eight fit.
+- **The oscilloscope's menu.** Table at `0x0804C804`: eight entries for each language, six
+  drawn at a time by `0x08012DE0` at x = 24, one every 36 px from y = 24, in a box of
+  76 x 36 in the 18 px font, left-aligned; the high nibble of `ms[0xF6A]` is the first one
+  shown. Two lines of 76 px, then. In Spanish five entries fit, two of them to the pixel,
+  and three begin with a word of 88 px: the routine breaks it after its eleventh letter,
+  and of "Configuración de disparo" the last two letters go to a third line, which in
+  emulation lands on the next entry when there is one below. English has the same trouble ("Cursor Mea /
+  surement", "Parameter / Measureme"). (seen on the unit in both languages, 2026-11-26,
+  and the routine run in emulation paints the same)
 - **Texts with two rows only.** Some tables have a Chinese row and an English one, and
   every language but Chinese is shown the English: the labels of a channel's settings
   (`0x08014198`, five a row: channel, probe, coupling, FFT and a 20M limit that the panel
@@ -453,14 +462,16 @@ repeats the table and font checks on a stock image.
 
 `build_link_image.py --texts` replaces a text by pointing its slot at a string in the cave,
 after laying the string out as the first pass does and checking it against the box;
-`texts/es.txt` does it for the six titles, the amplitude label and six waveform names.
+`texts/es.txt` does it for the six titles, the amplitude label, six waveform names and the
+three entries of the oscilloscope's menu that begin with that word.
 `texts/es-english-rows.txt` does it for eighteen texts of the two-row tables, which changes
 them for every language but Chinese; the two panels, the bar and the boxes were painted in
 emulation by stock's own routines with that file, on a RAM dump of the unit (the
 measurements were not). The image is on the unit since 2026-11-26: the flash reads back as
 built and the calibration table is unchanged. Photographs show six of its ten measurement
 labels with their values, whole (Frec:, Ciclo+:, Anc+:, Anc-:, Vef:, Med:, beside stock's
-Amp: and Vp-p:); the panels, the bar and the multimeter's boxes have not been reported.
+Amp: and Vp-p:), and a channel's panel as it was painted in emulation; the trigger's panel,
+the bar and the multimeter's boxes have not been reported.
 
 ### The options of a setting (code, and stock's own routines run in emulation)
 

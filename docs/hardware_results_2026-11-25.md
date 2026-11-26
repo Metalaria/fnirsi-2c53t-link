@@ -439,7 +439,7 @@ reached and `key` 76.
 
 The image with the thirteen texts and a Spanish name for each of the five added entries
 (`3cc7e0c8…5308`, 756504 bytes, as in
-`reference/APP_2C53T_V1.2.0_link_patch6_menu_langmenu_es.json`) is the twelfth update. Its
+`reference/APP_2C53T_V1.2.0_link_patch6_menu_langmenu_es.json` at that commit) is the twelfth update. Its
 flashing was not logged; these are the readings taken before the session below.
 
 | | |
@@ -500,7 +500,7 @@ that is kept here.
 
 The image with the eighteen texts of the two-row tables in Spanish (`537feee8…0b09`,
 756620 bytes, as in
-`reference/APP_2C53T_V1.2.0_link_patch6_menu_langmenu_es_english_rows.json`), flashed over
+`reference/APP_2C53T_V1.2.0_link_patch6_menu_langmenu_es_english_rows.json` at that commit), flashed over
 the one above (thirteenth update). Before it, `fnlink.py verify` gave MATCH for the image
 above once more.
 
@@ -582,6 +582,29 @@ there are, which samples the transform takes, and the frequency of an index. The
 odd harmonics are 4 to 4.2 indexes apart, which is what a 128-point transform of every
 second sample of the record would give at this time base (62.5 kHz, 488 Hz an index), and
 that reading has not been tested at another time base.
+
+## A channel's panel in Spanish, a screen equal to a reading, and the oscilloscope's menu, 2026-11-26
+
+Photographs taken with the same image on the unit, the instrument in Spanish.
+
+- **A channel's panel.** "Canal:", "Sonda:", "Acoplamiento:" and "FFT:" with their values
+  (ON, X1, DC, OFF) in their buttons, whole, as painted in emulation. The trigger's panel,
+  the bar with "Simple" and the multimeter's boxes are still not reported.
+- **A stopped screen with the values of a reading.** It shows "Frec:1.00KHz",
+  "Ciclo+:50.40%", "Anc+:504.0uS", "Anc-:496.0uS", "Amp:316.0mV", "Vef:208.0mV",
+  "Vp-p:316.0mV" and "Med:148.0mV": the eight words the `status` of the section above read
+  for those measurements (1000, 5040, 504000, 496000, 316000, 208000, 316000, 148000). The
+  photograph is of another acquisition, taken some three quarters of an hour after that
+  reading; a `status` meant to go with it was run with the instrument in the multimeter,
+  where both blocks read zero. Another stopped screen shows 320.0 mV peak to peak, 316.0,
+  212.0 and 148.0 mV; a running one 317.2, 315.4, 208.3 and 146.3 mV.
+- **The oscilloscope's menu.** Its title and its list are in Spanish, and three entries
+  are broken in the middle of a word: "Configuraci / ón CH1", "Configuraci / ón CH2" and
+  "Configuraci / ón de dispa", the end of the last one missing. The cause is in
+  `stock_v120_notes.md`, "Texts that do not fit". `texts/es.txt` has since gained three
+  texts for those entries; that image (`98b5d1b7…f2d9`) has not been flashed.
+- Three snapshots meant for the FFT block at three time bases saved one block each, not
+  two: the pointer was not followed. The file was not passed on, so why is not known.
 
 ## Not answered
 

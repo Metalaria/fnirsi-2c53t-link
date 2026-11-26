@@ -1,10 +1,10 @@
 {
   "stock_sha256": "a17c5c35c97bb898f15672a1747bc1041d8ed507c16999ddba0d1e4e2ec0c760",
-  "image_sha256": "3cc7e0c816ccee76c2c88456d230671de4e37717b59c39efbd96a94f27505308",
-  "image_len": 756504,
+  "image_sha256": "b9a13af50531ead1d58bd3687fdbda2835b6287a0e56f14b01fadca0e203e853",
+  "image_len": 756552,
   "cave_addr": "0x080be700",
-  "cave_len": 5144,
-  "cave_sha256": "b52a0046be8ef92f9fd9f6ded4fe09aa81535cfe6d6c37926ab55b146b86711c",
+  "cave_len": 5192,
+  "cave_sha256": "56171bb7dbe5ddc6ffb477645b502a168269e4af130409766b166e470c68bfce",
   "hooks": [
     "0x0802a994",
     "0x0803e49a"
@@ -276,6 +276,51 @@
         "Pulso sinc"
       ],
       "text": "Pulso sinc"
+    },
+    {
+      "slot": "0x0804c890",
+      "was": "0x080bb933",
+      "at": "0x080bfb15",
+      "font": 18,
+      "box": [
+        76,
+        36
+      ],
+      "lines": [
+        "Ajustes de ",
+        "CH1"
+      ],
+      "text": "Ajustes de CH1"
+    },
+    {
+      "slot": "0x0804c894",
+      "was": "0x080bb983",
+      "at": "0x080bfb24",
+      "font": 18,
+      "box": [
+        76,
+        36
+      ],
+      "lines": [
+        "Ajustes de ",
+        "CH2"
+      ],
+      "text": "Ajustes de CH2"
+    },
+    {
+      "slot": "0x0804c898",
+      "was": "0x080bca39",
+      "at": "0x080bfb33",
+      "font": 18,
+      "box": [
+        76,
+        36
+      ],
+      "lines": [
+        "Ajustes de ",
+        "disparo"
+      ],
+      "text": "Ajustes de disparo"
     }
   ],
   "changed_stock_bytes": [
@@ -368,7 +413,13 @@
     "0x0804c70c",
     "0x0804c70d",
     "0x0804c718",
-    "0x0804c719"
+    "0x0804c719",
+    "0x0804c890",
+    "0x0804c891",
+    "0x0804c894",
+    "0x0804c895",
+    "0x0804c898",
+    "0x0804c899"
   ],
   "usb_vid_pid": "1209:0001",
   "symbols": {
