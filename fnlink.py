@@ -982,13 +982,14 @@ def cmd_watch(link: Link, args) -> int:
 
 # What the arrow keys do in the oscilloscope: the low nibble of one byte of stock's state, which
 # the SELECT key steps through (code: its handler, entry 4 of the key table at 0x08046548, adds one;
-# unit: SELECT took it from 2 to 0). 0 and 2 were watched on the unit, 3 is from the code alone,
-# 1 has not been looked at. Bit 7 is the channel the keys act on when both are shown (code).
-# In mode 2 up/down change ms[0x1C], which OpenScope-2C53T's map of the structure calls the
-# trigger level.
+# unit: SELECT took it 0, 1, 2, 0). 0, 1 and 2 were watched on the unit one key at a time, with
+# CH1 alone (sessions/2026-11-26_keys/guided_oscilloscope.txt); 3 is from the code alone. Bit 7 is
+# the channel the keys act on when both are shown (code). In mode 1 up/down change the channel's
+# position and ms[0x1C] with it; in mode 2 they change ms[0x1C] alone, which OpenScope-2C53T's map
+# of the structure calls the trigger level.
 ARROWS_ADDR = 0x2000044C
 ARROWS = {0: "scale: left/right change the time base, up/down the volts per division",
-          1: "mode 1 (the time base did not change with it; the horizontal position did)",
+          1: "position: left/right move the trace sideways, up/down the channel's trace up and down",
           2: "move: left/right move the trace sideways, up/down the trigger level",
           3: "cursors"}
 

@@ -1,0 +1,38 @@
+keys      2026-11-26T16:51:18  generador guiado
+20000F50   10  01100000d0070000321e
+20001020   56  f7040000000000000000000004010100ff000000000000003b704e3d010000000000c07f0000c07f0000c07f030303000000000000000000
+20001058   16  05640a000100046403000c0000000000
+2000044C    1  00
+200000F8   56  01010200b1d301000000000000000000000000000101000100000000f8ff0000000000000000000000000000000901000000ff0000000000
+            18 keys, one every 5 s: press each one once when its line appears; it ends by itself
+    0.000 s  press     menu corto
+    5.034 s  press     menu corto
+   10.033 s  press     abajo
+   11.213 s  generator [1] 10>11   ? (index 17), 2kHz, duty 50 %, 3.0 V
+   15.001 s  press     arriba
+   16.622 s  generator [1] 11>10   ? (index 16), 2kHz, duty 50 %, 3.0 V
+   20.060 s  press     derecha
+   25.008 s  press     izquierda
+   30.037 s  press     azul
+   31.159 s  ui        [0xF69] 00>01
+   32.316 s  ui        [0xF66] 04>05
+   32.382 s  ui        [0xF66] 05>04
+   35.030 s  press     abajo
+   36.469 s  ui        [0xF6B] 00>02
+   40.063 s  press     arriba
+   41.165 s  ui        [0xF6B] 02>00
+   45.056 s  press     derecha
+   50.049 s  press     izquierda
+   55.010 s  press     azul
+   56.065 s  ui        [0xF69] 01>02
+   60.003 s  press     izquierda
+   65.034 s  press     arriba
+   66.139 s  generator [4] d0>d1   ? (index 16), 2kHz, duty 50 %, 3.0 V
+   70.061 s  press     abajo
+   71.053 s  generator [4] d1>d0   ? (index 16), 2kHz, duty 50 %, 3.0 V
+   75.046 s  press     derecha
+   80.065 s  press     menu corto
+   81.546 s  ui        [0xF69] 02>01
+   85.044 s  press     menu corto
+   86.228 s  ui        [0xF69] 01>00
+end       90.0 s, 1386 reads of the five blocks
