@@ -74,7 +74,8 @@ of `texts/es.txt` as it was then, the image was flashed the same morning, reads 
 built, and the titles are whole on the unit. The generator's label and names added to
 that file since were flashed later that morning, with the same checks; the owner's one
 remark was that the added entries were still in English, which is what `--menu-names` is
-for.
+for. The image with those names (`3cc7e0c8…5308`) is the one on the unit now: the flash
+reads back as built and the calibration table is unchanged.
 
 > **One unit is not a guarantee.** The board revision of that unit is unknown and nothing
 > has been tried on another. If you flash this, read [Safety](#safety) first and keep the
@@ -193,6 +194,24 @@ Corriente CC (mA), ...), the generator's amplitude label, and six of its wavefor
 (the sawtooth, the two staircases, the two exponentials and the sinc pulse). The texts in
 such a file are ours; FNIRSI's are not copied into this repository.
 
+Some of stock's tables have no Spanish to replace: two rows, Chinese and English, and every
+other language is shown the English one. The labels of the channel and trigger panels, the
+trigger's modes, the multimeter's MAX / MEAN / MIN and the oscilloscope's measurement labels
+are like that. `texts/es-english-rows.txt` puts Spanish in eighteen of those English slots
+(Canal:, Sonda:, Acoplamiento:, Modo:, Flanco:, Simple, MEDIA, Frec:, Vmáx:, ...), with
+the consequence its first lines spell out: **the instrument then shows those texts in
+Spanish in every language but Chinese**. It is a file for a unit that stays in Spanish, and
+it goes after `texts/es.txt`: `--texts` can be given more than once. Besides the suite's
+check of each text, stock's own routines were run in emulation on a RAM dump of the unit
+(not kept here) and painted both panels, the bar and the boxes whole with it; it has not
+been on a unit when this was written.
+
+`texts/pt.txt`, `texts/de.txt` and `texts/ru.txt` give Portuguese, German and Russian the
+multimeter's six titles and the generator's amplitude label, which stock cuts in those
+languages as it does in Spanish. They pass the same checks, **but nobody who speaks those
+languages has reviewed the wording and none has been seen on a unit**; each file says so.
+A correction from a speaker is welcome.
+
 ## Build
 
 ```bash
@@ -201,7 +220,8 @@ python3 build_link_image.py --stock APP_2C53T_V1.2.0_251015.bin --out APP_2C53T_
 ```
 
 `--languages` adds the language call described above, `--language-menu` the list of
-languages (one or the other), `--texts texts/es.txt` the Spanish texts, and the menu entries
+languages (one or the other), `--texts texts/es.txt` the Spanish texts (and
+`--texts texts/es-english-rows.txt` after it, if the unit is to stay in Spanish), and the menu entries
 are added like
 this (each with the stock waveform, 0 to 12, whose picture it borrows after the `@`):
 
@@ -237,7 +257,8 @@ stock facts the cave relies on, and re-reads its own output. With Ubuntu 24.04's
 has been on hardware, `*_patch4*.json` for patch 4 with and without `--languages`, and
 `*_patch5*.json` for patch 5 without options and with five menu entries (`AM 80%=am@10` there),
 and `*_patch6*.json` for patch 6: without options, with the example above, with it and
-`--languages`, with it and `--language-menu`, with those two, `--texts texts/es.txt` and the `--menu-names` line above (`*_es.json`), and
+`--languages`, with it and `--language-menu`, with those two, `--texts texts/es.txt` and the `--menu-names` line above (`*_es.json`),
+with all of that and `--texts texts/es-english-rows.txt` (`*_es_english_rows.json`), and
 with `--language-menu` alone.
 
 No patched image is distributed: it contains FNIRSI's firmware.
@@ -396,6 +417,11 @@ USB ids default to `1209:0001`, the pid.codes test PID, which is for private tes
   has the generator's menu entry by entry, CH2 with a signal and the units of the meter's boxes.
   [`sessions/2026-11-25_coupling_probe_time_bases/`](sessions/2026-11-25_coupling_probe_time_bases/README.md)
   has CH1's coupling, the X10 probe setting of both channels and 2 us per division.
+  [`sessions/2026-11-26_trigger_edge_slow_time_bases/`](sessions/2026-11-26_trigger_edge_slow_time_bases/README.md)
+  has the trigger's edge and two slow time bases, and
+  [`sessions/2026-11-26_trigger_coupling_fft_auto/`](sessions/2026-11-26_trigger_coupling_fft_auto/README.md)
+  the trigger's mode and channel, CH2's coupling, the FFT rows and what the AUTO key does
+  to the oscilloscope's state.
 - Going back to stock: flash `APP_2C53T_V1.2.0_251015.bin` through the factory IAP drive.
 
 ## Safety

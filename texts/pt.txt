@@ -1,0 +1,20 @@
+# Portuguese texts for stock V1.2.0, for build_link_image.py --texts.
+#
+# Each line replaces one text: SLOT WAS FONT WIDTH HEIGHT TEXT (see texts/es.txt for what
+# each field is and what the builder refuses).
+#
+# NOT REVIEWED BY A NATIVE SPEAKER AND NOT SEEN ON A UNIT. The terms are the usual ones for
+# an instrument, and the builder and stock's own text routine (in emulation) say they are
+# drawn whole. Whether they read well is for someone who speaks the language to say:
+# corrections are welcome.
+#
+# Only what stock cuts is replaced: the multimeter's titles that do not fit their box of
+# 216 x 29 (28 px font), and the generator's third label, whose second line falls off the
+# screen (box of 54 x 22, 18 px font).
+0x0804C530 0x080BBFC8 28 216 29 Tensão contínua
+0x0804C534 0x080BBD70 28 216 29 Tensão alternada
+0x0804C54C 0x080BC000 28 216 29 Corrente CC (mA)
+0x0804C550 0x080BBDA8 28 216 29 Corrente CA (mA)
+0x0804C554 0x080BBFE6 28 216 29 Corrente CC (A)
+0x0804C558 0x080BBD8E 28 216 29 Corrente CA (A)
+0x0804C600 0x080BC117 18 54 22 Amplit.

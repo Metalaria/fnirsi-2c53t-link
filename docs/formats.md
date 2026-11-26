@@ -172,17 +172,23 @@ from `0x200000F8`) followed by 19 `0xA1` data events.
 
 | Offset | Content | Evidence |
 |---|---|---|
-| 0 | coupling of CH1: 1 DC, 0 AC. It does not say whether the channel is on (that is offset 20) | switched on the unit, 2026-11-25: the only byte that changed, and the trace dropped to straddle zero. CH2's coupling is not located (offset 1 was 0 throughout and was not switched) |
+| 0, 1 | coupling of CH1, CH2: 1 DC, 0 AC. It does not say whether the channel is on (that is offset 20) | CH1 switched on the unit, 2026-11-25: the only byte that changed, and the trace dropped to straddle zero. CH2 switched to AC and back with both channels on, 2026-11-26: the only byte that changed |
 | 2, 3 | volts per division of CH1, CH2 as an index: 0 = 10 mV, then 1-2-5 steps to 9 = 10 V | CH1 checked at 0, 2 and 5. CH2 at 3: 344 mV peak to peak from the record against 345 mV by stock's own measurement (2026-11-25); 2 was the step before it |
 | 4, 5 | vertical position of CH1, CH2, signed: zero volts is sample value 128 + position | CH1 checked in three sessions; CH2 assumed |
 | 6, 7 | probe setting of CH1, CH2: 0 = X1, 1 = X10 | both checked both ways (2026-11-25): at X10 the record scaled ten times larger gives 3.36 V and 3.30 V where stock's own measurement gives 3.35 V and 3.29 V |
+| 10, 11 | FFT of CH1, CH2: 1 on, 0 off | each switched on and off with both channels on, 2026-11-26 |
+| 12–15, 16–19 | while the FFT of CH1 (12–15) or CH2 (16–19) is on, the 32-bit value `0x20033940`; zero while it is off | the same readings: these four bytes and the flag are all that changed. What is at that address was not read |
 | 20 | channels on: bit 0 CH1, bit 1 CH2 | checked (1, 2 and 3) |
-| 21 | low nibble: trigger source, 1 CH1, 2 CH2. High nibble: 1 with CH2 alone | assumed; seen `0x01` with CH1 alone and `0x12` with CH2 alone |
-| 22 | 0 with CH1 alone, 1 with CH2 alone | seen; not established (the selected channel?) |
+| 21 | not established | seen `0x01` with CH1 alone, `0x12` with CH2 alone and `0x02` with both on. It is not the trigger's channel: with both on it stayed `0x02` while that was switched (2026-11-26) |
+| 22 | trigger channel: 0 CH1, 1 CH2 | switched to CH2 and back with both channels on, 2026-11-26: the only byte that changed. Earlier readings had 0 with CH1 alone and 1 with CH2 alone |
+| 23 | trigger mode: 0 Normal, 1 Auto, 2 Single | each selected on the unit, 2026-11-26: the only byte that changed between Auto and Normal; in Single offset 46 was 0 as well |
 | 24 | trigger edge: 0 rising, 1 falling | checked: 0 in every reading with the rising edge, 1 in the one taken with the falling edge, the other settings unchanged (2026-11-26). It is where OpenScope's notes have it |
-| 28–29 | trigger level, signed 16 bits, in counts from the middle (128) | inferred: it changed by 2 when an arrow key was pressed with the arrows not on the scales |
+| 28–29 | trigger level, signed 16 bits, in counts from the middle (128) | inferred: it changed by 2 when an arrow key was pressed with the arrows not on the scales. The AUTO key's sequence ends by writing it (-1 before, 46 after, 2026-11-26) |
 | 45 | time per division as an index: 0 = 10 ns, then 1-2-5 steps | checked at 8 (5 µs, photograph of the screen) and 13 (200 µs); 11 and 16 fit 50 µs and 2 ms |
 | 46 | 1 running, 0 stopped (the RUN/STOP key) | checked: three RAM dumps running, one stopped |
+| 47 | the step of the AUTO key's sequence, 0 when none is running | watched every 10 ms through one press of AUTO, 2026-11-26: `01`, `02`, `03`, `11`, `21`, `22`, `32`, `F3`, `FF`, then 0 after 5.8 s. See `stock_v120_notes.md` |
+| 49 | the couplings as the AUTO key found them: CH1's in the low nibble, CH2's in the high one | the same watch: `0x11` from the moment of the key, with both in DC, and the couplings (offsets 0 and 1), zero during the sequence, came back to 1. Stock's code packs it so (`0x0800CC46`, `0x0800CD8C`) and reads it at `0x08008E3E` |
+| 50 | a count of 10 ms ticks within a step of that sequence; `0xFF` when it is over | the same watch: it starts at 0 with the key, goes back to 0 at most changes of offset 47, and after the last one counts to `0xFF` and stays |
 
 ### Scales
 
@@ -211,8 +217,11 @@ from `0x200000F8`) followed by 19 `0xA1` data events.
   record has to find the edge.
 - A wave that leaves the converter's range sits exactly on 5 and 244.
 - With both channels on, each acquisition gives a CH1 record and a CH2 record 1–2 ms apart.
-- Offset 49 was 1 in the readings with the rising edge and 0 in the one with the falling
-  edge on 2026-11-26, but it is not the edge: in the readings of earlier sessions, none taken
-  with the edge on falling, it is 0 in 53 and 1 in 32. What it is has not been established.
+- Offsets 47, 49 and 50 belong to the AUTO key, and 49 keeps its value afterwards: it says
+  how the couplings were at the last AUTO, not how they are. That is why it was 1 in some
+  readings and 0 in others with no setting changed between them.
+- While AUTO's sequence runs (about six seconds in the one watched) the couplings, ranges,
+  positions and the time base are stock's own trials, not the user's settings: offset 47
+  is not 0 then.
 - Stock computes its own measurements (frequency, duty, Vmax, Vmin, Vpp) and keeps them in
   RAM just after the scope state. The link does not send them; see `stock_v120_notes.md`.

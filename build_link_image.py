@@ -79,9 +79,9 @@ LANGMENU_LIMIT = (0x0800B1D8, 0x01, 0x07, "last option of the Language setting")
 # own. Stock's fonts have no glyph for the first character of the usual name of Japanese, so
 # that one is in hiragana.
 LANGMENU_NAMES = ("中文", "English", "Русский", "にほんご", "Español", "Português", "Deutsch", "한국어")
-# stock's five fonts: {height in px: address of the character map}; the map has a pointer to a
+# stock's fonts for text: {height in px: address of the character map}; the map has a pointer to a
 # sorted list of 16-bit code points at +8 and their number at +16
-FONT_CMAPS = {16: 0x080819A8, 18: 0x0808C3CC, 20: 0x0809A194, 25: 0x080A1630, 28: 0x080BA1B8}
+FONT_CMAPS = {15: 0x08077B10, 16: 0x080819A8, 18: 0x0808C3CC, 20: 0x0809A194, 25: 0x080A1630, 28: 0x080BA1B8}
 LANGMENU_FACTS = (
     (0x0801CF50, bytes.fromhex("2de9f04f8bb0"), "options routine: push {r4-r11, lr}; sub sp, #0x2c"),
     (0x0801CF5E, bytes.fromhex("93f86a0f00f00f00062800f29081dfe810f00700"),
@@ -110,7 +110,7 @@ LANGMENU_FACTS = (
 # text and no code. What a text may be is checked here against stock's own fonts.
 # {height in px: address of the glyph descriptors}: 8 bytes a glyph, in the order of the
 # character map's list, the advance in px in the top 12 bits of the first word
-FONT_GLYPHS = {16: 0x080807F0, 18: 0x0808B214, 20: 0x08098FDC, 25: 0x080A0468, 28: 0x080B9000}
+FONT_GLYPHS = {15: 0x08076938, 16: 0x080807F0, 18: 0x0808B214, 20: 0x08098FDC, 25: 0x080A0468, 28: 0x080B9000}
 TEXT_MAX_BYTES = 96
 TEXT_FACTS = (
     (0x0800F154, bytes.fromhex("2de9f04f93b0dde9"), "text routine: string and font at [sp], [sp, #4]"),

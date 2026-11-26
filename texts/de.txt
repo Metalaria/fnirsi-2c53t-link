@@ -1,0 +1,21 @@
+# German texts for stock V1.2.0, for build_link_image.py --texts.
+#
+# Each line replaces one text: SLOT WAS FONT WIDTH HEIGHT TEXT (see texts/es.txt for what
+# each field is and what the builder refuses).
+#
+# NOT REVIEWED BY A NATIVE SPEAKER AND NOT SEEN ON A UNIT. The terms are the usual ones for
+# an instrument, and the builder and stock's own text routine (in emulation) say they are
+# drawn whole. Whether they read well is for someone who speaks the language to say:
+# corrections are welcome.
+#
+# Only what stock cuts is replaced: the multimeter's titles that do not fit their box of
+# 216 x 29 (28 px font), and the generator's third label, whose second line falls off the
+# screen (box of 54 x 22, 18 px font).
+# Two of stock's four names for the currents fit; all four are replaced so that they match.
+0x0804C560 0x080BC376 28 216 29 Gleichspannung
+0x0804C564 0x080BC38A 28 216 29 Wechselspannung
+0x0804C57C 0x080BC715 28 216 29 Gleichstrom (mA)
+0x0804C580 0x080BC73D 28 216 29 Wechselstrom (mA)
+0x0804C584 0x080BC729 28 216 29 Gleichstrom (A)
+0x0804C588 0x080BC752 28 216 29 Wechselstrom (A)
+0x0804C60C 0x080BC117 18 54 22 Amplit.

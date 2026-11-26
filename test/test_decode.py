@@ -366,8 +366,7 @@ STEP_AC = bytes.fromhex("00000203b4000000000000000000000000000000010100010000000
 check("scope state: CH1's coupling is byte 0, and the only byte that differs between DC and AC",
       [i for i in range(56) if STEP_DC[i] != STEP_AC[i]] == [0]
       and fnlink.scope_settings(STEP_DC)["channels"][0]["coupling"] == "DC"
-      and fnlink.scope_settings(STEP_AC)["channels"][0]["coupling"] == "AC"
-      and fnlink.scope_settings(STEP_AC)["channels"][1]["coupling"] is None)
+      and fnlink.scope_settings(STEP_AC)["channels"][0]["coupling"] == "AC")
 STEP_CH1_X10 = bytes.fromhex("01000203b40001000000000000000000000000000101000100000000faff0000000000000000000000000000000801000001ff0000000000")
 STEP_CH2_X10 = bytes.fromhex("01000202b4000001000000000000000000000000021201010000000001000000000000000000000000000000000801000001ff0000000000")
 check("scope state: the X10 setting of each channel is its own byte and multiplies its volts per division",
@@ -388,10 +387,36 @@ check("scope state: byte 24 is the trigger edge, 0 rising and 1 falling; anythin
       and fnlink.scope_settings(EDGE_RISING[:24] + b"\x02" + EDGE_RISING[25:])["trigger_edge"] is None
       and [i for i in range(56) if EDGE_RISING[i] != EDGE_FALLING[i]] == [24, 49])
 text = "\n".join(fnlink.status_lines(2, IDLE, EDGE_FALLING, STOPPED, bytes.fromhex("0101000064000000321e")))
-check("status: the scope line says which edge", "20ms/div, CH1 50mV/div X1 DC, CH2 500mV/div X10, channels CH1, trigger falling" in text, text)
+check("status: the scope line says the trigger's mode, edge and channel",
+      "20ms/div, CH1 50mV/div X1 DC, CH2 500mV/div X10 DC, channels CH1, trigger Auto falling CH1" in text, text)
+# the session of 2026-11-26: one setting switched at a time from the first state, both channels on
+RE_BASE = bytes.fromhex("01010202b40000000000000000000000000000000302000100000000ffff0000000000000000000000000000000d01000001ff0000000000")
+RE_STEPS = {  # what was set on the instrument: (the state read, the bytes that differ from the first)
+    "trigger mode Normal": ("01010202b40000000000000000000000000000000302000000000000ffff0000000000000000000000000000000d01000001ff0000000000", [23]),
+    "trigger mode Single": ("01010202b40000000000000000000000000000000302000200000000ffff0000000000000000000000000000000d00000001ff0000000000", [23, 46]),
+    "trigger channel CH2": ("01010202b40000000000000000000000000000000302010100000000ffff0000000000000000000000000000000d01000001ff0000000000", [22]),
+    "CH2 coupling AC": ("01000202b40000000000000000000000000000000302000100000000ffff0000000000000000000000000000000d01000001ff0000000000", [1]),
+    "CH1 FFT on": ("01010202b40000000000010040390320000000000302000100000000ffff0000000000000000000000000000000d01000001ff0000000000", [10, 12, 13, 14, 15]),
+    "CH2 FFT on": ("01010202b40000000000000100000000403903200302000100000000ffff0000000000000000000000000000000d01000001ff0000000000", [11, 16, 17, 18, 19]),
+}
+check("scope state: each setting switched on the unit moves the bytes the notes say and no other",
+      all([i for i in range(56) if bytes.fromhex(h)[i] != RE_BASE[i]] == where for h, where in RE_STEPS.values()))
+decoded = {name: fnlink.scope_settings(bytes.fromhex(h)) for name, (h, _) in RE_STEPS.items()}
+first = fnlink.scope_settings(RE_BASE)
+check("scope state: trigger mode (0 Normal, 1 Auto, 2 Single) and channel (0 CH1, 1 CH2)",
+      (first["trigger_mode"], first["trigger_channel"]) == ("Auto", "CH1")
+      and decoded["trigger mode Normal"]["trigger_mode"] == "Normal" and decoded["trigger mode Single"]["trigger_mode"] == "Single"
+      and decoded["trigger channel CH2"]["trigger_channel"] == "CH2")
+check("scope state: CH2's coupling is byte 1 and the FFT flags bytes 10 and 11",
+      [c["coupling"] for c in first["channels"]] == ["DC", "DC"] and decoded["CH2 coupling AC"]["channels"][1]["coupling"] == "AC"
+      and [c["fft"] for c in first["channels"]] == [False, False]
+      and [c["fft"] for c in decoded["CH1 FFT on"]["channels"]] == [True, False]
+      and [c["fft"] for c in decoded["CH2 FFT on"]["channels"]] == [False, True])
+text = "\n".join(fnlink.status_lines(2, IDLE, bytes.fromhex(RE_STEPS["CH2 FFT on"][0]), STOPPED, bytes.fromhex("0101000064000000321e")))
+check("status: FFT and both couplings on the scope line", "CH2 50mV/div X1 DC, channels CH1+CH2, FFT CH2, trigger Auto rising CH1" in text, text)
 text = "\n".join(fnlink.status_lines(2, IDLE, STEP_AC, STOPPED, bytes.fromhex("0100000050c30000321e")))
 check("status: CH1's coupling on the scope line, and the first waveform of the menu by its name",
-      "CH1 50mV/div X1 AC, CH2 100mV/div X1, channels CH1" in text and "Sine Wave (index 0), 50kHz" in text, text)
+      "CH1 50mV/div X1 AC, CH2 100mV/div X1 AC, channels CH1" in text and "Sine Wave (index 0), 50kHz" in text, text)
 
 # ---------------------------------------------------------------- the settings/calibration page
 # Made-up pages only: a real one holds a unit's calibration and has no place in a repository.

@@ -297,11 +297,13 @@ def scope_settings(state: bytes):
     """The 56 scope state bytes of a record header decoded (docs/formats.md), or None.
 
     Per channel: enabled, volts per division as displayed (probe setting applied), probe
-    factor, the sample value of zero volts and the coupling. Range and probe bytes of both
-    channels were checked on hardware (2026-11-25); CH2's position byte is assumed to mirror
-    CH1's. The coupling is known for CH1 only (byte 0: 1 DC, 0 AC); for CH2 it is None. The
-    trigger edge is byte 24 (0 rising, 1 falling: read both ways on 2026-11-26), None for
-    any other value."""
+    factor, the sample value of zero volts, the coupling and whether its FFT is on. Range
+    and probe bytes of both channels were checked on hardware (2026-11-25); CH2's position
+    byte is assumed to mirror CH1's. The rest was read on the unit on 2026-11-26, each
+    setting switched and back: the couplings are bytes 0 and 1 (1 DC, 0 AC), the FFT flags
+    bytes 10 and 11, the trigger's channel byte 22 (0 CH1, 1 CH2), its mode byte 23
+    (0 Normal, 1 Auto, 2 Single) and its edge byte 24 (0 rising, 1 falling). A value outside
+    those gives None."""
     t = seconds_per_div(state[45])
     v = [volts_per_div(state[2]), volts_per_div(state[3])]
     if t is None or None in v:
@@ -310,13 +312,15 @@ def scope_settings(state: bytes):
     for ch in (0, 1):
         probe = 10 if state[6 + ch] == 1 else 1
         position = state[4 + ch] - 256 if state[4 + ch] > 127 else state[4 + ch]
-        coupling = None if ch else ("AC" if state[0] == 0 else "DC")
         channels.append({"enabled": bool(state[20] & (1 << ch)), "volts_per_div": v[ch] * probe,
-                         "probe": probe, "zero": 128 + position, "coupling": coupling})
+                         "probe": probe, "zero": 128 + position, "coupling": {0: "AC", 1: "DC"}.get(state[ch]),
+                         "fft": {0: False, 1: True}.get(state[10 + ch])})
     level = int.from_bytes(state[28:30], "little", signed=True)
     return {"channels": channels, "seconds_per_div": t, "sample_period": t / SAMPLES_PER_DIV,
             "time_base_checked": 6 <= state[45] <= 16, "trigger_level": 128 + level,
-            "trigger_edge": {0: "rising", 1: "falling"}.get(state[24])}
+            "trigger_edge": {0: "rising", 1: "falling"}.get(state[24]),
+            "trigger_mode": {0: "Normal", 1: "Auto", 2: "Single"}.get(state[23]),
+            "trigger_channel": {0: "CH1", 1: "CH2"}.get(state[22])}
 
 
 def measure_record(settings: dict, channel: int, data: bytes) -> dict:
@@ -974,12 +978,15 @@ def status_lines(mode: int, meter: bytes, scope: bytes, measured: bytes, generat
     s = scope_settings(scope)
     out.append("scope        %s, %s%s" % (
         "RUN" if scope[46] == 1 else "STOP" if scope[46] == 0 else "run byte %d" % scope[46],
-        "settings not understood" if s is None else "%s/div, CH1 %s/div X%d %s, CH2 %s/div X%d, channels %s, trigger %s" % (
+        "settings not understood" if s is None else "%s/div, CH1 %s/div X%d %s, CH2 %s/div X%d %s, channels %s%s, trigger %s %s %s" % (
             _eng(s["seconds_per_div"], "s"), _eng(s["channels"][0]["volts_per_div"], "V"), s["channels"][0]["probe"],
-            s["channels"][0]["coupling"],
+            s["channels"][0]["coupling"] or "coupling byte %d" % scope[0],
             _eng(s["channels"][1]["volts_per_div"], "V"), s["channels"][1]["probe"],
+            s["channels"][1]["coupling"] or "coupling byte %d" % scope[1],
             "+".join("CH%d" % (i + 1) for i, c in enumerate(s["channels"]) if c["enabled"]) or "none",
-            s["trigger_edge"] or "edge byte %d" % scope[24]),
+            "".join(", FFT CH%d" % (i + 1) for i, c in enumerate(s["channels"]) if c["fft"]),
+            s["trigger_mode"] or "mode byte %d" % scope[23], s["trigger_edge"] or "edge byte %d" % scope[24],
+            s["trigger_channel"] or "channel byte %d" % scope[22]),
         "   state %s" % scope.hex()))
     if arrows is not None:
         out.append("  arrows     %s" % arrows_text(arrows))
