@@ -182,6 +182,7 @@ by twelve for CH2, in the units the screen's measurement boxes are computed from
 | 4, 5 | positive and negative pulse width | ns |
 | 6, 7, 8 | Vmax, Vmin, Vpp | µV, signed (Vmin goes below zero) |
 | 9 | a second amplitude, equal to Vpp or a few mV under it; stock labels it "Amp:" | µV |
+| 6–11, probe at X10 | the six voltages carry the factor themselves: with the setting at X10 and the same wave, 3030400, -20800, 3051200, 3040000, 2108800 and 1490400 (2026-11-26; words 6 to 8 also on 2026-11-25) | µV |
 | 10, 11 | what stock labels "Vrms:" and "Avg:". With a square from about 0 to 304 mV at about 50 %, 208000 to 209500 and 147833 to 148000 in four readings, and 208.0 to 212.0 mV and 144.0 to 148.0 mV under those labels on three screens, none of them of an acquisition that was also read (2026-11-26) | µV |
 
 Compared with photographs of two stopped screens: 40232 with "40.23KHz", 6451 with "64.51%",

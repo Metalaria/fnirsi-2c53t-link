@@ -16,6 +16,8 @@ division. Written up in
 | `snapshots_arrows_mode_1.txt` | Three more snapshots of `ms[0x00..0x37]`, running, with the same fault: the FFT row was off, and the time base stayed at 200 µs per division because the arrow keys were in their mode 1 (the `status` before them said so). **Their labels do not describe them either.** `ms[0x1A..0x1B]` reads -25, -63, -13 and `ms[0x20..0x27]` -500000, -1260000, -260000 |
 | `status_fft_on.txt` | The oscilloscope's lines of `fnlink.py status` once the arrows were back in mode 0 and CH1's FFT row was on |
 | `fft_time_bases.txt` | Three snapshots, running, CH1 alone with the 1 kHz square, CH1's FFT on, at 200, 500 and 100 µs per division (the screen's "H=" was read before each): `ms[0x00..0x37]` and 448 bytes of the block the pointer gives |
+| `status_probe_x10.txt` | The oscilloscope's lines of `fnlink.py status` with CH1's probe setting at X10 and the same 1 kHz square, copied from the terminal. AUTO had been pressed since the unit was started (`ms[0x31]` is 1) |
+| `ten_ms_per_division.txt` | The two lines `fnlink.py scope --count 2` printed at 10 ms per division. The step before it was to set the generator to 100 Hz; the generator was not read at that moment |
 | `fft_block_snapshots.txt` | Three snapshots, running, CH1 alone, of `ms[0x00..0x37]` and 448 bytes at `0x20033940`: CH1's FFT on with the 1 kHz square, on with the probe taken off the generator, and off. Each block of 448 bytes is eight reads of 56 a few milliseconds apart while the instrument keeps acquiring, so it is not one instant |
 
 The twelve words of the two snapshots, as signed 32-bit numbers:

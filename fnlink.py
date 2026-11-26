@@ -256,7 +256,9 @@ def decode_scope_measurements(words: bytes) -> dict:
     "avg" are words 9 to 11 under the names stock prints in front of them (its code prints
     word i after label i); on 2026-11-26 stopped screens showed 316.0, 208.0 and 148.0 mV
     under those labels and the words read 316000, 208000 and 148000, though no photograph and
-    reading were of the same acquisition. "extra" is the same three words, as before."""
+    reading were of the same acquisition. With the probe setting at X10 the six voltages
+    already carry the factor (words 6 to 8 on 2026-11-25, 9 to 11 on 2026-11-26). "extra" is
+    the same three words, as before."""
     if len(words) < 4 * SCOPE_MEASURED_WORDS:
         raise LinkError("measurement block too short")
     w = struct.unpack_from("<6I6i", words)             # the voltages are signed: Vmin goes below zero
@@ -309,7 +311,7 @@ def decode_meter_stats(state: bytes) -> list:
 # ---------------------------------------------------------------- oscilloscope records
 
 COUNTS_PER_DIV = 25         # sample counts per vertical division
-SAMPLES_PER_DIV = 25        # samples per horizontal division (checked from 1 us to 2 ms per division)
+SAMPLES_PER_DIV = 25        # samples per horizontal division (checked at ten time bases from 1 us to 20 ms)
 _STEPS = (1, 2, 5)
 
 
