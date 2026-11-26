@@ -266,6 +266,33 @@ def decode_scope_measurements(words: bytes) -> dict:
             "amp": w[9] * 1e-6, "vrms": w[10] * 1e-6, "avg": w[11] * 1e-6, "extra": [x * 1e-6 for x in w[9:12]]}
 
 
+FFT_POINTS = 128            # indexes of the spectrum stock keeps while a channel's "FFT:" row is on
+
+
+def fft_hz_per_index(seconds_per_div: float) -> float:
+    """The frequency step between two indexes of stock's FFT block at a time base.
+
+    Read on the unit at 100, 200 and 500 us per division with the generator's 1 kHz square
+    (2026-11-26): the fundamental sits at index 1, 2 and 5, and at 500 us the harmonics above
+    12.5 kHz come back folded where this rule puts them. That is what 128 points two of the
+    record's sample periods apart give: 25 samples to a division, so an index is
+    25 / (2 * 128 * seconds per division) hertz. Not tried at other time bases."""
+    return SAMPLES_PER_DIV / (2.0 * FFT_POINTS * seconds_per_div)
+
+
+def decode_fft_block(block: bytes) -> dict:
+    """The block a scope state's bytes 12-15 (CH1) or 16-19 (CH2) point at while that channel's
+    FFT is on: 128 bytes, the height of each bar stock draws (0 to 50, the largest magnitude
+    being 50), then 32-bit floats, the magnitudes those heights come from. Indexes above 64
+    mirror those below. "magnitudes" has as many floats as the block read holds (the unit was
+    never read past the 80th). A block read over the link while the instrument runs is several
+    requests a few milliseconds apart, not one instant."""
+    if len(block) < FFT_POINTS:
+        raise LinkError("FFT block too short")
+    n = min(FFT_POINTS, (len(block) - FFT_POINTS) // 4)
+    return {"bars": list(block[:FFT_POINTS]), "magnitudes": list(struct.unpack_from("<%df" % n, block, FFT_POINTS))}
+
+
 def decode_meter_stats(state: bytes) -> list:
     """The MAX, MEAN and MIN boxes from 56 bytes of meter state: [(name, value, decimals, unit code)].
 
@@ -959,7 +986,7 @@ def cmd_watch(link: Link, args) -> int:
 # trigger level.
 ARROWS_ADDR = 0x2000044C
 ARROWS = {0: "scale: left/right change the time base, up/down the volts per division",
-          1: "mode 1 (not looked at)",
+          1: "mode 1 (the time base did not change with it; the horizontal position did)",
           2: "move: left/right move the trace sideways, up/down the trigger level",
           3: "cursors"}
 

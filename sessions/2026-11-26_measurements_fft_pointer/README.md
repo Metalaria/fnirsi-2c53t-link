@@ -1,4 +1,4 @@
-# Stock's measurements against the screen, and the block the FFT pointer points at, 2026-11-26
+# Stock's measurements against the screen, the FFT block and the arrows' mode 1, 2026-11-26
 
 Read over USB from the unit (stock V1.2.0 with patch 6), nothing written to the instrument.
 The generator's 1 kHz square wave was on CH1 at 100 mV per division, CH2 on at 10 mV per
@@ -13,6 +13,9 @@ division. Written up in
 | `fft_pointer_snapshot.txt` | One snapshot with CH1's "FFT:" row on: `ms[0x00..0x37]`, and 56 bytes from the address held in `ms[0x0C..0x0F]` |
 | `status_stopped.txt` | Later, with the image built with `texts/es-english-rows.txt` on the unit again: the oscilloscope's lines of `fnlink.py status`, stopped, CH1 alone |
 | `stopped_snapshots_fft_off.txt` | Three snapshots of `ms[0x00..0x37]` meant for the FFT block at three time bases, stopped. **Their labels do not describe them**: in all three the FFT flag `ms[0x0A]` is 0, the pointer is 0 (so nothing was followed) and the time base `ms[0x2D]` is 13, 200 µs per division. What does differ is `ms[0x1A..0x1B]` (0, -63, -13 as a signed 16-bit number) and `ms[0x20..0x27]` (0, -1260000, -260000 as a signed 64-bit number); what was done on the instrument between them was not noted |
+| `snapshots_arrows_mode_1.txt` | Three more snapshots of `ms[0x00..0x37]`, running, with the same fault: the FFT row was off, and the time base stayed at 200 µs per division because the arrow keys were in their mode 1 (the `status` before them said so). **Their labels do not describe them either.** `ms[0x1A..0x1B]` reads -25, -63, -13 and `ms[0x20..0x27]` -500000, -1260000, -260000 |
+| `status_fft_on.txt` | The oscilloscope's lines of `fnlink.py status` once the arrows were back in mode 0 and CH1's FFT row was on |
+| `fft_time_bases.txt` | Three snapshots, running, CH1 alone with the 1 kHz square, CH1's FFT on, at 200, 500 and 100 µs per division (the screen's "H=" was read before each): `ms[0x00..0x37]` and 448 bytes of the block the pointer gives |
 | `fft_block_snapshots.txt` | Three snapshots, running, CH1 alone, of `ms[0x00..0x37]` and 448 bytes at `0x20033940`: CH1's FFT on with the 1 kHz square, on with the probe taken off the generator, and off. Each block of 448 bytes is eight reads of 56 a few milliseconds apart while the instrument keeps acquiring, so it is not one instant |
 
 The twelve words of the two snapshots, as signed 32-bit numbers:

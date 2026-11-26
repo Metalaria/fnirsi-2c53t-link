@@ -177,12 +177,14 @@ from `0x200000F8`) followed by 19 `0xA1` data events.
 | 4, 5 | vertical position of CH1, CH2, signed: zero volts is sample value 128 + position | CH1 checked in three sessions; CH2 assumed |
 | 6, 7 | probe setting of CH1, CH2: 0 = X1, 1 = X10 | both checked both ways (2026-11-25): at X10 the record scaled ten times larger gives 3.36 V and 3.30 V where stock's own measurement gives 3.35 V and 3.29 V |
 | 10, 11 | FFT of CH1, CH2: 1 on, 0 off | each switched on and off with both channels on, 2026-11-26 |
-| 12–15, 16–19 | while the FFT of CH1 (12–15) or CH2 (16–19) is on, the 32-bit value `0x20033940`; zero while it is off | the same readings: these four bytes and the flag are all that changed. At that address: 128 bytes and then floats, the spectrum stock draws (see `stock_v120_notes.md`) |
+| 12–15, 16–19 | while the FFT of CH1 (12–15) or CH2 (16–19) is on, the 32-bit value `0x20033940`; zero while it is off | the same readings: these four bytes and the flag are all that changed. At that address: 128 bytes and then floats, the spectrum stock draws, an index being 25 / (256 × time per division) Hz at the three time bases tried (see `stock_v120_notes.md`) |
 | 20 | channels on: bit 0 CH1, bit 1 CH2 | checked (1, 2 and 3) |
 | 21 | not established | seen `0x01` with CH1 alone, `0x12` with CH2 alone and `0x02` with both on. It is not the trigger's channel: with both on it stayed `0x02` while that was switched (2026-11-26) |
 | 22 | trigger channel: 0 CH1, 1 CH2 | switched to CH2 and back with both channels on, 2026-11-26: the only byte that changed. Earlier readings had 0 with CH1 alone and 1 with CH2 alone |
 | 23 | trigger mode: 0 Normal, 1 Auto, 2 Single | each selected on the unit, 2026-11-26: the only byte that changed between Auto and Normal; in Single offset 46 was 0 as well |
 | 24 | trigger edge: 0 rising, 1 falling | checked: 0 in every reading with the rising edge, 1 in the one taken with the falling edge, the other settings unchanged (2026-11-26). It is where OpenScope's notes have it |
+| 26–27 | horizontal position, signed 16 bits, in tenths of a division | in the readings kept under `sessions/` where it is not zero (over sixty, at 10 µs to 500 µs per division) it is offsets 32–39 divided by a tenth of the time per division; it moved when the left and right keys were pressed with the arrows in their mode 1 (2026-11-26). One stopped reading of 2026-11-24, at 5 µs, does not fit (-25 with -500000) |
+| 32–39 | the same position in nanoseconds, signed 64 bits | the same readings. On a change of time base while running this one was kept (-200000 at 500 µs and at 100 µs) and offsets 26–27 followed (-4, -20) |
 | 28–29 | trigger level, signed 16 bits, in counts from the middle (128) | inferred: it changed by 2 when an arrow key was pressed with the arrows not on the scales. The AUTO key's sequence ends by writing it (-1 before, 46 after, 2026-11-26) |
 | 45 | time per division as an index: 0 = 10 ns, then 1-2-5 steps | checked at 8 (5 µs, photograph of the screen) and 13 (200 µs); 11 and 16 fit 50 µs and 2 ms |
 | 46 | 1 running, 0 stopped (the RUN/STOP key) | checked: three RAM dumps running, one stopped |
