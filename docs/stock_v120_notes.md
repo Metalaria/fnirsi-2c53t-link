@@ -220,8 +220,13 @@ byte *k* is float *k* scaled so that the largest is 50, which is the height of t
 stock draws in the upper left of the grid. With the generator's 1 kHz square at 200 µs per
 division the fundamental is at index 2 and the odd harmonics follow 4 to 4.2 indexes
 apart; the bytes are nearly a mirror image about index 64. With the FFT off the block is
-zero (three 16-bit values aside). How many floats there are and what frequency an index
-stands for are not established; no instruction or literal of the image holds the address.
+zero (three 16-bit values aside). No instruction or literal of the image holds the address.
+At 100, 200 and 500 µs per division the same square has its fundamental at index 1, 2 and
+5 and its odd harmonics at the matching multiples, and at 500 µs those above 12.5 kHz
+appear folded (23, 21, 19, 17, 15 and 13 kHz at indexes 10, 20, 31, 41, 51 and 61): an
+index is 25 / (256 × time per division) Hz, which is 128 points two of the record's sample
+periods apart, with no filter before taking them that the folding would show. Not tried at
+other time bases; how many floats follow the 128 bytes was not read past the 80th.
 
 **The AUTO key** (unit: `ms[0x00..0x37]` watched every 10 ms through one press, both
 channels on and in DC; code for the two addresses). At the key stock saves the couplings of
@@ -251,7 +256,10 @@ restarts it. What was connected to the inputs during the watch was not
 noted, so the ranges and positions it ended at say nothing by themselves.
 
 What the arrow keys do is the low nibble of state `+0x354` (`0x2000044C`): 0 changes the time
-base and the range, 2 moves the trace and the trigger level, 3 is for the cursors; SELECT
+base and the range, 2 moves the trace and the trigger level, 3 is for the cursors; with 1
+the keys pressed to change the time base left it alone and moved the horizontal position
+`ms[0x1A]` (unit, 2026-11-26: the screen's top bar showed two small arrows where it shows
+"V" and "H" in mode 0); SELECT
 steps it (code: handler `0x0800D2F8`, entry 4 of the key table at `0x08046548`; unit: 2 -> 0
 with one press). While stopped, the display array at `+0x356` is a slice of the record at the
 captured time base, the record through a 16-tap interpolator when zoomed in, and is left alone

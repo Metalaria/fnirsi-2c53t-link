@@ -423,6 +423,27 @@ check("measurements: words 9 to 11 under the names stock prints in front of them
       and m["extra"] == [m["amp"], m["vrms"], m["avg"]] and round(fnlink.decode_scope_measurements(WORDS_STOPPED[48:])["avg"], 6) == -0.0008)
 text = "\n".join(fnlink.status_lines(2, IDLE, bytes.fromhex("0101030009d3000000000000000000000000000001010001000000002e000000000000000000000000000000000d00000000ff0000000000"),
                                      WORDS_STOPPED + b"\0", bytes.fromhex("01010000e8030000321e")))
+# ---- stock's FFT block, as read on the unit at three time bases (2026-11-26) -----------------
+fft_file = Path(__file__).resolve().parent.parent / "sessions" / "2026-11-26_measurements_fft_pointer" / "fft_time_bases.txt"
+fft_lines = fft_file.read_text().splitlines()
+fft_states = [bytes.fromhex(x.split()[2]) for x in fft_lines if x.startswith("200000F8")]
+fft_blocks = [bytes.fromhex(x.split()[2]) for x in fft_lines if x.startswith("20033940")]
+fft_seen = []
+for st, blk in zip(fft_states, fft_blocks):
+    step = fnlink.fft_hz_per_index(fnlink.scope_settings(st)["seconds_per_div"])
+    d = fnlink.decode_fft_block(blk)
+    bars, mags = d["bars"], d["magnitudes"]
+    fundamental = max(range(1, 64), key=lambda k: bars[k])
+    scaled = all(int(mags[k] * 50 / max(mags)) == bars[k] for k in range(len(mags)))
+    fft_seen.append((round(step, 1), fundamental, round(1000 / step), len(mags), scaled, bars))
+check("FFT block: three captures with the row on, 128 bars and 80 floats each, every bar its float scaled to 50",
+      len(fft_seen) == 3 and all(s[3] == 80 and s[4] and len(s[5]) == 128 and s[5][0] == 50 for s in fft_seen), str([s[:5] for s in fft_seen]))
+check("FFT block: 488.3, 195.3 and 976.6 Hz an index at 200, 500 and 100 us per division, the 1 kHz fundamental at index 2, 5 and 1",
+      [s[:3] for s in fft_seen] == [(488.3, 2, 2), (195.3, 5, 5), (976.6, 1, 1)], str([s[:3] for s in fft_seen]))
+bars500 = fft_seen[1][5]
+folded = [round((25000 - f) / 195.3125) for f in (23000, 21000, 19000, 17000, 15000, 13000)]
+check("FFT block: at 500 us per division the square's harmonics above 12.5 kHz are where 25 kHz minus them falls (10, 20, 31, 41, 51, 61)",
+      folded == [10, 20, 31, 41, 51, 61] and all(bars500[k] > bars500[k - 1] and bars500[k] > bars500[k + 1] for k in folded), str([bars500[k - 1:k + 2] for k in folded]))
 check("status: the three of them on the line of each channel",
       "Vmax 304mV, Vmin -12mV, Vpp 316mV, Amp 316mV, Vrms 208mV, Avg 148mV" in text and "STOP, 200us/div" in text
       and "channels CH1, trigger Auto rising CH1" in text, text)

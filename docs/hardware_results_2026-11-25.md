@@ -628,6 +628,44 @@ nothing about the FFT. They are kept in the session directory with a note of wha
 hold: stopped, `ms[0x1A..0x1B]` read 0, -63 and -13 and `ms[0x20..0x27]` 0, -1260000 and
 -260000, 20000 times the other in both.
 
+## The FFT's indexes, the arrows' mode 1 and the horizontal position, 2026-11-26
+
+With the image above. The captures are in the same session directory
+(`fft_time_bases.txt`, `status_fft_on.txt`, `snapshots_arrows_mode_1.txt`).
+
+**What frequency an index of the FFT block is.** CH1 alone with the generator's 1 kHz
+square, CH1's FFT on, running; 448 bytes of the block at each of three time bases, the
+screen's "H=" read before each and `ms[0x2D]` agreeing (13, 14, 12).
+
+| Time per division | Largest bars after index 0 | 25 / (256 × time per division) |
+|---|---|---|
+| 200 µs | index 2 (30), 6 (8), 10 (4), 14 (2) | 488.3 Hz: 1, 3, 5, 7 kHz at 2.05, 6.1, 10.2, 14.3 |
+| 500 µs | index 5 (28), 15 (6), 26 (3) | 195.3 Hz: 1, 3, 5 kHz at 5.1, 15.4, 25.6 |
+| 100 µs | index 1 (30), 3 (9), 5 (5), 7 (3), 9 (2) | 976.6 Hz: 1, 3, 5, 7, 9 kHz at 1.0, 3.1, 5.1, 7.2, 9.2 |
+
+At 500 µs there are more bars than those: 2, 2, 2, 3, 3, 3 at indexes 10, 20, 31, 41, 51
+and 61, each above its neighbours. They are where 23, 21, 19, 17, 15 and 13 kHz fall once
+folded about 12.5 kHz, half of 25 kHz. So the block is 128 points taken 2 × (time per
+division / 25) apart, twice the record's sample period, and the square's harmonics above
+half that rate are not removed first. In the three readings byte *k* is float *k* times 50
+over the largest, truncated, in all 80 pairs. `fnlink.py` has the rule
+(`fft_hz_per_index`, `decode_fft_block`) and its tests read these captures.
+
+**The arrows' mode 1.** A first attempt failed twice over: the FFT row was off, and the
+time base would not change. `status` said why: the arrows were in mode 1, which the notes
+had as "not looked at". With the keys that change the time base in mode 0, `ms[0x2D]`
+stayed at 13 and `ms[0x1A..0x1B]` went through -25, -63 and -13; a photograph shows the
+top bar with two small arrows where earlier ones, in mode 0, show "V" and "H". After
+SELECT, `status` says mode 0 and the time base changed.
+
+**The horizontal position.** `ms[0x20..0x27]`, a signed 64-bit number, is `ms[0x1A..0x1B]`
+times a tenth of the time per division in nanoseconds in every reading of today (-25 and
+-500000, -63 and -1260000, -13 and -260000, -11 and -220000 at 200 µs; -4 and -200000 at
+500 µs; -20 and -200000 at 100 µs) and in those of the earlier sessions where it is not
+zero, over sixty readings in all from 10 µs to 500 µs per division. From 500 µs to 100 µs the
+nanoseconds stayed and the other followed. One reading kept in the tests, stopped at 5 µs
+on 2026-11-24, has -25 with -500000 and does not fit.
+
 ## Not answered
 
 - What needs a write to the instrument's memory (the 20M limit; the per-channel "FFT" flag
