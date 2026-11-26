@@ -983,7 +983,7 @@ def main() -> int:
     lines, tables_ok = language_tables.report(language_tables.Image(stock))
     check("language tables: eight valid rows in every table, 70 strings a language",
           tables_ok and sum(" 70 strings" in x and "0 bad pointers" in x for x in lines) == 8, "; ".join(lines[1:]))
-    check("language tables: every character has a glyph (Spanish in all five fonts)",
+    check("language tables: every character has a glyph (Spanish in all six fonts from 15 to 28 px)",
           any(x.startswith("Spanish") and x.endswith("every font has them all") for x in lines), "; ".join(lines))
 
     # ---- --languages: stock's Settings OK handler with and without the call ------------------
@@ -1499,7 +1499,7 @@ def main() -> int:
           not wrong, str(wrong[:4]))
     # Stock's text routine itself, run to the end with its fonts (their descriptors are in the
     # image's initialised data): what it paints on a whole-screen band, as the set of pixels.
-    FONT_AT = {16: 0x200010E4, 18: 0x20001114, 20: 0x20001144, 25: 0x20001174, 28: 0x200011A4}
+    FONT_AT = {15: 0x200010B4, 16: 0x200010E4, 18: 0x20001114, 20: 0x20001144, 25: 0x20001174, 28: 0x200011A4}
     TEXT_X, TEXT_Y, SCRATCH = 40, 60, BAND_PIXELS + 0x30000
 
     class Everything:

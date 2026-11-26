@@ -7,8 +7,8 @@
 
 Stock V1.2.0 offers Chinese and English but still carries its texts in eight languages. This
 reads your own copy of the image and reports, for each language: that every table indexed by
-the language byte has a valid string in its row, and that each of the five fonts has a glyph
-for every character of those strings (a character without one ends the string on the screen).
+the language byte has a valid string in its row, and that each of the six fonts from 15 to
+28 px has a glyph for every character of those strings (a character without one ends the string on the screen).
 --list N prints the strings of language N as they are in your image; they are FNIRSI's, which
 is why this repository holds the addresses and not the texts.
 
@@ -43,7 +43,7 @@ TABLES = tuple((base, 1) for base in (
 
 # line height in pixels -> address of the font's single character map (lv_font_fmt_txt_cmap_t).
 # Its list holds the code points themselves: the lookup at 0x0802F868 searches it for the character.
-FONT_CMAPS = {16: 0x080819A8, 18: 0x0808C3CC, 20: 0x0809A194, 25: 0x080A1630, 28: 0x080BA1B8}
+FONT_CMAPS = {15: 0x08077B10, 16: 0x080819A8, 18: 0x0808C3CC, 20: 0x0809A194, 25: 0x080A1630, 28: 0x080BA1B8}
 
 
 class Image:

@@ -435,9 +435,71 @@ reached; the dumps of 2026-11-24, with patch 3 and no panel, had 710. The figure
 of one power-on and of what was done in it: on the 24th `dvom_RX` had 21 bytes never
 reached and `key` 76.
 
+## `--menu-names` on the unit, 2026-11-26
+
+The image with the thirteen texts and a Spanish name for each of the five added entries
+(`3cc7e0c8…5308`, 756504 bytes, as in
+`reference/APP_2C53T_V1.2.0_link_patch6_menu_langmenu_es.json`) is the twelfth update. Its
+flashing was not logged; these are the readings taken before the session below.
+
+| | |
+|---|---|
+| `fnlink.py verify` | MATCH (756504 bytes) |
+| Settings and calibration page | against the dump taken after the image of the thirteen texts: the calibration table is identical (`9cbf9bf5…ff00d`); 9 bytes of settings and 75 of the scratch area differ |
+| The list of waveforms in Spanish | not reported |
+
+## Trigger mode and channel, CH2's coupling, the FFT and the AUTO key, 2026-11-26
+
+With the image above. `fnlink.py snapshot 0x200000F8:56` after each step on the
+instrument, both channels on, and one `fnlink.py watch` of the same bytes through a press
+of AUTO. The captures are in
+[`sessions/2026-11-26_trigger_coupling_fft_auto/`](../sessions/2026-11-26_trigger_coupling_fft_auto/README.md).
+
+| Step on the instrument | Bytes that differ from the starting state |
+|---|---|
+| trigger mode Normal (it was Auto) | `ms[0x17]`: 1 to 0 |
+| trigger mode Single | `ms[0x17]`: 2; `ms[0x2E]` (running): 1 to 0 |
+| trigger mode Auto again | none |
+| trigger channel CH2 | `ms[0x16]`: 0 to 1 |
+| trigger channel CH1 again | none |
+| CH2's coupling AC | `ms[0x01]`: 1 to 0 |
+| CH2's coupling DC again | none |
+| CH1's FFT on | `ms[0x0A]`: 0 to 1; `ms[0x0C..0x0F]`: 0 to `0x20033940` |
+| CH1's FFT off, CH2's on | `ms[0x0B]`: 0 to 1; `ms[0x10..0x13]`: 0 to `0x20033940` |
+| both off | none |
+
+So `ms[0x17]` is the trigger's mode with 0 Normal, 1 Auto, 2 Single. OpenScope's
+`STATE_STRUCTURE.md` (at their commit `7480998`) has the byte as the trigger run mode with
+0 AUTO and 1 NORMAL: the first two are the other way round on this unit. `ms[0x16]`,
+"active channel selector" there, is what the trigger menu's channel row sets. `ms[0x01]`
+as CH2's coupling and `ms[0x0A]`, `ms[0x0B]` as the rows the menu labels "FFT:" are what
+their `parity2_static.md` derives from the menu's code (`ms[ch-1]`, `ms[ch+9]`); here they
+were read changing. `ms[0x15]` was `0x02` in all eleven readings, with both channels on and
+the trigger on either: the earlier sessions had `0x01` with CH1 alone and `0x12` with CH2
+alone. What `0x20033940` points at was not read.
+
+**AUTO.** Watched every 10 ms: 832 readings that differ from the one before in 8.3 s. At
+the key `ms[0x31]` goes from `0x01` to `0x11`, `ms[0x2F]` to 1, both couplings and both
+ranges to 0, CH1's position to 0 and the time base from 13 to 4; then `ms[0x2F]` goes
+through `02`, `03`, `11`, `21`, `22`, `32`, `F3`, `FF` and is 0 again 5.76 s after the key,
+when the trigger level is written (`0xFFFF` before, `0x002E` after). On the way CH1's
+range steps 0, 1, 2 and later 3, the time base returns to 13, CH2's coupling returns to 1
+at `22` and CH1's at `F3`. `ms[0x32]` counts 10 ms ticks from 0 after most of those steps
+and, after the last, up to `0xFF`, where it stays. The table of times and the code that
+saves and restores the couplings through `ms[0x31]` are in `stock_v120_notes.md`,
+"Oscilloscope". This explains the `ms[0x31]` of the section on the trigger edge: it is
+what the couplings were at the last AUTO.
+
+`fnlink.py status` and the scope settings it decodes now give the trigger's mode and
+channel, CH2's coupling and the FFT rows.
+
+The owner also reports that the link works from the Android application; no capture of
+that is kept here.
+
 ## Not answered
 
-- What needs a write to the instrument's memory (the 20M limit, the per-channel "FFT" flag)
+- What needs a write to the instrument's memory (the 20M limit; the per-channel "FFT" flag
+  was since read by switching it on the instrument, above)
   or a read of peripheral registers (TMR10, TMR11, GPIO): the link reads flash and RAM only,
   and the one thing it writes, from patch 4, is the generator's table.
 - The idle counter with USB disconnected: without USB there is no link.

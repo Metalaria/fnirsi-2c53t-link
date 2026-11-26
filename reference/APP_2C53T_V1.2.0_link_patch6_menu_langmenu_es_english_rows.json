@@ -1,0 +1,719 @@
+{
+  "stock_sha256": "a17c5c35c97bb898f15672a1747bc1041d8ed507c16999ddba0d1e4e2ec0c760",
+  "image_sha256": "537feee8860186a926b0ebaf04bec107fd2638279e037235f4ef1032c9e50b09",
+  "image_len": 756620,
+  "cave_addr": "0x080be700",
+  "cave_len": 5260,
+  "cave_sha256": "5f35d514f24e04551766c93b3168eea01d4d4b88b299ee0edaa4afbcc1433df6",
+  "hooks": [
+    "0x0802a994",
+    "0x0803e49a"
+  ],
+  "calls": [],
+  "menu": [
+    {
+      "index": 13,
+      "label": "Triangle 25/75",
+      "icon": 2,
+      "source": "triangle:25",
+      "names": {
+        "es": "Triangular 25/75"
+      }
+    },
+    {
+      "index": 14,
+      "label": "Gauss Pulse",
+      "icon": 12,
+      "source": "gauss",
+      "names": {
+        "es": "Campana de Gauss"
+      }
+    },
+    {
+      "index": 15,
+      "label": "Burst 10",
+      "icon": 10,
+      "source": "burst",
+      "names": {
+        "es": "Ráfaga de 10 ciclos"
+      }
+    },
+    {
+      "index": 16,
+      "label": "AM 80%",
+      "icon": 11,
+      "source": "am",
+      "names": {
+        "es": "Portadora modulada (AM)"
+      }
+    },
+    {
+      "index": 17,
+      "label": "USB Wave",
+      "icon": 0,
+      "source": "usb",
+      "names": {
+        "es": "Onda USB"
+      }
+    }
+  ],
+  "menu_sites": [
+    "0x08029e14",
+    "0x080157e6",
+    "0x0801583c",
+    "0x08015886",
+    "0x080158d0",
+    "0x0801591a",
+    "0x08015964",
+    "0x080108ea",
+    "0x080127bc",
+    "0x0801f8ee",
+    "0x0800a9c2",
+    "0x0800c2aa",
+    "0x0800c2ae",
+    "0x0800d912",
+    "0x0800d916",
+    "0x0800e5f8",
+    "0x0800e5fc",
+    "0x0802e000",
+    "0x0802e004"
+  ],
+  "language_menu": [
+    "中文",
+    "English",
+    "Русский",
+    "にほんご",
+    "Español",
+    "Português",
+    "Deutsch",
+    "한국어"
+  ],
+  "language_menu_sites": [
+    "0x0801cf7e",
+    "0x0800b1d8"
+  ],
+  "texts": [
+    {
+      "slot": "0x0804c500",
+      "was": "0x080bbf63",
+      "at": "0x080bfa48",
+      "font": 28,
+      "box": [
+        216,
+        29
+      ],
+      "lines": [
+        "Tensión continua"
+      ],
+      "text": "Tensión continua"
+    },
+    {
+      "slot": "0x0804c504",
+      "was": "0x080bbed1",
+      "at": "0x080bfa5a",
+      "font": 28,
+      "box": [
+        216,
+        29
+      ],
+      "lines": [
+        "Tensión alterna"
+      ],
+      "text": "Tensión alterna"
+    },
+    {
+      "slot": "0x0804c51c",
+      "was": "0x080bbf99",
+      "at": "0x080bfa6b",
+      "font": 28,
+      "box": [
+        216,
+        29
+      ],
+      "lines": [
+        "Corriente CC (mA)"
+      ],
+      "text": "Corriente CC (mA)"
+    },
+    {
+      "slot": "0x0804c520",
+      "was": "0x080bbf05",
+      "at": "0x080bfa7d",
+      "font": 28,
+      "box": [
+        216,
+        29
+      ],
+      "lines": [
+        "Corriente CA (mA)"
+      ],
+      "text": "Corriente CA (mA)"
+    },
+    {
+      "slot": "0x0804c524",
+      "was": "0x080bbf81",
+      "at": "0x080bfa8f",
+      "font": 28,
+      "box": [
+        216,
+        29
+      ],
+      "lines": [
+        "Corriente CC (A)"
+      ],
+      "text": "Corriente CC (A)"
+    },
+    {
+      "slot": "0x0804c528",
+      "was": "0x080bbeee",
+      "at": "0x080bfaa0",
+      "font": 28,
+      "box": [
+        216,
+        29
+      ],
+      "lines": [
+        "Corriente CA (A)"
+      ],
+      "text": "Corriente CA (A)"
+    },
+    {
+      "slot": "0x0804c5f4",
+      "was": "0x080bc085",
+      "at": "0x080bfab1",
+      "font": 18,
+      "box": [
+        54,
+        22
+      ],
+      "lines": [
+        "Amplit."
+      ],
+      "text": "Amplit."
+    },
+    {
+      "slot": "0x0804c6f4",
+      "was": "0x080bc29f",
+      "at": "0x080bfab9",
+      "font": 18,
+      "box": [
+        100,
+        36
+      ],
+      "lines": [
+        "Diente de sierra"
+      ],
+      "text": "Diente de sierra"
+    },
+    {
+      "slot": "0x0804c700",
+      "was": "0x080bca5f",
+      "at": "0x080bfaca",
+      "font": 18,
+      "box": [
+        100,
+        36
+      ],
+      "lines": [
+        "Escalera"
+      ],
+      "text": "Escalera"
+    },
+    {
+      "slot": "0x0804c704",
+      "was": "0x080bca6c",
+      "at": "0x080bfad3",
+      "font": 18,
+      "box": [
+        100,
+        36
+      ],
+      "lines": [
+        "Escalera inversa"
+      ],
+      "text": "Escalera inversa"
+    },
+    {
+      "slot": "0x0804c708",
+      "was": "0x080bbd34",
+      "at": "0x080bfae4",
+      "font": 18,
+      "box": [
+        100,
+        36
+      ],
+      "lines": [
+        "Subida ",
+        "exponencial"
+      ],
+      "text": "Subida exponencial"
+    },
+    {
+      "slot": "0x0804c70c",
+      "was": "0x080bc6f2",
+      "at": "0x080bfaf7",
+      "font": 18,
+      "box": [
+        100,
+        36
+      ],
+      "lines": [
+        "Bajada ",
+        "exponencial"
+      ],
+      "text": "Bajada exponencial"
+    },
+    {
+      "slot": "0x0804c718",
+      "was": "0x080bc6c9",
+      "at": "0x080bfb0a",
+      "font": 18,
+      "box": [
+        100,
+        36
+      ],
+      "lines": [
+        "Pulso sinc"
+      ],
+      "text": "Pulso sinc"
+    },
+    {
+      "slot": "0x080141ac",
+      "was": "0x080bba5a",
+      "at": "0x080bfb15",
+      "font": 18,
+      "box": [
+        100,
+        32
+      ],
+      "lines": [
+        "Canal:"
+      ],
+      "text": "Canal:"
+    },
+    {
+      "slot": "0x080141b0",
+      "was": "0x080bba2a",
+      "at": "0x080bfb1c",
+      "font": 18,
+      "box": [
+        100,
+        32
+      ],
+      "lines": [
+        "Sonda:"
+      ],
+      "text": "Sonda:"
+    },
+    {
+      "slot": "0x080141b4",
+      "was": "0x080bba3d",
+      "at": "0x080bfb23",
+      "font": 18,
+      "box": [
+        100,
+        32
+      ],
+      "lines": [
+        "Acoplamiento:"
+      ],
+      "text": "Acoplamiento:"
+    },
+    {
+      "slot": "0x0804c7d8",
+      "was": "0x080bba31",
+      "at": "0x080bfb31",
+      "font": 18,
+      "box": [
+        100,
+        32
+      ],
+      "lines": [
+        "Modo:"
+      ],
+      "text": "Modo:"
+    },
+    {
+      "slot": "0x0804c7dc",
+      "was": "0x080bba37",
+      "at": "0x080bfb37",
+      "font": 18,
+      "box": [
+        100,
+        32
+      ],
+      "lines": [
+        "Flanco:"
+      ],
+      "text": "Flanco:"
+    },
+    {
+      "slot": "0x0804c7e0",
+      "was": "0x080bba5a",
+      "at": "0x080bfb15",
+      "font": 18,
+      "box": [
+        100,
+        32
+      ],
+      "lines": [
+        "Canal:"
+      ],
+      "text": "Canal:"
+    },
+    {
+      "slot": "0x0804c7f8",
+      "was": "0x080bc184",
+      "at": "0x080bfb3f",
+      "font": 18,
+      "box": [
+        66,
+        20
+      ],
+      "lines": [
+        "Simple"
+      ],
+      "text": "Simple"
+    },
+    {
+      "slot": "0x0804c3e8",
+      "was": "0x080bbc4c",
+      "at": "0x080bfb46",
+      "font": 20,
+      "box": [
+        100,
+        20
+      ],
+      "lines": [
+        "MEDIA"
+      ],
+      "text": "MEDIA"
+    },
+    {
+      "slot": "0x0804bf28",
+      "was": "0x080bbaa0",
+      "at": "0x080bfb4c",
+      "font": 15,
+      "box": [
+        36,
+        15
+      ],
+      "lines": [
+        "Frec:"
+      ],
+      "text": "Frec:"
+    },
+    {
+      "slot": "0x0804bf2c",
+      "was": "0x080bba4c",
+      "at": "0x080bfb52",
+      "font": 15,
+      "box": [
+        36,
+        15
+      ],
+      "lines": [
+        "Per:"
+      ],
+      "text": "Per:"
+    },
+    {
+      "slot": "0x0804bf30",
+      "was": "0x080bb9f8",
+      "at": "0x080bfb57",
+      "font": 15,
+      "box": [
+        36,
+        15
+      ],
+      "lines": [
+        "Ciclo+:"
+      ],
+      "text": "Ciclo+:"
+    },
+    {
+      "slot": "0x0804bf34",
+      "was": "0x080bba05",
+      "at": "0x080bfb5f",
+      "font": 15,
+      "box": [
+        36,
+        15
+      ],
+      "lines": [
+        "Ciclo-:"
+      ],
+      "text": "Ciclo-:"
+    },
+    {
+      "slot": "0x0804bf38",
+      "was": "0x080bb9f2",
+      "at": "0x080bfb67",
+      "font": 15,
+      "box": [
+        36,
+        15
+      ],
+      "lines": [
+        "Anc+:"
+      ],
+      "text": "Anc+:"
+    },
+    {
+      "slot": "0x0804bf3c",
+      "was": "0x080bb9ff",
+      "at": "0x080bfb6d",
+      "font": 15,
+      "box": [
+        36,
+        15
+      ],
+      "lines": [
+        "Anc-:"
+      ],
+      "text": "Anc-:"
+    },
+    {
+      "slot": "0x0804bf40",
+      "was": "0x080bbab7",
+      "at": "0x080bfb73",
+      "font": 15,
+      "box": [
+        36,
+        15
+      ],
+      "lines": [
+        "Vmáx:"
+      ],
+      "text": "Vmáx:"
+    },
+    {
+      "slot": "0x0804bf44",
+      "was": "0x080bba6b",
+      "at": "0x080bfb7a",
+      "font": 15,
+      "box": [
+        36,
+        15
+      ],
+      "lines": [
+        "Vmín:"
+      ],
+      "text": "Vmín:"
+    },
+    {
+      "slot": "0x0804bf50",
+      "was": "0x080bbaa6",
+      "at": "0x080bfb81",
+      "font": 15,
+      "box": [
+        36,
+        15
+      ],
+      "lines": [
+        "Vef:"
+      ],
+      "text": "Vef:"
+    },
+    {
+      "slot": "0x0804bf54",
+      "was": "0x080bba47",
+      "at": "0x080bfb86",
+      "font": 15,
+      "box": [
+        36,
+        15
+      ],
+      "lines": [
+        "Med:"
+      ],
+      "text": "Med:"
+    }
+  ],
+  "changed_stock_bytes": [
+    "0x0800a9c2",
+    "0x0800b1d8",
+    "0x0800c2aa",
+    "0x0800c2ae",
+    "0x0800d912",
+    "0x0800d916",
+    "0x0800e5f8",
+    "0x0800e5fc",
+    "0x080108ea",
+    "0x080108eb",
+    "0x080108ec",
+    "0x080108ed",
+    "0x080127bc",
+    "0x080127bd",
+    "0x080127be",
+    "0x080127bf",
+    "0x080141ac",
+    "0x080141ad",
+    "0x080141b0",
+    "0x080141b1",
+    "0x080141b4",
+    "0x080141b5",
+    "0x080157e6",
+    "0x080157e7",
+    "0x080157e8",
+    "0x080157e9",
+    "0x0801583c",
+    "0x0801583d",
+    "0x0801583e",
+    "0x0801583f",
+    "0x08015886",
+    "0x08015887",
+    "0x08015888",
+    "0x08015889",
+    "0x080158d0",
+    "0x080158d1",
+    "0x080158d2",
+    "0x080158d3",
+    "0x0801591a",
+    "0x0801591b",
+    "0x0801591c",
+    "0x0801591d",
+    "0x08015964",
+    "0x08015965",
+    "0x08015966",
+    "0x08015967",
+    "0x0801cf7e",
+    "0x0801cf7f",
+    "0x0801cf80",
+    "0x0801cf81",
+    "0x0801f8ee",
+    "0x0801f8ef",
+    "0x0801f8f0",
+    "0x0801f8f1",
+    "0x08029e14",
+    "0x08029e15",
+    "0x08029e16",
+    "0x08029e17",
+    "0x0802a994",
+    "0x0802a995",
+    "0x0802a996",
+    "0x0802a997",
+    "0x0802a998",
+    "0x0802a999",
+    "0x0802e000",
+    "0x0802e004",
+    "0x0803e49a",
+    "0x0803e49b",
+    "0x0803e49c",
+    "0x0803e49d",
+    "0x0804bf28",
+    "0x0804bf29",
+    "0x0804bf2c",
+    "0x0804bf2d",
+    "0x0804bf30",
+    "0x0804bf31",
+    "0x0804bf34",
+    "0x0804bf35",
+    "0x0804bf38",
+    "0x0804bf39",
+    "0x0804bf3c",
+    "0x0804bf3d",
+    "0x0804bf40",
+    "0x0804bf41",
+    "0x0804bf44",
+    "0x0804bf45",
+    "0x0804bf50",
+    "0x0804bf51",
+    "0x0804bf54",
+    "0x0804bf55",
+    "0x0804c3e8",
+    "0x0804c3e9",
+    "0x0804c500",
+    "0x0804c501",
+    "0x0804c504",
+    "0x0804c505",
+    "0x0804c51c",
+    "0x0804c51d",
+    "0x0804c520",
+    "0x0804c521",
+    "0x0804c524",
+    "0x0804c525",
+    "0x0804c528",
+    "0x0804c529",
+    "0x0804c5f4",
+    "0x0804c5f5",
+    "0x0804c6f4",
+    "0x0804c6f5",
+    "0x0804c700",
+    "0x0804c701",
+    "0x0804c704",
+    "0x0804c705",
+    "0x0804c708",
+    "0x0804c709",
+    "0x0804c70c",
+    "0x0804c70d",
+    "0x0804c718",
+    "0x0804c719",
+    "0x0804c7d9",
+    "0x0804c7dd",
+    "0x0804c7e0",
+    "0x0804c7e1",
+    "0x0804c7f8",
+    "0x0804c7f9"
+  ],
+  "usb_vid_pid": "1209:0001",
+  "symbols": {
+    "arm_rx": "0x080be81c",
+    "clear_report": "0x080be7c2",
+    "config_desc": "0x080bf584",
+    "copy_bytes": "0x080be7b0",
+    "ctrl_send": "0x080be860",
+    "ctrl_stall": "0x080be898",
+    "d_config": "0x080bf548",
+    "d_device": "0x080bf540",
+    "d_lang": "0x080bf550",
+    "d_manufacturer": "0x080bf558",
+    "d_product": "0x080bf560",
+    "device_desc": "0x080bfa14",
+    "fill_row": "0x080bf304",
+    "get_config": "0x080be788",
+    "get_device": "0x080be780",
+    "get_lang": "0x080be790",
+    "get_manufacturer": "0x080be798",
+    "get_none": "0x080be7a8",
+    "get_product": "0x080be7a0",
+    "lang_desc": "0x080bfa10",
+    "language_name": "0x080bfa28",
+    "link_class_table": "0x080bf98c",
+    "link_clear": "0x080be8f0",
+    "link_desc_table": "0x080bf9b4",
+    "link_ept0": "0x080be908",
+    "link_fpga_tail": "0x080bf158",
+    "link_in": "0x080bec9c",
+    "link_init": "0x080be95c",
+    "link_language_panel": "0x080bf378",
+    "link_out": "0x080bedc0",
+    "link_setup": "0x080be99c",
+    "link_sof": "0x080becc0",
+    "link_stub_fpga": "0x080be710",
+    "link_stub_icon_r0": "0x080be756",
+    "link_stub_icon_r1": "0x080be766",
+    "link_stub_langpanel": "0x080be776",
+    "link_stub_langpanel_resume": "0x080be77a",
+    "link_stub_name": "0x080be746",
+    "link_stub_tick": "0x080be700",
+    "link_stub_wave": "0x080be72c",
+    "link_stub_wave_resume": "0x080be740",
+    "link_tick": "0x080bf1ec",
+    "link_wave_build": "0x080bf044",
+    "link_wave_icon": "0x080bf138",
+    "link_wave_name": "0x080bf0d4",
+    "manufacturer_desc": "0x080bfa00",
+    "menu_wave_data": "0x080bf5c4",
+    "menu_wave_icon": "0x080bf984",
+    "menu_wave_name": "0x080bf5b0",
+    "menu_wave_name_in": "0x080bf8e4",
+    "product_desc": "0x080bf9dc",
+    "pump": "0x080bea20",
+    "put32": "0x080be7ac",
+    "report_desc": "0x080bf568",
+    "state_check": "0x080be92c",
+    "stream_reset": "0x080be7d4",
+    "usb_connected": "0x080be90c"
+  }
+}

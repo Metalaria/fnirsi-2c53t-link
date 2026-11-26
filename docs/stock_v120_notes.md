@@ -181,8 +181,8 @@ by twelve for CH2, in the units the screen's measurement boxes are computed from
 | 2, 3 | positive and negative duty cycle | 0.01 % |
 | 4, 5 | positive and negative pulse width | ns |
 | 6, 7, 8 | Vmax, Vmin, Vpp | µV, signed (Vmin goes below zero) |
-| 9 | a second amplitude, a few mV under Vpp (top to base?) | µV |
-| 10, 11 | not identified | µV |
+| 9 | a second amplitude, a few mV under Vpp; stock labels it "Amp:" | µV |
+| 10, 11 | not compared with a screen; stock labels them "Vrms:" and "Avg:" | µV |
 
 Compared with photographs of two stopped screens: 40232 with "40.23KHz", 6451 with "64.51%",
 114000 with "114.0mV"; and, on another day's wave, 50176 with "50.18KHz", 5050 with
@@ -193,6 +193,51 @@ to peak at 50 mV per division, and 345 mV at 100 mV per division, where the reco
 gives 344 mV (2026-11-25). With a channel off its words hold a frequency and its period (0 Hz,
 tens of Hz, or about 1.7 MHz) and a few millivolts. Outside the oscilloscope mode the shown
 block is all zeros.
+
+The code that prints them (it loads the table of labels at `0x0801BB8A`; code) takes word
+*i* of the shown block, CH1's from `ms+0x110` and CH2's from `ms+0x140`, and prints it after
+label *i* of a table at `0x0804BF28` (twelve pointers for English, then twelve for Chinese: `Freq:`, `Peri:`,
+`Duty+:`, `Duty-:`, `Wid+:`, `Wid-:`, `Vmax:`, `Vmin:`, `Vp-p:`, `Amp:`, `Vrms:`, `Avg:`)
+with `"%s%.2f%s"` or `"%s%.1f%s"` (`0x0801CA64`, `0x0801CA70`). The unit comes from a
+table of four per kind at `0x0801CA24`, the kind of each word from the bytes at
+`0x0801CA18` (`00 01 02 02 01 01 03 03 03 03 03 03`): Hz, KHz, MHz for the frequency; nS,
+uS, mS, S for the period and the widths; % for the duties; mV, V for the six voltages.
+Label, value and unit are drawn as one text in a box of 100 x 15 in the 15 px font, one box
+every 100 px.
+
+**The settings in the scope state** (unit, 2026-11-26, each switched on the instrument and
+back while the 56 bytes were read; the table is in [`formats.md`](formats.md)): the
+couplings are `ms[0]` and `ms[1]` (1 DC, 0 AC), the menu's "FFT:" rows `ms[0x0A]` and
+`ms[0x0B]`, the trigger's channel `ms[0x16]` (0 CH1, 1 CH2), its mode `ms[0x17]` (0 Normal,
+1 Auto, 2 Single) and its edge `ms[0x18]` (0 rising, 1 falling). While a channel's FFT is
+on, `ms[0x0C..0x0F]` (CH1) or `ms[0x10..0x13]` (CH2) hold `0x20033940` and are zero
+otherwise. In Single the running flag `ms[0x2E]` read 0.
+
+**The AUTO key** (unit: `ms[0x00..0x37]` watched every 10 ms through one press, both
+channels on and in DC; code for the two addresses). At the key stock saves the couplings of
+the channels that are on in `ms[0x31]`, CH1's in the low nibble (`0x0800CC46`) and CH2's in
+the high one (`0x0800CD8C`), sets `ms[0x2F]` to 1 (`0x0800CC38`) and clears the couplings,
+the ranges and CH1's position; the time base went from 13 to 4. From there `ms[0x2F]` is
+the step and `ms[0x32]` a count of 10 ms ticks that starts again at most steps:
+
+| After the key | `ms[0x2F]` | What else changed |
+|---|---|---|
+| 0 | `01` | couplings 1 to 0, ranges 2 to 0, CH1's position -76 to 0, time base 13 to 4, `ms[0x31]` = `0x11`, `ms[0x32]` = 0 |
+| 0.41 s, 0.85 s | `01` | CH1's range 0 to 1, then to 2 |
+| 1.28 s | `02` | |
+| 1.85 s | `03` | time base 4 to 13 |
+| 1.96 s | `11` | |
+| 2.40 s | `21` | CH1's range 2 to 3 |
+| 2.84 s | `22`, then `32` | CH2's coupling back to 1 |
+| 3.27 s | `F3` | CH1's coupling back to 1, CH2's position 0 to -45 |
+| 3.71 s | `FF` | CH1's position 0 to 9 |
+| 5.76 s | `00` | trigger level -1 to 46 |
+
+After that `ms[0x32]` counted on to `0xFF` and stayed, which is the value it had before the
+key. The couplings are restored from `ms[0x31]` (`0x08008E3E`: the nibble of the channel,
+then 1 in its coupling byte). `ms[0x31]` keeps its value afterwards, so it tells how the
+couplings were at the last AUTO. What was connected to the inputs during the watch was not
+noted, so the ranges and positions it ended at say nothing by themselves.
 
 What the arrow keys do is the low nibble of state `+0x354` (`0x2000044C`): 0 changes the time
 base and the range, 2 moves the trace and the trigger level, 3 is for the cursors; SELECT
@@ -305,13 +350,14 @@ been in use since 2026-11-25 with `--languages`)
   save failed, the four "waiting" ones, exceeded limit, deleting, delete / confirm / cancel /
   return, and the factory-reset warning.
 - **The fonts are in the image and still cover all of it.** Text is drawn by an LVGL-style
-  routine (`0x0800F154`) with five fonts whose descriptors are in RAM from `ms+0xFEC`
-  (`0x200010E4`, 0x30 bytes each: 16, 18, 20, 25 and 28 px) and whose glyphs are in the image
-  (`0x08077F9C` to `0x080BA1B8`). Each has one list of code points, searched for the
-  character itself (`0x0802F868`): 567 of them, 569 in the 25 px font. Every character of the
-  560 strings above is in all five fonts, except two that only the 25 px font has and only
-  the "over limit" message in Chinese and Japanese uses. A character without a glyph ends the
-  string there (`0x0800F19C`).
+  routine (`0x0800F154`) with fonts whose descriptors are in RAM (0x30 bytes each) and whose
+  glyphs are in the image. Five of them, of 16, 18, 20, 25 and 28 px, are at `ms+0xFEC`
+  (`0x200010E4`) on, with their glyphs from `0x08077F9C` to `0x080BA1B8`. Each has one list of
+  code points, searched for the character itself (`0x0802F868`): 567 of them, 569 in the
+  25 px font. Every character of the 560 strings above is in all five fonts, except two that
+  only the 25 px font has and only the "over limit" message in Chinese and Japanese uses. A
+  character without a glyph ends the string there (`0x0800F19C`). There are three more
+  descriptors, two before those five and one after (see "Texts that do not fit").
 - Not looked at: whether the longer strings fit where V1.2.0 draws them, and what mode 8
   shows.
 
@@ -332,16 +378,29 @@ repeats the table and font checks on a stock image.
   lines are drawn from the top of the box down, past its bottom: nothing clips a text to
   its box, only the band being painted does. (code, and the routine run in emulation: its
   fonts are in the image's initialised data, so it paints without a dump of the unit)
-- **Fonts.** Five, of 16, 18, 20, 25 and 28 px, which is also the height of a line. Each
-  has a character map (`0x080819A8`, `0x0808C3CC`, `0x0809A194`, `0x080A1630`, `0x080BA1B8`)
-  with a pointer at +8 to a sorted list of 16-bit code points and their number at +16, and
-  an array of 8-byte glyph descriptors in the same order (`0x080807F0`, `0x0808B214`,
-  `0x08098FDC`, `0x080A0468`, `0x080B9000`): bitmap offset in the low 20 bits of the first
-  word and the advance, in whole pixels, in the top 12; then box width, box height and the
-  two offsets. The font descriptors used at run time are in RAM, `0x200010E4` + `0x30` x
-  font, with the line height at +8. Of the accented Latin letters the five have
-  `Ä Í Ü ß à á â ã ä ç ê í ñ ó õ ö ü`: no `é` and no `ú`, which Spanish needs, and no
-  inverted question or exclamation mark.
+- **Fonts.** Eight descriptors of 0x30 bytes in RAM, from `0x20001084`, with the line
+  height at +8 and, at +0x18 and +0x1C, the addresses of the glyph descriptors and of the
+  character map:
+
+  | Descriptor | Height | Glyph descriptors | Character map | Characters |
+  |---|---|---|---|---|
+  | `0x20001084` | 12 px | `0x0806F9D8` | `0x0806FCD8` | 96: U+0020 to U+007F |
+  | `0x200010B4` | 15 px | `0x08076938` | `0x08077B10` | 571 |
+  | `0x200010E4` | 16 px | `0x080807F0` | `0x080819A8` | 567 |
+  | `0x20001114` | 18 px | `0x0808B214` | `0x0808C3CC` | 567 |
+  | `0x20001144` | 20 px | `0x08098FDC` | `0x0809A194` | 567 |
+  | `0x20001174` | 25 px | `0x080A0468` | `0x080A1630` | 569 |
+  | `0x200011A4` | 28 px | `0x080B9000` | `0x080BA1B8` | 567 |
+  | `0x200011D4` | 63 px | `0x080BB2F0` | `0x080BB3A8` | 23: the digits, space, `-`, `.` and ten letters |
+
+  The height is also that of a line. A character map has a pointer at +8 to a sorted list
+  of 16-bit code points and their number at +16; the glyph descriptors, 8 bytes each, are
+  in the same order: bitmap offset in the low 20 bits of the first word and the advance, in
+  whole pixels, in the top 12; then box width, box height and the two offsets. The 15 px
+  font is the one of the oscilloscope's measurements (`0x0801BBEC`); one place each loads
+  the 12 px (`0x08016190`) and the 63 px (`0x0801633C`), not looked at. Of the accented
+  Latin letters the six from 15 to 28 px have `Ä Í Ü ß à á â ã ä ç ê í ñ ó õ ö ü`: no `é`
+  and no `ú`, which Spanish needs, and no inverted question or exclamation mark.
 - **The multimeter's title.** Table of pointers at `0x0804C43C`: twelve functions
   (`ms[0xF2E]`: 0 auto, 1 DC V, 2 AC V, 3 continuity, 4 diode, 5 resistance, 6 capacitance,
   7 temperature, 8 and 9 small DC and AC current, 10 and 11 large) for each of eight
@@ -365,10 +424,27 @@ repeats the table and font checks on a stock image.
   six of them drawn at a time by `0x0801579C` in boxes of 100 x 36 in the 18 px font, so
   two lines fit and stock's longer names break at their space. The generator's title is
   one text per language at `0x0804C398` (box of 216 x 20, 20 px font); all eight fit.
+- **Texts with two rows only.** Some tables have a Chinese row and an English one, and
+  every language but Chinese is shown the English: the labels of a channel's settings
+  (`0x08014198`, five a row: channel, probe, coupling, FFT and a 20M limit that the panel
+  never draws; box of 100 x 32 at x = 128, 18 px font, left-aligned), the labels of the
+  trigger's settings (`0x0804C7CC`, three a row: mode, edge, channel; the same box) and its
+  three modes (`0x0804C7E4`; box of 66 x 20, and again in the bar at the bottom of the
+  screen, `0x0801E784`, which measures the text), the multimeter's three boxes
+  (`0x0804C3D8`: MAX, MEAN, MIN; boxes of 100 x 20, 20 px font, `0x0801CAB0`) and the
+  oscilloscope's twelve measurement labels (`0x0804BF28`, English row first; see
+  "Oscilloscope"). Both panels are painted by the oscilloscope menu's options routine,
+  `0x08013338`, which switches on `ms[0xF6A]`: 3 and 4 are CH1's and CH2's settings, 5 the
+  trigger's (`0x08013674`). So an instrument set to Spanish says "Coupling:", "Edge:"
+  and "MEAN".
 
 `build_link_image.py --texts` replaces a text by pointing its slot at a string in the cave,
 after laying the string out as the first pass does and checking it against the box;
 `texts/es.txt` does it for the six titles, the amplitude label and six waveform names.
+`texts/es-english-rows.txt` does it for eighteen texts of the two-row tables, which changes
+them for every language but Chinese; the two panels, the bar and the boxes were painted in
+emulation by stock's own routines with that file, on a RAM dump of the unit (the
+measurements were not), and the image has not been on a unit when this was written.
 
 ### The options of a setting (code, and stock's own routines run in emulation)
 
@@ -410,7 +486,8 @@ the cursor is among the options and `ms[0xF6B]` is the option under it.
 byte becomes 7 and the Language case branches to `link_language_panel()` (`langmenu.c`),
 which paints the four slots of the cursor's page as Auto Shutdown's are painted and leaves
 through the routine's exit. The image has no name for six of the languages; the builder
-supplies them and checks them against the fonts (`日` of 日本語 is in none of the five).
+supplies them and checks them against the fonts (`日` of 日本語 is in none of the six from 15
+to 28 px).
 In emulation the result was compared with stock's own Auto Shutdown panel in the same state:
 the same calls with the same arguments, the same pixels outside the text, in every
 combination of cursor and language, and with the band whole, partial and elsewhere.

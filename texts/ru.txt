@@ -1,0 +1,22 @@
+# Russian texts for stock V1.2.0, for build_link_image.py --texts.
+#
+# Each line replaces one text: SLOT WAS FONT WIDTH HEIGHT TEXT (see texts/es.txt for what
+# each field is and what the builder refuses).
+#
+# NOT REVIEWED BY A NATIVE SPEAKER AND NOT SEEN ON A UNIT. The terms are the usual ones for
+# an instrument, and the builder and stock's own text routine (in emulation) say they are
+# drawn whole. Whether they read well is for someone who speaks the language to say:
+# corrections are welcome.
+#
+# Only what stock cuts is replaced: the multimeter's titles that do not fit their box of
+# 216 x 29 (28 px font), and the generator's third label, whose second line falls off the
+# screen (box of 54 x 22, 18 px font).
+# The fonts lack fifteen Cyrillic letters, most of them capitals (among them the capitals of
+# г, ж, й, у, ф, х, ш, щ, ы, ь, э, ю, and the small ъ and э): a text that needs one is refused.
+0x0804C4A0 0x080BDB11 28 216 29 Пост. напряжение
+0x0804C4A4 0x080BDB46 28 216 29 Перем. напряжение
+0x0804C4BC 0x080BDEC4 28 216 29 Пост. ток (мА)
+0x0804C4C0 0x080BDF16 28 216 29 Перем. ток (мА)
+0x0804C4C4 0x080BDEEB 28 216 29 Пост. ток (А)
+0x0804C4C8 0x080BDF3D 28 216 29 Перем. ток (А)
+0x0804C5DC 0x080BDAC7 18 54 22 Амплит.

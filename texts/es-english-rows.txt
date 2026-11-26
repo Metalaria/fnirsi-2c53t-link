@@ -1,0 +1,47 @@
+# Spanish for the texts stock V1.2.0 has in Chinese and English only, for build_link_image.py --texts.
+#
+# Each line replaces one text: SLOT WAS FONT WIDTH HEIGHT TEXT (see texts/es.txt for what
+# each field is and what the builder refuses).
+#
+# READ THIS FIRST. These tables have two rows, Chinese and English, and every language but
+# Chinese is shown the English one. Replacing a text here therefore changes it for English,
+# Russian, Japanese, Portuguese, German and Korean as well: an instrument built with this
+# file says "Canal:" whatever language it is set to, except Chinese. Use it for a unit that
+# is going to stay in Spanish, together with texts/es.txt.
+
+# A channel's settings (0x0801333x): labels from the table at 0x08014198, drawn in the 18 px
+# font in a box of 100 x 32, left-aligned. "FFT:" stays.
+0x080141AC 0x080BBA5A 18 100 32 Canal:
+0x080141B0 0x080BBA2A 18 100 32 Sonda:
+0x080141B4 0x080BBA3D 18 100 32 Acoplamiento:
+
+# The trigger's settings (0x0801369x): labels from 0x0804C7CC in the same box; the mode from
+# 0x0804C7E4 in a box of 66 x 20, and again in the bar at the bottom of the screen
+# (0x0801E784), which measures it. "Normal" and "Auto" stay. Spanish would say "Único" for
+# a single shot, and the fonts have no u with an acute accent.
+0x0804C7D8 0x080BBA31 18 100 32 Modo:
+0x0804C7DC 0x080BBA37 18 100 32 Flanco:
+0x0804C7E0 0x080BBA5A 18 100 32 Canal:
+0x0804C7F8 0x080BC184 18 66 20 Simple
+
+# The multimeter's three boxes (0x0801CAE6): labels from 0x0804C3D8, 20 px font, boxes of
+# 100 x 20. "MAX" and "MIN" stay.
+0x0804C3E8 0x080BBC4C 20 100 20 MEDIA
+
+# The oscilloscope's measurements (0x0801BB8A): labels from 0x0804BF28, printed in front of
+# the value and its unit ("%s%.2f%s" or "%s%.1f%s") and drawn together, in the 15 px font,
+# in a box of 100 x 15. What the builder can check is the label alone, so the width given
+# here is that of stock's widest label, "Duty+:", 36 px. Each of these is as wide as the
+# label it replaces or narrower, but "Med:", 26 px for the 24 of "Avg:"; the six voltages
+# share their formats and units (mV, V), and stock's "Vmin:" is 31 px.
+# "Vp-p:" and "Amp:" stay.
+0x0804BF28 0x080BBAA0 15 36 15 Frec:
+0x0804BF2C 0x080BBA4C 15 36 15 Per:
+0x0804BF30 0x080BB9F8 15 36 15 Ciclo+:
+0x0804BF34 0x080BBA05 15 36 15 Ciclo-:
+0x0804BF38 0x080BB9F2 15 36 15 Anc+:
+0x0804BF3C 0x080BB9FF 15 36 15 Anc-:
+0x0804BF40 0x080BBAB7 15 36 15 Vmáx:
+0x0804BF44 0x080BBA6B 15 36 15 Vmín:
+0x0804BF50 0x080BBAA6 15 36 15 Vef:
+0x0804BF54 0x080BBA47 15 36 15 Med:
