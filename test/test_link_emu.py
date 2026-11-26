@@ -1114,6 +1114,7 @@ def main() -> int:
             return raw.split(b"\0", 1)[0].decode("ascii", "replace")
 
         differ, rows_wrong, not_returned = [], [], []
+        renamed = {int(t["slot"], 16): int(t["at"], 16) for t in manifest.get("texts", [])}     # --texts, below
         for language in range(1, 9):
             for first in range(0, 8 + E_BYTES):
                 ref, mu_ref = names(stock, language, first, first)
@@ -1125,12 +1126,13 @@ def main() -> int:
                 for k in range(6):
                     row = first + k
                     if row < 13:
-                        if got[k] != ref[k]:
+                        if got[k] != renamed.get(0x0804C61C + 52 * (language - 1) + 4 * row, ref[k]):
                             differ.append((language, row))
                     elif cstring(got[k]) != menu[row - 13]["label"]:
                         rows_wrong.append((language, row, cstring(got[k])))
         check("menu: stock's list returns and asks for six names in every language and at every scroll position", not not_returned, str(not_returned[:4]))
-        check("menu: rows 1 to 13 get exactly the name stock gives them, in all eight languages", not differ, str(differ[:4]))
+        check("menu: rows 1 to 13 get exactly the name stock gives them (or the one --texts puts in its slot), in all eight languages",
+              not differ, str(differ[:4]))
         check("menu: rows 14 to %d get the added names (%s)" % (LAST + 1, ", ".join(m["label"] for m in menu)), not rows_wrong, str(rows_wrong[:4]))
 
         # the pictures: the three places that turn the index into a file number
@@ -1493,9 +1495,57 @@ def main() -> int:
     check("multimeter title: %s in its 216 px box, every other language and function as stock"
           % ("the %d texts replaced" % len([a for a in replaced if TITLES <= a < TITLES + 384]) if texts else "stock's texts"),
           not wrong, str(wrong[:4]))
-    check("stock's 28 px font: a text of 215 px fits the title's box and one of 232 does not (widths as painted in emulation)",
-          builder.text_width(stock, 28, "Corriente alterna mA") == 215 and builder.text_width(stock, 28, "Corriente continua mA") == 232
-          and builder.text_width(stock, 28, "DC Voltage") == 116)
+    # Stock's text routine itself, run to the end with its fonts (their descriptors are in the
+    # image's initialised data): what it paints on a whole-screen band, as the set of pixels.
+    FONT_AT = {16: 0x200010E4, 18: 0x20001114, 20: 0x20001144, 25: 0x20001174, 28: 0x200011A4}
+    TEXT_X, TEXT_Y, SCRATCH = 40, 60, BAND_PIXELS + 0x30000
+
+    class Everything:
+        def __contains__(self, _):
+            return True
+
+    def draw(text, px, width, height):
+        from unicorn import arm_const as A
+
+        def setup(mu):
+            mu.mem_map(BAND_PIXELS, BAND_ROOM)
+            mu.mem_write(BAND_AT, struct.pack("<HHHHI", 0, 0, 320, 240, BAND_PIXELS))
+            mu.mem_write(SCRATCH, text.encode("utf-8") + b"\0")
+            mu.mem_write(mu.reg_read(A.UC_ARM_REG_SP), struct.pack("<4I", SCRATCH, FONT_AT[px], 0xFFFF, 1))
+
+        mu, at, writes = run_code(image, ram, TEXT, (), (), {"r0": TEXT_X, "r1": TEXT_Y, "r2": width, "r3": height},
+                                  follow=Everything(), setup=setup, limit=3000000)
+        pixels = mu.mem_read(BAND_PIXELS, 2 * 320 * 240)
+        return at, {(i % 320, i // 320) for i in range(320 * 240) if pixels[2 * i] or pixels[2 * i + 1]}
+
+    def whole(text, px, width, height):
+        """Is the text drawn whole and inside its box? Every line the builder expects, drawn
+        alone, must be a line of what the routine draws for the text, and nothing may be
+        painted outside the box."""
+        at, ink = draw(text, px, width, height)
+        lines = builder.text_lines(stock, px, width, text)
+        inside = all(TEXT_X <= x < TEXT_X + width and TEXT_Y <= y < TEXT_Y + height for x, y in ink)
+        rows = sorted({y for _, y in ink})
+        alone = [draw(line.strip(), px, width, px)[1] for line in lines]
+        # the lines are stacked a line height apart: split what was painted by those bands
+        top = TEXT_Y + (height - len(lines) * px) // 2
+        split = [{(x, y - top - k * px) for x, y in ink if top + k * px <= y < top + (k + 1) * px} for k in range(len(lines))]
+        ref = [{(x, y - TEXT_Y) for x, y in a} for a in alone]
+        return at == usbemu.RET_MAGIC and bool(ink) and inside and split == ref, (inside, len(ink), [len(a) for a in alone], rows[:1], rows[-1:])
+
+    ok_one, why_one = whole("Corriente alterna mA", 28, 216, 29)
+    cut = draw("Corriente continua mA", 28, 216, 29)[1]
+    full = draw("Corriente continua mA", 28, 320 - TEXT_X, 29)[1]
+    check("stock's text routine, really run: 215 px is drawn whole in the title's 216 x 29 box; 232 px is not, and what it loses is the end",
+          ok_one and builder.text_width(stock, 28, "Corriente alterna mA") == 215 and builder.text_width(stock, 28, "Corriente continua mA") == 232
+          and len({(x, y) for x, y in cut if TEXT_Y <= y < TEXT_Y + 29}) < len(full), str(why_one))
+    ok_two, why_two = whole("Subida exponencial", 18, 100, 36)
+    check("stock's text routine: a text of two words too wide for 100 px is drawn in two lines, broken at the space, inside a box 36 high",
+          ok_two and builder.text_lines(stock, 18, 100, "Subida exponencial") == ["Subida ", "exponencial"], str(why_two))
+    spill = draw("Amplitud", 18, 54, 22)[1]
+    check("stock's text routine: a word one pixel too wide (55 in 54) loses its last letter to a line below the box, as on the unit",
+          builder.text_width(stock, 18, "Amplitud") == 55 and any(y >= TEXT_Y + 22 for _, y in spill)
+          and not any(y >= TEXT_Y + 22 for _, y in draw("Amplit.", 18, 54, 22)[1]))
     if texts:
         bad = []
         for t in texts:
@@ -1503,10 +1553,14 @@ def main() -> int:
             here = struct.unpack_from("<I", image, slot - 0x08007000)[0]
             if here != at or not CAVE_ADDR <= at < CAVE_ADDR + manifest["cave_len"] or image[at - 0x08007000:at - 0x08007000 + len(raw)] != raw \
                     or struct.unpack_from("<I", stock, slot - 0x08007000)[0] != int(t["was"], 16) \
-                    or builder.text_width(stock, t["font"], t["text"]) != t["width"] or t["width"] > t["box"]:
+                    or builder.text_lines(stock, t["font"], t["box"][0], t["text"]) != t["lines"] \
+                    or len(t["lines"]) * t["font"] > t["box"][1]:
                 bad.append(t["slot"])
-        check("texts: each of the %d slots points at its text in the cave, and the text fits its box in its font" % len(texts),
+        check("texts: each of the %d slots points at its text in the cave, laid out as the manifest says" % len(texts),
               not bad, str(bad))
+        drawn = [(t["text"], whole(t["text"], t["font"], *t["box"])) for t in texts]
+        check("texts: stock's own routine draws each of the %d whole and inside its box" % len(texts),
+              all(ok for _, (ok, _) in drawn), str([(text, why) for text, (ok, why) in drawn if not ok][:3]))
         changed = {int(a, 16) for a in manifest["changed_stock_bytes"]}
         check("texts: nothing of stock changed for them but bytes of those pointers",
               all(any(slot <= a < slot + 4 for a in changed) for slot in replaced))

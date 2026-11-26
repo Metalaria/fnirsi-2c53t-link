@@ -1,10 +1,10 @@
 {
   "stock_sha256": "a17c5c35c97bb898f15672a1747bc1041d8ed507c16999ddba0d1e4e2ec0c760",
-  "image_sha256": "3560264c5b0a77457a4c76be811d6f38fa8b268c41268bc18523feb5373006e2",
-  "image_len": 756136,
+  "image_sha256": "4e7de994c8e8665cccb2b3f1e737b3e100b565a8eb86ac7ea0e91fc7270e7097",
+  "image_len": 756236,
   "cave_addr": "0x080be700",
-  "cave_len": 4776,
-  "cave_sha256": "8e627161c8ccd58aa36cdf9904d623cb191cebf59eb8bfeae39dbef7e25d826a",
+  "cave_len": 4876,
+  "cave_sha256": "f25b6bad57f3e17f5b14b5390b808c98b95381924c8b30283dd2c4e0f4ae6750",
   "hooks": [
     "0x0802a994",
     "0x0803e49a"
@@ -83,8 +83,13 @@
       "was": "0x080bbf63",
       "at": "0x080bf93c",
       "font": 28,
-      "box": 216,
-      "width": 176,
+      "box": [
+        216,
+        29
+      ],
+      "lines": [
+        "Tensión continua"
+      ],
       "text": "Tensión continua"
     },
     {
@@ -92,8 +97,13 @@
       "was": "0x080bbed1",
       "at": "0x080bf94e",
       "font": 28,
-      "box": 216,
-      "width": 159,
+      "box": [
+        216,
+        29
+      ],
+      "lines": [
+        "Tensión alterna"
+      ],
       "text": "Tensión alterna"
     },
     {
@@ -101,8 +111,13 @@
       "was": "0x080bbf99",
       "at": "0x080bf95f",
       "font": 28,
-      "box": 216,
-      "width": 186,
+      "box": [
+        216,
+        29
+      ],
+      "lines": [
+        "Corriente CC (mA)"
+      ],
       "text": "Corriente CC (mA)"
     },
     {
@@ -110,8 +125,13 @@
       "was": "0x080bbf05",
       "at": "0x080bf971",
       "font": 28,
-      "box": 216,
-      "width": 187,
+      "box": [
+        216,
+        29
+      ],
+      "lines": [
+        "Corriente CA (mA)"
+      ],
       "text": "Corriente CA (mA)"
     },
     {
@@ -119,8 +139,13 @@
       "was": "0x080bbf81",
       "at": "0x080bf983",
       "font": 28,
-      "box": 216,
-      "width": 168,
+      "box": [
+        216,
+        29
+      ],
+      "lines": [
+        "Corriente CC (A)"
+      ],
       "text": "Corriente CC (A)"
     },
     {
@@ -128,9 +153,114 @@
       "was": "0x080bbeee",
       "at": "0x080bf994",
       "font": 28,
-      "box": 216,
-      "width": 169,
+      "box": [
+        216,
+        29
+      ],
+      "lines": [
+        "Corriente CA (A)"
+      ],
       "text": "Corriente CA (A)"
+    },
+    {
+      "slot": "0x0804c5f4",
+      "was": "0x080bc085",
+      "at": "0x080bf9a5",
+      "font": 18,
+      "box": [
+        54,
+        22
+      ],
+      "lines": [
+        "Amplit."
+      ],
+      "text": "Amplit."
+    },
+    {
+      "slot": "0x0804c6f4",
+      "was": "0x080bc29f",
+      "at": "0x080bf9ad",
+      "font": 18,
+      "box": [
+        100,
+        36
+      ],
+      "lines": [
+        "Diente de sierra"
+      ],
+      "text": "Diente de sierra"
+    },
+    {
+      "slot": "0x0804c700",
+      "was": "0x080bca5f",
+      "at": "0x080bf9be",
+      "font": 18,
+      "box": [
+        100,
+        36
+      ],
+      "lines": [
+        "Escalera"
+      ],
+      "text": "Escalera"
+    },
+    {
+      "slot": "0x0804c704",
+      "was": "0x080bca6c",
+      "at": "0x080bf9c7",
+      "font": 18,
+      "box": [
+        100,
+        36
+      ],
+      "lines": [
+        "Escalera inversa"
+      ],
+      "text": "Escalera inversa"
+    },
+    {
+      "slot": "0x0804c708",
+      "was": "0x080bbd34",
+      "at": "0x080bf9d8",
+      "font": 18,
+      "box": [
+        100,
+        36
+      ],
+      "lines": [
+        "Subida ",
+        "exponencial"
+      ],
+      "text": "Subida exponencial"
+    },
+    {
+      "slot": "0x0804c70c",
+      "was": "0x080bc6f2",
+      "at": "0x080bf9eb",
+      "font": 18,
+      "box": [
+        100,
+        36
+      ],
+      "lines": [
+        "Bajada ",
+        "exponencial"
+      ],
+      "text": "Bajada exponencial"
+    },
+    {
+      "slot": "0x0804c718",
+      "was": "0x080bc6c9",
+      "at": "0x080bf9fe",
+      "font": 18,
+      "box": [
+        100,
+        36
+      ],
+      "lines": [
+        "Pulso sinc"
+      ],
+      "text": "Pulso sinc"
     }
   ],
   "changed_stock_bytes": [
@@ -209,7 +339,21 @@
     "0x0804c524",
     "0x0804c525",
     "0x0804c528",
-    "0x0804c529"
+    "0x0804c529",
+    "0x0804c5f4",
+    "0x0804c5f5",
+    "0x0804c6f4",
+    "0x0804c6f5",
+    "0x0804c700",
+    "0x0804c701",
+    "0x0804c704",
+    "0x0804c705",
+    "0x0804c708",
+    "0x0804c709",
+    "0x0804c70c",
+    "0x0804c70d",
+    "0x0804c718",
+    "0x0804c719"
   ],
   "usb_vid_pid": "1209:0001",
   "symbols": {

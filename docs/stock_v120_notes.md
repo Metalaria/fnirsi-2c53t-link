@@ -320,32 +320,53 @@ that returns the row for the first row and, on the second, the current language 
 is 2 to 7, so that stock's own `adds` steps to the next one. `tools/language_tables.py`
 repeats the table and font checks on a stock image.
 
-### Texts that do not fit (code, emulation, and the unit for the Spanish title)
+### Texts that do not fit (code, the routine run in emulation, and the unit)
 
-- **The text routine**, `0x0800F154(x, y, w, h, string, font, colour, align)`, draws the
-  characters of a line while the sum of their advances is at most `w` and drops the rest;
-  with align 1 what is drawn is centred. (emulation, with a RAM dump of the unit for the
-  fonts: a text of 215 px is whole in a box of 216, one of 232 loses its last word)
-- **Fonts.** Five, of 16, 18, 20, 25 and 28 px. Each has a character map (`0x080819A8`,
-  `0x0808C3CC`, `0x0809A194`, `0x080A1630`, `0x080BA1B8`) with a pointer at +8 to a sorted
-  list of 16-bit code points and their number at +16, and an array of 8-byte glyph
-  descriptors in the same order (`0x080807F0`, `0x0808B214`, `0x08098FDC`, `0x080A0468`,
-  `0x080B9000`): bitmap offset in the low 20 bits of the first word and the advance, in
-  whole pixels, in the top 12; then box width, box height and the two offsets. The font
-  descriptors used at run time are in RAM, `0x200010E4` + `0x30` x font.
+- **The text routine**, `0x0800F154(x, y, w, h, string, font, colour, align)`. The string is
+  UTF-8 and ends at NUL, LF, CR or the first character the font has no glyph for. A first
+  pass (`0x0800F22A`) makes lines: characters are added while the sum of their advances is
+  at most `w`; at the one that does not fit, the line ends after its last space (or at
+  that character, if it is a space or the line has none). If the lines, each as high as
+  the font, fit in `h`, they are drawn centred in the box, each centred in `w` (align 1).
+  If they do not, a second pass (`0x0800F2E4`) breaks wherever the width runs out, and the
+  lines are drawn from the top of the box down, past its bottom: nothing clips a text to
+  its box, only the band being painted does. (code, and the routine run in emulation: its
+  fonts are in the image's initialised data, so it paints without a dump of the unit)
+- **Fonts.** Five, of 16, 18, 20, 25 and 28 px, which is also the height of a line. Each
+  has a character map (`0x080819A8`, `0x0808C3CC`, `0x0809A194`, `0x080A1630`, `0x080BA1B8`)
+  with a pointer at +8 to a sorted list of 16-bit code points and their number at +16, and
+  an array of 8-byte glyph descriptors in the same order (`0x080807F0`, `0x0808B214`,
+  `0x08098FDC`, `0x080A0468`, `0x080B9000`): bitmap offset in the low 20 bits of the first
+  word and the advance, in whole pixels, in the top 12; then box width, box height and the
+  two offsets. The font descriptors used at run time are in RAM, `0x200010E4` + `0x30` x
+  font, with the line height at +8.
 - **The multimeter's title.** Table of pointers at `0x0804C43C`: twelve functions
   (`ms[0xF2E]`: 0 auto, 1 DC V, 2 AC V, 3 continuity, 4 diode, 5 resistance, 6 capacitance,
   7 temperature, 8 and 9 small DC and AC current, 10 and 11 large) for each of eight
   languages, read at `0x08010AE8` and `0x08015C28` and drawn at (52, 0) in a box of 216 x 29
-  in the 28 px font. Chinese, English, Japanese and Korean fit. The Spanish names of
-  functions 1, 2 and 8 to 11 are 234 to 306 px wide, and the first 207 px of the two
-  voltages are the same words, so both read alike on the screen; the currents are cut one
-  to five letters into the word that tells DC from AC. (seen on the unit, 2026-11-26, and
-  reproduced in emulation) By the same sum, the same six functions do not fit in Russian
-  (248 to 330 px) or Portuguese (270 to 308), and four of them in German (221 to 244).
+  in the 28 px font: one line, and the band is the box, so a second line is never seen.
+  Chinese, English, Japanese and Korean fit. The Spanish names of functions 1, 2 and 8 to
+  11 are 234 to 306 px wide, and the first 207 px of the two voltages are the same words,
+  so both read alike on the screen; the currents are cut one to five letters into the word
+  that tells DC from AC. (seen on the unit, 2026-11-26) By the same sums, the same six
+  functions do not fit in Russian (248 to 330 px) or Portuguese (270 to 308), and four of
+  them in German (221 to 244).
+- **The generator's settings.** Table at `0x0804C5BC`: three labels (frequency, duty,
+  amplitude) for each language, drawn by `0x08015988` at x = 122 in a box of 54 x 22 in the
+  18 px font, one row every 32 px from y = 142. Only the Chinese labels all fit on one
+  line; none of the English, Spanish, Portuguese or German ones do, and English shows
+  "Frequen" over "cy". The second line lands in the gap before the next row,
+  except for the third row, whose second line is at the bottom edge of the screen: the
+  Spanish for amplitude is 55 px, and the unit shows it without its last letter. (seen on
+  the unit, 2026-11-26)
+- **The generator's waveforms.** Table at `0x0804C61C`: thirteen names for each language,
+  six of them drawn at a time by `0x0801579C` in boxes of 100 x 36 in the 18 px font, so
+  two lines fit and stock's longer names break at their space. The generator's title is
+  one text per language at `0x0804C398` (box of 216 x 20, 20 px font); all eight fit.
 
 `build_link_image.py --texts` replaces a text by pointing its slot at a string in the cave,
-after checking the string against the font and the box; `texts/es.txt` does it for those six.
+after laying the string out as the first pass does and checking it against the box;
+`texts/es.txt` does it for the six titles, the amplitude label and six waveform names.
 
 ### The options of a setting (code, and stock's own routines run in emulation)
 

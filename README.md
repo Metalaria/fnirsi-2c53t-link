@@ -13,8 +13,8 @@ that can stream what it measures.
 | Status (patch 3): the generator's settings, the scope's own measurements with RUN/STOP, the rest of the meter's state | yes |
 | Generator (patch 4): any waveform of 100 samples, played by stock's own generator | yes |
 | Languages (`--languages`): the six that stock still carries but no longer offers, by pressing OK on the second row | yes |
-| Languages (`--language-menu`): the same eight as entries of Settings > Language, one each | flashed and read back; the menu not reported on yet |
-| Texts (`--texts`): the Spanish names of the multimeter's functions, which stock cuts | emulated only |
+| Languages (`--language-menu`): the same eight as entries of Settings > Language, one each | yes |
+| Texts (`--texts`): Spanish texts that stock cuts or mistranslates | the multimeter's six titles yes; the generator's seven emulated only |
 | Menu (patch 5, `--menu-wave`): waveforms added to the generator's own list, chosen on the instrument | yes |
 
 **Status: runs on one unit.** On 2026-11-23 both images were flashed on a retail 2C53T
@@ -68,8 +68,10 @@ its panel has been painted with the unit's own fonts in the emulator, and it was
 
 Using the instrument in Spanish showed why FNIRSI may have dropped these languages: the
 multimeter's title for the voltages and the currents is too long for its box and is cut
-before the word that tells DC from AC. `--texts` replaces such texts; it has not been
-flashed.
+before the word that tells DC from AC. `--texts` replaces such texts: with the six titles
+of `texts/es.txt` as it was then, the image was flashed the same morning, reads back as
+built, and the titles are whole on the unit. The generator's label and names added to
+that file since have not been flashed.
 
 > **One unit is not a guarantee.** The board revision of that unit is unknown and nothing
 > has been tried on another. If you flash this, read [Safety](#safety) first and keep the
@@ -80,7 +82,7 @@ flashed.
 
 | | |
 |---|---|
-| Stock bytes changed | 10: 6 at `0x0802A994` (SysTick handler) and 4 at `0x0803E49A` (tail of the `fpga` task loop), each a `b.w` into the cave. With `--languages`, 4 more at `0x0800BECA` (a `bl` into the cave). With `--language-menu` instead, 5: 4 at `0x0801CF7E` (a `b.w`) and one byte of data at `0x0800B1D8`. With `--texts`, the pointer of each text replaced (data; 2 bytes differ in each of the six of `texts/es.txt`). With menu entries, 49 more: see below |
+| Stock bytes changed | 10: 6 at `0x0802A994` (SysTick handler) and 4 at `0x0803E49A` (tail of the `fpga` task loop), each a `b.w` into the cave. With `--languages`, 4 more at `0x0800BECA` (a `bl` into the cave). With `--language-menu` instead, 5: 4 at `0x0801CF7E` (a `b.w`) and one byte of data at `0x0800B1D8`. With `--texts`, the pointer of each text replaced (data; 2 bytes differ in each of the thirteen of `texts/es.txt`). With menu entries, 49 more: see below |
 | Code added | ~2.9 KB at `0x080BE700`, after the stock image; ~4.2 KB with five menu entries, ~4.7 KB with the list of languages too |
 | SRAM used | `0x20037000`–`0x20037A53`, above stock's stack top and below the factory IAP's RAM magic |
 | Stock SRAM written | the USB core's class and descriptor pointers (`0x20002B28`, `0x20002B2C`) and the endpoint bookkeeping the stock class itself writes. From patch 4, on a `WAVE` request only: the generator's table of samples, `0x20000F5A`–`0x20001021` |
@@ -167,18 +169,26 @@ The panel runs in stock's display task and takes 56 bytes more of its stack than
 own; `fnlink.py tasks` reads how much of each task's stack has ever been used.
 
 **Texts (`--texts FILE`, optional).** The translations stock still carries were not all made
-to fit. In Spanish the multimeter's title reads "Voltaje de Corriente" for both DC and AC
-volts, because the text routine draws the characters that fit in the box and drops the
-rest, and the word that differs comes last; the four current ranges fare the same. Stock
-keeps its texts as pointers in tables with a row per language, so a text is replaced by
-pointing its slot at a string of ours after the cave's code: data only, no code. A file of
-`SLOT WAS FONT WIDTH TEXT` lines says which; `texts/es.txt` has the six of the Spanish
-multimeter (Tensión continua, Tensión alterna, Corriente CC (mA), ...). The builder
-refuses a slot that does not hold the pointer expected, a character the font has no glyph
-for, and a text wider than its box, measured with the advances of stock's own font, which
-is the same sum the routine makes: in emulation 215 px is drawn whole in the title's 216
-and 232 is cut. The texts in such a file are ours; FNIRSI's are not copied into this
-repository.
+to fit, or checked. Stock's text routine breaks a text that is too wide for its box into
+lines at its spaces; if the lines do not fit the height of the box it breaks anywhere
+instead and draws from the top, and what falls below the box is lost or lands on whatever
+is there. So in Spanish the multimeter's title reads "Voltaje de Corriente" over DC and AC
+volts alike, the word that differs having gone to a second line that the title does not
+have, and the generator's third setting loses its last letter for one pixel. Other names
+are just not what the thing is called.
+
+Stock keeps its texts as pointers in tables with a row per language, so a text is replaced
+by pointing its slot at a string of ours after the cave's code: data only, no code. A file
+of `SLOT WAS FONT WIDTH HEIGHT TEXT` lines says which. The builder lays each text out as
+the routine's first pass does, with the advances of stock's own font, and refuses a slot
+that does not hold the pointer expected, a character without a glyph, a word wider than the
+box, and more lines than the box is high. The emulator suite then runs stock's routine
+itself on every text and checks that each line is drawn, and nothing outside the box.
+
+`texts/es.txt` has thirteen: the multimeter's six titles (Tensión continua, Tensión alterna,
+Corriente CC (mA), ...), the generator's amplitude label, and six of its waveform names
+(the sawtooth, the two staircases, the two exponentials and the sinc pulse). The texts in
+such a file are ours; FNIRSI's are not copied into this repository.
 
 ## Build
 
