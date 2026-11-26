@@ -597,6 +597,13 @@ check("tasks: an empty block has none", fnlink.find_tasks(bytes(0x400), heap_bas
 
 import build_link_image as builder  # noqa: E402
 
+# ---- --texts: where the builder puts the texts -------------------------------------------------
+placed = [{"text": "Tensión continua"}, {"text": "Diodo"}, {"text": "Tensión continua"}]
+with_texts = builder.place_texts(b"\x70\x47" * 5, placed)
+check("texts: placed after the code, one copy of each, NUL-terminated, the cave still a multiple of 4",
+      with_texts == b"\x70\x47" * 5 + "Tensión continua".encode("utf-8") + b"\0Diodo\0" + b"\0" * 2
+      and [t["at"] - builder.CAVE_ADDR for t in placed] == [10, 28, 10], str(placed))
+
 menu = builder.parse_menu(["Triangle 25/75=triangle:25@2", "Gauss Pulse=gauss@12", "Sum=harmonics:1:1,3:0.33"], "USB Wave@0")
 check("menu: entries take the indexes after stock's thirteen, in order, the USB one last",
       [(m["index"], m["label"], m["icon"], m["source"]) for m in menu] == [

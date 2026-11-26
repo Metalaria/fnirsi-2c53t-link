@@ -104,6 +104,18 @@ LANGMENU_FACTS = (
     (0x080BC5CF, b"3:/System file/77.jpg\0", "picture: mark, not chosen"),
 )
 
+# ---- texts replaced (--texts) ----------------------------------------------------------------
+# Stock keeps its texts as pointers in tables, a row per language. A text is replaced by
+# pointing its slot at a string of ours placed after the cave's code: four bytes of data per
+# text and no code. What a text may be is checked here against stock's own fonts.
+# {height in px: address of the glyph descriptors}: 8 bytes a glyph, in the order of the
+# character map's list, the advance in px in the top 12 bits of the first word
+FONT_GLYPHS = {16: 0x080807F0, 18: 0x0808B214, 20: 0x08098FDC, 25: 0x080A0468, 28: 0x080B9000}
+TEXT_MAX_BYTES = 96
+TEXT_FACTS = (
+    (0x0800F154, bytes.fromhex("2de9f04f93b0dde9"), "text routine: string and font at [sp], [sp, #4]"),
+)
+
 # ---- entries added to the generator's menu (--menu-wave, --menu-usb-wave) -------------------
 STOCK_WAVEFORMS = 13
 MENU_MAX = 8
@@ -209,6 +221,83 @@ def font_characters(stock: bytes, cmap: int) -> set:
     off = cmap - APP_BASE
     listed, count = struct.unpack_from("<I", stock, off + 8)[0], struct.unpack_from("<H", stock, off + 16)[0]
     return set(struct.unpack_from("<%dH" % count, stock, listed - APP_BASE))
+
+
+def font_advances(stock: bytes, px: int) -> dict:
+    """{code point: advance in px} of one of stock's fonts."""
+    off = FONT_CMAPS[px] - APP_BASE
+    listed = struct.unpack_from("<I", stock, off + 8)[0]
+    first = struct.unpack_from("<H", stock, off + 6)[0]            # the glyph of the first character listed
+    count = struct.unpack_from("<H", stock, off + 16)[0]
+    codes = struct.unpack_from("<%dH" % count, stock, listed - APP_BASE)
+    words = struct.unpack_from("<%dI" % (2 * count), stock, FONT_GLYPHS[px] + 8 * first - APP_BASE)
+    return {cp: words[2 * i] >> 20 for i, cp in enumerate(codes)}
+
+
+def text_width(stock: bytes, px: int, text: str) -> int:
+    """The width stock's text routine gives a text in one of its fonts: the sum of the advances.
+    The routine draws the characters that fit in the box it is given and drops the rest."""
+    adv = font_advances(stock, px)
+    missing = [c for c in text if ord(c) not in adv]
+    if missing:
+        raise BuildError("text %r: the %d px font has no %s" % (text, px, " ".join("U+%04X" % ord(c) for c in missing)))
+    return sum(adv[ord(c)] for c in text)
+
+
+def parse_texts(paths, stock: bytes) -> list:
+    """--texts FILE ...: lines of `SLOT WAS FONT WIDTH TEXT`. SLOT is the address of the pointer
+    replaced and WAS the pointer stock has there; FONT (px) and WIDTH (px) are those of the box
+    the text is drawn in, which the text must fit."""
+    texts, seen = [], set()
+    for path in paths or ():
+        try:
+            lines = Path(path).read_text(encoding="utf-8").splitlines()
+        except OSError as e:
+            raise BuildError("--texts %s: %s" % (path, e)) from None
+        for n, line in enumerate(lines, 1):
+            if not line.strip() or line.lstrip().startswith("#"):
+                continue
+            where = "%s line %d" % (path, n)
+            parts = line.split(None, 4)
+            try:
+                slot, was, px, width = int(parts[0], 16), int(parts[1], 16), int(parts[2]), int(parts[3])
+                text = parts[4].strip()
+            except (ValueError, IndexError):
+                raise BuildError("%s: SLOT WAS FONT WIDTH TEXT, the first two in hex" % where) from None
+            if px not in FONT_CMAPS:
+                raise BuildError("%s: font %d: one of %s" % (where, px, sorted(FONT_CMAPS)))
+            if slot % 4 or not APP_BASE <= slot <= APP_BASE + len(stock) - 4 or slot in seen:
+                raise BuildError("%s: slot %#010x: a pointer of the stock image, once" % (where, slot))
+            found = struct.unpack_from("<I", stock, slot - APP_BASE)[0]
+            if found != was:
+                raise BuildError("%s: slot %#010x holds %#010x, not %#010x" % (where, slot, found, was))
+            end = stock.find(b"\0", was - APP_BASE) if APP_BASE <= was < APP_BASE + len(stock) else -1
+            if not 0 < end - (was - APP_BASE) <= 200:
+                raise BuildError("%s: %#010x is not a text of the stock image" % (where, was))
+            raw = text.encode("utf-8")
+            if not 1 <= len(raw) <= TEXT_MAX_BYTES or any(ord(c) < 0x20 for c in text):
+                raise BuildError("%s: a text of 1 to %d bytes" % (where, TEXT_MAX_BYTES))
+            need = text_width(stock, px, text)
+            if need > width:
+                raise BuildError("%s: %r is %d px wide in the %d px font and its box is %d: stock would cut it"
+                                 % (where, text, need, px, width))
+            seen.add(slot)
+            texts.append({"slot": slot, "was": was, "font": px, "box": width, "width": need, "text": text})
+    return texts
+
+
+def place_texts(cave: bytes, texts) -> bytes:
+    """The cave with the texts after its code, each text given its address (`at`)."""
+    out = bytearray(cave)
+    placed = {}
+    for t in texts:
+        raw = t["text"].encode("utf-8") + b"\0"
+        if raw not in placed:
+            placed[raw] = CAVE_ADDR + len(out)
+            out += raw
+        t["at"] = placed[raw]
+    out += b"\0" * (-len(out) % 4)
+    return bytes(out)
 
 
 def check_language_names(stock: bytes) -> None:
@@ -324,7 +413,7 @@ def dec_bw(src: int, code: bytes, link: bool = False) -> int:
 
 # --- the stock image ------------------------------------------------------------------------
 
-def validate_stock(stock: bytes, hooks, calls=(), menu=(), langmenu=False) -> None:
+def validate_stock(stock: bytes, hooks, calls=(), menu=(), langmenu=False, texts=False) -> None:
     got = sha256(stock)
     if got != STOCK_SHA256:
         raise BuildError("stock image sha256 is %s, not V1.2.0 (%s): refusing" % (got, STOCK_SHA256))
@@ -356,7 +445,7 @@ def validate_stock(stock: bytes, hooks, calls=(), menu=(), langmenu=False) -> No
             raise BuildError("%#010x (%s): found %#x, expected %#x" % (addr, what, stock[addr - APP_BASE], value))
         check_language_names(stock)
     for addr, want, what in (STOCK_FACTS + (LANGUAGE_FACTS if calls else ()) + (MENU_FACTS if menu else ())
-                             + (LANGMENU_FACTS if langmenu else ())):
+                             + (LANGMENU_FACTS if langmenu else ()) + (TEXT_FACTS if texts else ())):
         off = addr - APP_BASE
         if stock[off:off + len(want)] != want:
             raise BuildError("stock fact failed at %#010x (%s): found %s" % (addr, what, stock[off:off + len(want)].hex()))
@@ -438,7 +527,7 @@ def build_cave(tools: dict[str, str], vid: int, pid: int, calls=(), menu=(), lan
 
 # --- assembling and self-checking the image -------------------------------------------------
 
-def assemble(stock: bytes, cave: bytes, syms: dict[str, int], hooks, calls=(), menu=(), langmenu=False) -> bytes:
+def assemble(stock: bytes, cave: bytes, syms: dict[str, int], hooks, calls=(), menu=(), langmenu=False, texts=()) -> bytes:
     img = bytearray(stock)
     for addr, orig, stub, _ in hooks:
         off = addr - APP_BASE
@@ -462,12 +551,14 @@ def assemble(stock: bytes, cave: bytes, syms: dict[str, int], hooks, calls=(), m
         addr, _, stub = LANGMENU_SITE
         img[addr - APP_BASE:addr - APP_BASE + 4] = enc_bw(addr, syms[stub])
         img[LANGMENU_LIMIT[0] - APP_BASE] = LANGMENU_LIMIT[2]
+    for t in texts:
+        struct.pack_into("<I", img, t["slot"] - APP_BASE, t["at"])
     img += b"\xff" * (CAVE_ADDR - APP_BASE - len(img))
     img += cave
     return bytes(img)
 
 
-def self_check(stock: bytes, image: bytes, cave: bytes, syms: dict[str, int], hooks, calls=(), menu=(), langmenu=False) -> list[int]:
+def self_check(stock: bytes, image: bytes, cave: bytes, syms: dict[str, int], hooks, calls=(), menu=(), langmenu=False, texts=()) -> list[int]:
     if image[CAVE_ADDR - APP_BASE:] != cave:
         raise BuildError("cave bytes are not where they should be")
     if set(image[len(stock):CAVE_ADDR - APP_BASE]) - {0xFF}:
@@ -480,6 +571,10 @@ def self_check(stock: bytes, image: bytes, cave: bytes, syms: dict[str, int], ho
         allowed |= {addr for addr, _, _ in MENU_IMMEDIATES}
     if langmenu:
         allowed |= {LANGMENU_SITE[0] + i for i in range(4)} | {LANGMENU_LIMIT[0]}
+    for t in texts:
+        if allowed & {t["slot"] + i for i in range(4)}:
+            raise BuildError("text slot %#010x is in something else this image changes" % t["slot"])
+        allowed |= {t["slot"] + i for i in range(4)}
     stray = [a for a in diff if a not in allowed]
     if not diff or stray:
         raise BuildError("bytes changed outside the hooks: %s" % ", ".join("%#x" % a for a in stray[:8]))
@@ -521,6 +616,11 @@ def self_check(stock: bytes, image: bytes, cave: bytes, syms: dict[str, int], ho
         for name in LANGMENU_NAMES:
             if name.encode("utf-8") + b"\0" not in cave:
                 raise BuildError("language name %s is not in the cave" % name)
+    for t in texts:
+        at = struct.unpack_from("<I", image, t["slot"] - APP_BASE)[0]
+        raw = t["text"].encode("utf-8") + b"\0"
+        if not CAVE_ADDR <= at < CAVE_ADDR + len(cave) or image[at - APP_BASE:at - APP_BASE + len(raw)] != raw:
+            raise BuildError("slot %#010x does not point at %r" % (t["slot"], t["text"]))
     return diff
 
 
@@ -539,6 +639,9 @@ def main() -> int:
     ap.add_argument("--language-menu", action="store_true",
                     help="Settings > Language lists the eight languages stock still carries, one entry each, "
                          "in two pages of four (5 stock bytes changed). Instead of --languages")
+    ap.add_argument("--texts", type=Path, action="append", metavar="FILE",
+                    help="replace texts of stock by those of FILE (repeatable): lines of `SLOT WAS FONT WIDTH TEXT`, "
+                         "see texts/. Four bytes of stock data per text, no code")
     ap.add_argument("--menu-wave", action="append", metavar="LABEL=SHAPE[:ARG][@ICON]",
                     help="add an entry to the generator's own list of waveforms, after stock's thirteen (repeatable). "
                          "SHAPE is one of fnlink.py's (pulse:25 and triangle:25 take a duty, harmonics:1:1,3:0.33 a list) or a "
@@ -555,10 +658,14 @@ def main() -> int:
             raise BuildError("--language-menu and --languages are two ways of choosing the language: give one")
         menu = parse_menu(args.menu_wave, args.menu_usb_wave)
         stock = args.stock.read_bytes()
-        validate_stock(stock, hooks, calls, menu, langmenu)
+        validate_stock(stock, hooks, calls, menu, langmenu, bool(args.texts))
+        texts = parse_texts(args.texts, stock)
         cave, syms = build_cave(find_tools(), args.vid, args.pid, calls, menu, langmenu)
-        image = assemble(stock, cave, syms, hooks, calls, menu, langmenu)
-        diff = self_check(stock, image, cave, syms, hooks, calls, menu, langmenu)
+        cave = place_texts(cave, texts)
+        if len(cave) > CAVE_MAX:
+            raise BuildError("cave of %d bytes with the texts: the limit is %d" % (len(cave), CAVE_MAX))
+        image = assemble(stock, cave, syms, hooks, calls, menu, langmenu, texts)
+        diff = self_check(stock, image, cave, syms, hooks, calls, menu, langmenu, texts)
     except (BuildError, OSError) as e:
         print("error: %s" % e, file=sys.stderr)
         return 1
@@ -577,6 +684,8 @@ def main() -> int:
                        + ["%#010x" % i[0] for i in MENU_IMMEDIATES]) if menu else [],
         "language_menu": list(LANGMENU_NAMES) if langmenu else [],
         "language_menu_sites": ["%#010x" % LANGMENU_SITE[0], "%#010x" % LANGMENU_LIMIT[0]] if langmenu else [],
+        "texts": [{"slot": "%#010x" % t["slot"], "was": "%#010x" % t["was"], "at": "%#010x" % t["at"], "font": t["font"],
+                   "box": t["box"], "width": t["width"], "text": t["text"]} for t in texts],
         "changed_stock_bytes": ["%#010x" % a for a in diff],
         "usb_vid_pid": "%04x:%04x" % (args.vid, args.pid),
         "symbols": {k: "%#010x" % v for k, v in sorted(syms.items())},
@@ -587,6 +696,8 @@ def main() -> int:
     print("hooks   %s: %d stock bytes changed" % (", ".join("%#010x" % h[0] for h in hooks + calls), len(diff)))
     if langmenu:
         print("language %s" % ", ".join(LANGMENU_NAMES))
+    for t in texts:
+        print("text    %#010x: %s (%d of %d px)" % (t["slot"], t["text"], t["width"], t["box"]))
     for e in menu:
         print("menu    %d %-17s %s, picture of waveform %d" % (e["index"], e["label"], e["source"], e["icon"]))
     print("image   %s (%d bytes) -> %s" % (manifest["image_sha256"], len(image), args.out))

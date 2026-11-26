@@ -23,6 +23,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import build_link_image as builder  # noqa: E402
 import fnlink  # noqa: E402
 import usbemu  # noqa: E402
 from usbemu import UsbEmu, Nak, Stall, UDEV, SYSTEM_MODE, X_TICK_COUNT  # noqa: E402
@@ -1458,6 +1459,57 @@ def main() -> int:
         check("no language menu: the Language options are stock's two rows",
               got == paint(stock, {0xF68: 4, 0xF69: 1, 0xF6A: 0, 0xF6B: 0, 0xF60: 2})
               and [c[5] for c in got[1] if c[0] == "text"] == ["中文", "English"], str(got[1]))
+
+    # ---- --texts: texts of stock replaced by pointing their slots at the cave ------------------
+    # The multimeter's title is the one routine that reads its table (0x0804C43C, twelve
+    # functions for each of eight languages): run for every language and function, with the
+    # text routine recorded, it must ask for stock's text everywhere but in the slots replaced.
+    texts = manifest.get("texts", [])
+    TITLE, TITLES = 0x08015C08, 0x0804C43C
+
+    def title(img, language, function):
+        from unicorn import arm_const as A
+        calls = []
+
+        def text(mu):
+            a = struct.unpack("<4I", mu.mem_read(mu.reg_read(A.UC_ARM_REG_SP), 16))
+            calls.append(tuple(mu.reg_read(getattr(A, "UC_ARM_REG_R%d" % i)) for i in range(4))
+                         + (cstring(mu, a[0]).decode("utf-8"),) + a[1:])
+
+        mu, at, writes = run_code(img, ram, TITLE, (), {0xF60: language, 0xF2E: function}, seed,
+                                  skip={PICTURE: lambda mu: None, TEXT: text})
+        return at, calls, regs_of(mu, callee), writes
+
+    replaced = {int(t["slot"], 16): t["text"] for t in texts}
+    wrong = []
+    for language in range(1, 9):
+        for function in range(12):
+            ref, got = title(stock, language, function), title(image, language, function)
+            slot = TITLES + 48 * (language - 1) + 4 * function
+            want = replaced.get(slot, ref[1][0][4])
+            if (got[0], got[2], got[3]) != (ref[0], ref[2], ref[3]) or len(got[1]) != 1 \
+                    or got[1][0] != ref[1][0][:4] + (want,) + ref[1][0][5:] or got[1][0][:4] != (52, 0, 216, 29):
+                wrong.append((language, function, got[1]))
+    check("multimeter title: %s in its 216 px box, every other language and function as stock"
+          % ("the %d texts replaced" % len([a for a in replaced if TITLES <= a < TITLES + 384]) if texts else "stock's texts"),
+          not wrong, str(wrong[:4]))
+    check("stock's 28 px font: a text of 215 px fits the title's box and one of 232 does not (widths as painted in emulation)",
+          builder.text_width(stock, 28, "Corriente alterna mA") == 215 and builder.text_width(stock, 28, "Corriente continua mA") == 232
+          and builder.text_width(stock, 28, "DC Voltage") == 116)
+    if texts:
+        bad = []
+        for t in texts:
+            slot, at, raw = int(t["slot"], 16), int(t["at"], 16), t["text"].encode("utf-8") + b"\0"
+            here = struct.unpack_from("<I", image, slot - 0x08007000)[0]
+            if here != at or not CAVE_ADDR <= at < CAVE_ADDR + manifest["cave_len"] or image[at - 0x08007000:at - 0x08007000 + len(raw)] != raw \
+                    or struct.unpack_from("<I", stock, slot - 0x08007000)[0] != int(t["was"], 16) \
+                    or builder.text_width(stock, t["font"], t["text"]) != t["width"] or t["width"] > t["box"]:
+                bad.append(t["slot"])
+        check("texts: each of the %d slots points at its text in the cave, and the text fits its box in its font" % len(texts),
+              not bad, str(bad))
+        changed = {int(a, 16) for a in manifest["changed_stock_bytes"]}
+        check("texts: nothing of stock changed for them but bytes of those pointers",
+              all(any(slot <= a < slot + 4 for a in changed) for slot in replaced))
 
     # ---- audit of every SRAM write made by cave code ---------------------------------------
     allowed_core = {UDEV + 4, UDEV + 8,                              # class / descriptor pointers
