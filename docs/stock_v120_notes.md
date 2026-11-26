@@ -182,7 +182,7 @@ by twelve for CH2, in the units the screen's measurement boxes are computed from
 | 4, 5 | positive and negative pulse width | ns |
 | 6, 7, 8 | Vmax, Vmin, Vpp | µV, signed (Vmin goes below zero) |
 | 9 | a second amplitude, a few mV under Vpp; stock labels it "Amp:" | µV |
-| 10, 11 | not compared with a screen; stock labels them "Vrms:" and "Avg:" | µV |
+| 10, 11 | not compared with a screen; stock labels them "Vrms:" and "Avg:". 208000 and 148000 with a square from 0 to 304 mV at 50.4 % (2026-11-26) | µV |
 
 Compared with photographs of two stopped screens: 40232 with "40.23KHz", 6451 with "64.51%",
 114000 with "114.0mV"; and, on another day's wave, 50176 with "50.18KHz", 5050 with
@@ -196,7 +196,8 @@ block is all zeros.
 
 The code that prints them (it loads the table of labels at `0x0801BB8A`; code) takes word
 *i* of the shown block, CH1's from `ms+0x110` and CH2's from `ms+0x140`, and prints it after
-label *i* of a table at `0x0804BF28` (twelve pointers for English, then twelve for Chinese: `Freq:`, `Peri:`,
+label *i* of a table at `0x0804BF28` (twelve pointers for English, then twelve for Chinese,
+which is the row used when the language byte `ms[0xF60]` is 1, `0x0801B9B0`: `Freq:`, `Peri:`,
 `Duty+:`, `Duty-:`, `Wid+:`, `Wid-:`, `Vmax:`, `Vmin:`, `Vp-p:`, `Amp:`, `Vrms:`, `Avg:`)
 with `"%s%.2f%s"` or `"%s%.1f%s"` (`0x0801CA64`, `0x0801CA70`). The unit comes from a
 table of four per kind at `0x0801CA24`, the kind of each word from the bytes at
@@ -235,8 +236,9 @@ the step and `ms[0x32]` a count of 10 ms ticks that starts again at most steps:
 
 After that `ms[0x32]` counted on to `0xFF` and stayed, which is the value it had before the
 key. The couplings are restored from `ms[0x31]` (`0x08008E3E`: the nibble of the channel,
-then 1 in its coupling byte). `ms[0x31]` keeps its value afterwards, so it tells how the
-couplings were at the last AUTO. What was connected to the inputs during the watch was not
+then 1 in its coupling byte). `ms[0x31]` kept its value to the end of the watch, so it tells
+how the couplings were at the last AUTO; it read 0 after the unit had been reflashed, which
+restarts it. What was connected to the inputs during the watch was not
 noted, so the ranges and positions it ended at say nothing by themselves.
 
 What the arrow keys do is the low nibble of state `+0x354` (`0x2000044C`): 0 changes the time
@@ -444,7 +446,9 @@ after laying the string out as the first pass does and checking it against the b
 `texts/es-english-rows.txt` does it for eighteen texts of the two-row tables, which changes
 them for every language but Chinese; the two panels, the bar and the boxes were painted in
 emulation by stock's own routines with that file, on a RAM dump of the unit (the
-measurements were not), and the image has not been on a unit when this was written.
+measurements were not). The image was on the unit on 2026-11-26: the flash read back as
+built and the calibration table was unchanged; what its screens look like was not reported,
+and the unit was put back to the image without that file.
 
 ### The options of a setting (code, and stock's own routines run in emulation)
 

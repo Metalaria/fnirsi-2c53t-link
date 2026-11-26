@@ -496,6 +496,48 @@ channel, CH2's coupling and the FFT rows.
 The owner also reports that the link works from the Android application; no capture of
 that is kept here.
 
+## `texts/es-english-rows.txt` on the unit, and back, 2026-11-26
+
+The image with the eighteen texts of the two-row tables in Spanish (`537feee8…0b09`,
+756620 bytes, as in
+`reference/APP_2C53T_V1.2.0_link_patch6_menu_langmenu_es_english_rows.json`), flashed over
+the one above (thirteenth update). Before it, `fnlink.py verify` gave MATCH for the image
+above once more.
+
+| | |
+|---|---|
+| `fnlink.py info` | protocol 1, patch 6, the five entries |
+| `fnlink.py verify` | MATCH (756620 bytes) |
+| Settings and calibration page | against a dump taken just before flashing: the calibration table is identical (`9cbf9bf5…ff00d`); 85 bytes differ in the scratch area and none in the settings |
+| `fnlink.py status` in the oscilloscope | `RUN, 200us/div, CH1 100mV/div X1 DC, CH2 10mV/div X1 DC, channels CH1+CH2, trigger Auto rising CH1`, and the measurements of both channels |
+| The panels, the bar, the boxes and the measurements in Spanish | not reported |
+
+The owner then flashed the previous image again (`3cc7e0c8…5308`; fourteenth update): the
+flashing tool reported it done, and `fnlink.py verify` was not run after it. Why he went
+back is not recorded. Two photographs of the oscilloscope taken afterwards show stock's
+English labels ("Freq:", "Duty+:", "Vp-p:", "Wid-:").
+
+## The measurements against a stopped screen, and the FFT pointer, 2026-11-26
+
+After that. The captures are in
+[`sessions/2026-11-26_measurements_fft_pointer/`](../sessions/2026-11-26_measurements_fft_pointer/README.md).
+
+**Measurements.** The generator's 1 kHz square on CH1 at 100 mV per division. With the
+oscilloscope stopped, CH1's shown block reads 1000, 1000000, 5040, 4960, 504000, 496000,
+308000, -4000, 312000, 304000, 208000, 148000, and a photograph of that stopped screen
+shows "Freq:1.00KHz", "Duty+:50.40%" and "Vp-p:312.0mV": words 0, 2 and 8. The screen
+showed three measurements for CH1 and four for CH2, none of them Amp, Vrms or Avg, so words
+9 to 11 are still not compared with a screen. For what they are worth: a square from 0 to
+304 mV with a duty of 50.4 % has an RMS value of 216 mV and a mean of 153 mV, and words 10
+and 11 read 208 mV and 148 mV.
+
+**`ms[0x31]`.** It reads 0 in these snapshots; it was `0x11` at the end of the watch of the
+AUTO key. Between the two the unit was reflashed twice, which restarts it.
+
+**The FFT pointer.** With CH1's "FFT:" row on, `ms[0x0C..0x0F]` held `0x20033940` again,
+and the 56 bytes read there begin `32 01 1d 02 01 00 08 02 01 00 04 02 01 00 02 02`. What
+they are was not identified. No instruction or literal of the image holds that address.
+
 ## Not answered
 
 - What needs a write to the instrument's memory (the 20M limit; the per-channel "FFT" flag

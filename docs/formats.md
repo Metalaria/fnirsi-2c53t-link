@@ -217,9 +217,10 @@ from `0x200000F8`) followed by 19 `0xA1` data events.
   record has to find the edge.
 - A wave that leaves the converter's range sits exactly on 5 and 244.
 - With both channels on, each acquisition gives a CH1 record and a CH2 record 1–2 ms apart.
-- Offsets 47, 49 and 50 belong to the AUTO key, and 49 keeps its value afterwards: it says
-  how the couplings were at the last AUTO, not how they are. That is why it was 1 in some
-  readings and 0 in others with no setting changed between them.
+- Offsets 47, 49 and 50 belong to the AUTO key, and 49 keeps its value when the sequence
+  ends: it says how the couplings were at the last AUTO, not how they are. It read 0 after
+  the unit had been reflashed, which restarts it. That is why it was 1 in some readings and
+  0 in others with no setting changed between them.
 - While AUTO's sequence runs (about six seconds in the one watched) the couplings, ranges,
   positions and the time base are stock's own trials, not the user's settings: offset 47
   is not 0 then.

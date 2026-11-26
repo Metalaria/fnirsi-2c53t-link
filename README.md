@@ -203,8 +203,10 @@ the consequence its first lines spell out: **the instrument then shows those tex
 Spanish in every language but Chinese**. It is a file for a unit that stays in Spanish, and
 it goes after `texts/es.txt`: `--texts` can be given more than once. Besides the suite's
 check of each text, stock's own routines were run in emulation on a RAM dump of the unit
-(not kept here) and painted both panels, the bar and the boxes whole with it; it has not
-been on a unit when this was written.
+(not kept here) and painted both panels, the bar and the boxes whole with it. It was
+flashed on 2026-11-26: the flash read back as built and the calibration table was
+unchanged. What its screens look like on the unit has not been reported, and the unit was
+put back to the image without this file.
 
 `texts/pt.txt`, `texts/de.txt` and `texts/ru.txt` give Portuguese, German and Russian the
 multimeter's six titles and the generator's amplitude label, which stock cuts in those
@@ -422,6 +424,9 @@ USB ids default to `1209:0001`, the pid.codes test PID, which is for private tes
   [`sessions/2026-11-26_trigger_coupling_fft_auto/`](sessions/2026-11-26_trigger_coupling_fft_auto/README.md)
   the trigger's mode and channel, CH2's coupling, the FFT rows and what the AUTO key does
   to the oscilloscope's state.
+  [`sessions/2026-11-26_measurements_fft_pointer/`](sessions/2026-11-26_measurements_fft_pointer/README.md)
+  has stock's measurements with a stopped screen to compare, and the bytes the FFT pointer
+  points at.
 - Going back to stock: flash `APP_2C53T_V1.2.0_251015.bin` through the factory IAP drive.
 
 ## Safety
