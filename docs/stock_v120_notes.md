@@ -181,8 +181,8 @@ by twelve for CH2, in the units the screen's measurement boxes are computed from
 | 2, 3 | positive and negative duty cycle | 0.01 % |
 | 4, 5 | positive and negative pulse width | ns |
 | 6, 7, 8 | Vmax, Vmin, Vpp | µV, signed (Vmin goes below zero) |
-| 9 | a second amplitude, a few mV under Vpp; stock labels it "Amp:" | µV |
-| 10, 11 | not compared with a screen; stock labels them "Vrms:" and "Avg:". 208000 and 148000 with a square from 0 to 304 mV at 50.4 % (2026-11-26) | µV |
+| 9 | a second amplitude, equal to Vpp or a few mV under it; stock labels it "Amp:" | µV |
+| 10, 11 | what stock labels "Vrms:" and "Avg:". With a square from about 0 to 304 mV at about 50 %, 208000 to 209500 and 147833 to 148000 in four readings, and 208.0 to 212.0 mV and 144.0 to 148.0 mV under those labels on three screens, none of them of an acquisition that was also read (2026-11-26) | µV |
 
 Compared with photographs of two stopped screens: 40232 with "40.23KHz", 6451 with "64.51%",
 114000 with "114.0mV"; and, on another day's wave, 50176 with "50.18KHz", 5050 with
@@ -213,6 +213,15 @@ couplings are `ms[0]` and `ms[1]` (1 DC, 0 AC), the menu's "FFT:" rows `ms[0x0A]
 1 Auto, 2 Single) and its edge `ms[0x18]` (0 rising, 1 falling). While a channel's FFT is
 on, `ms[0x0C..0x0F]` (CH1) or `ms[0x10..0x13]` (CH2) hold `0x20033940` and are zero
 otherwise. In Single the running flag `ms[0x2E]` read 0.
+
+**The FFT block** (unit, 2026-11-26). That address, `0x20033940` in every reading, holds 128
+bytes and then 32-bit floats while the FFT is on: the floats are a spectrum by index, and
+byte *k* is float *k* scaled so that the largest is 50, which is the height of the bars
+stock draws in the upper left of the grid. With the generator's 1 kHz square at 200 µs per
+division the fundamental is at index 2 and the odd harmonics follow 4 to 4.2 indexes
+apart; the bytes are nearly a mirror image about index 64. With the FFT off the block is
+zero (three 16-bit values aside). How many floats there are and what frequency an index
+stands for are not established; no instruction or literal of the image holds the address.
 
 **The AUTO key** (unit: `ms[0x00..0x37]` watched every 10 ms through one press, both
 channels on and in DC; code for the two addresses). At the key stock saves the couplings of
@@ -435,7 +444,9 @@ repeats the table and font checks on a stock image.
   screen, `0x0801E784`, which measures the text), the multimeter's three boxes
   (`0x0804C3D8`: MAX, MEAN, MIN; boxes of 100 x 20, 20 px font, `0x0801CAB0`) and the
   oscilloscope's twelve measurement labels (`0x0804BF28`, English row first; see
-  "Oscilloscope"). Both panels are painted by the oscilloscope menu's options routine,
+  "Oscilloscope"). The grid of buttons where the measurements are chosen ("Freq",
+  "Wid+", ..., "A-on", "A-off") is not text of the image: no such strings are in it.
+  Both panels are painted by the oscilloscope menu's options routine,
   `0x08013338`, which switches on `ms[0xF6A]`: 3 and 4 are CH1's and CH2's settings, 5 the
   trigger's (`0x08013674`). So an instrument set to Spanish says "Coupling:", "Edge:"
   and "MEAN".
@@ -446,9 +457,10 @@ after laying the string out as the first pass does and checking it against the b
 `texts/es-english-rows.txt` does it for eighteen texts of the two-row tables, which changes
 them for every language but Chinese; the two panels, the bar and the boxes were painted in
 emulation by stock's own routines with that file, on a RAM dump of the unit (the
-measurements were not). The image was on the unit on 2026-11-26: the flash read back as
-built and the calibration table was unchanged; what its screens look like was not reported,
-and the unit was put back to the image without that file.
+measurements were not). The image is on the unit since 2026-11-26: the flash reads back as
+built and the calibration table is unchanged. Photographs show six of its ten measurement
+labels with their values, whole (Frec:, Ciclo+:, Anc+:, Anc-:, Vef:, Med:, beside stock's
+Amp: and Vp-p:); the panels, the bar and the multimeter's boxes have not been reported.
 
 ### The options of a setting (code, and stock's own routines run in emulation)
 

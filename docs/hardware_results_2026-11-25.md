@@ -512,10 +512,16 @@ above once more.
 | `fnlink.py status` in the oscilloscope | `RUN, 200us/div, CH1 100mV/div X1 DC, CH2 10mV/div X1 DC, channels CH1+CH2, trigger Auto rising CH1`, and the measurements of both channels |
 | The panels, the bar, the boxes and the measurements in Spanish | not reported |
 
-The owner then flashed the previous image again (`3cc7e0c8…5308`; fourteenth update): the
-flashing tool reported it done, and `fnlink.py verify` was not run after it. Why he went
-back is not recorded. Two photographs of the oscilloscope taken afterwards show stock's
-English labels ("Freq:", "Duty+:", "Vp-p:", "Wid-:").
+The owner then flashed the previous image again (`3cc7e0c8…5308`; fourteenth update;
+`fnlink.py verify` gave MATCH for it later) and, after the readings of the next section,
+this one once more (fifteenth update; MATCH, 756620 bytes). Why he went back and forth is
+not recorded. With the previous image two photographs of the oscilloscope show stock's
+English labels ("Freq:", "Duty+:", "Vp-p:", "Wid-:"); with this one, three show "Frec:",
+"Ciclo+:", "Anc+:", "Anc-:", "Amp:", "Vef:", "Vp-p:" and "Med:" each followed by its
+value, whole and clear of its neighbours. The panels, the bar and the multimeter's boxes
+are still not reported. A photograph of the oscilloscope's "Parameter Measurement" menu
+shows its grid of buttons ("Freq", "Wid+", ..., "Vrms", "Avg", "A-on", "A-off") as
+stock has it: those words are not strings of the image, so `--texts` does not reach them.
 
 ## The measurements against a stopped screen, and the FFT pointer, 2026-11-26
 
@@ -537,6 +543,45 @@ AUTO key. Between the two the unit was reflashed twice, which restarts it.
 **The FFT pointer.** With CH1's "FFT:" row on, `ms[0x0C..0x0F]` held `0x20033940` again,
 and the 56 bytes read there begin `32 01 1d 02 01 00 08 02 01 00 04 02 01 00 02 02`. What
 they are was not identified. No instruction or literal of the image holds that address.
+
+## Words 9 to 11 on the screen, and the FFT block, 2026-11-26
+
+With the image above on the unit again, the same wave, and eight measurements chosen for
+CH1 in the "Parameter Measurement" menu. The captures and what each photograph shows are in
+the same session directory.
+
+**Amp, Vrms, Avg.** `fnlink.py status`, stopped, CH1 alone, reads 316000, 208000 and
+148000 in CH1's words 9, 10 and 11. Stopped screens photographed in the same minutes
+show 304.0 and 316.0 mV under the label of word 9, 212.0 and 208.0 mV under
+that of word 10, and 148.0 and 144.0 mV under that of word 11; running, 316.0, 209.2 and
+146.4 mV. The earlier readings of the same wave had 304000, 208000 to 209500 and 147833 to
+148000. So the three words carry what the screen prints there, as the code says, but none
+of these photographs is of the acquisition a reading was taken from: each differs from the
+reading in some other measurement. `fnlink.py` now gives the three words those names.
+
+For CH2 one pair is of the same acquisition: the screen, stopped, showed "Ciclo+:56.47%",
+"Anc-:472.0nS" and "Vp-p:6.00mV", CH2 was then switched off, and the reading has 5647, 472
+and 6000 in CH2's words 2, 5 and 8. Its words 0 and 1 read 846076 and 1181 where that screen
+had shown "Frec:923.3KHz": with the channel off those two are not what was last shown,
+which fits what was seen before with a channel off.
+
+**The FFT block.** 448 bytes at `0x20033940`, running, CH1 alone. With CH1's FFT on they
+are 128 bytes followed by 32-bit floats (80 of them fit in what was read). The floats are
+a spectrum by index: with the 1 kHz square the largest are index 0 (6847), 2 (4133), 6
+(1219), 10 (617) and 14 (354), with smaller ones between; with the probe off the generator
+index 0 is 116 and the rest are 40 at most. Byte *k* is float *k* times 50 over the
+largest float, without its fraction: in all 80 pairs of the square's reading (50, 0, 30,
+2, 1, 0, 8, ...), and in the first 38 of the other, whose floats from the 39th on come
+from a later read of the block. The 128 bytes of the square are nearly a mirror image
+about index 64 (30 at 2 and 32 at 126, 8 at 6 and 11 at 122, 4 at 10 and 6 at 118); a
+block is eight reads a few milliseconds apart with the instrument acquiring, so its two
+ends are not of the same instant. With the FFT off the 448 bytes are zero but for three
+16-bit values `0x3A29` (offsets 136, 436 and 438). A photograph with the FFT on shows the
+spectrum drawn as bars in the upper left of the grid. Not established: how many floats
+there are, which samples the transform takes, and the frequency of an index. The square's
+odd harmonics are 4 to 4.2 indexes apart, which is what a 128-point transform of every
+second sample of the record would give at this time base (62.5 kHz, 488 Hz an index), and
+that reading has not been tested at another time base.
 
 ## Not answered
 

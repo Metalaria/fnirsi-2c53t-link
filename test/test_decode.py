@@ -414,6 +414,18 @@ check("scope state: CH2's coupling is byte 1 and the FFT flags bytes 10 and 11",
       and [c["fft"] for c in decoded["CH2 FFT on"]["channels"]] == [False, True])
 text = "\n".join(fnlink.status_lines(2, IDLE, bytes.fromhex(RE_STEPS["CH2 FFT on"][0]), STOPPED, bytes.fromhex("0101000064000000321e")))
 check("status: FFT and both couplings on the scope line", "CH2 50mV/div X1 DC, channels CH1+CH2, FFT CH2, trigger Auto rising CH1" in text, text)
+# stock's twelve words of CH1 and CH2 as `status` read them with the oscilloscope stopped (2026-11-26)
+WORDS_STOPPED = (struct.pack("<6I6i", 1000, 1000000, 5040, 4960, 504000, 496000, 304000, -12000, 316000, 316000, 208000, 148000)
+                 + struct.pack("<6I6i", 846076, 1181, 5647, 4353, 611, 472, 2800, -3200, 6000, 4400, 800, -800))
+m = fnlink.decode_scope_measurements(WORDS_STOPPED[:48])
+check("measurements: words 9 to 11 under the names stock prints in front of them (Amp, Vrms, Avg)",
+      (round(m["amp"], 6), round(m["vrms"], 6), round(m["avg"], 6)) == (0.316, 0.208, 0.148)
+      and m["extra"] == [m["amp"], m["vrms"], m["avg"]] and round(fnlink.decode_scope_measurements(WORDS_STOPPED[48:])["avg"], 6) == -0.0008)
+text = "\n".join(fnlink.status_lines(2, IDLE, bytes.fromhex("0101030009d3000000000000000000000000000001010001000000002e000000000000000000000000000000000d00000000ff0000000000"),
+                                     WORDS_STOPPED + b"\0", bytes.fromhex("01010000e8030000321e")))
+check("status: the three of them on the line of each channel",
+      "Vmax 304mV, Vmin -12mV, Vpp 316mV, Amp 316mV, Vrms 208mV, Avg 148mV" in text and "STOP, 200us/div" in text
+      and "channels CH1, trigger Auto rising CH1" in text, text)
 text = "\n".join(fnlink.status_lines(2, IDLE, STEP_AC, STOPPED, bytes.fromhex("0100000050c30000321e")))
 check("status: CH1's coupling on the scope line, and the first waveform of the menu by its name",
       "CH1 50mV/div X1 AC, CH2 100mV/div X1 AC, channels CH1" in text and "Sine Wave (index 0), 50kHz" in text, text)
