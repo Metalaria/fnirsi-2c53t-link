@@ -12,6 +12,7 @@ division. Written up in
 | `measurement_snapshots.txt` | Two `fnlink.py snapshot`s of CH1's twelve words as shown (`0x20000208`, 48 bytes) and of `ms[0x00..0x37]`: the first with the oscilloscope stopped, the second running again. Both carry the same label |
 | `fft_pointer_snapshot.txt` | One snapshot with CH1's "FFT:" row on: `ms[0x00..0x37]`, and 56 bytes from the address held in `ms[0x0C..0x0F]` |
 | `status_stopped.txt` | Later, with the image built with `texts/es-english-rows.txt` on the unit again: the oscilloscope's lines of `fnlink.py status`, stopped, CH1 alone |
+| `stopped_snapshots_fft_off.txt` | Three snapshots of `ms[0x00..0x37]` meant for the FFT block at three time bases, stopped. **Their labels do not describe them**: in all three the FFT flag `ms[0x0A]` is 0, the pointer is 0 (so nothing was followed) and the time base `ms[0x2D]` is 13, 200 µs per division. What does differ is `ms[0x1A..0x1B]` (0, -63, -13 as a signed 16-bit number) and `ms[0x20..0x27]` (0, -1260000, -260000 as a signed 64-bit number); what was done on the instrument between them was not noted |
 | `fft_block_snapshots.txt` | Three snapshots, running, CH1 alone, of `ms[0x00..0x37]` and 448 bytes at `0x20033940`: CH1's FFT on with the 1 kHz square, on with the probe taken off the generator, and off. Each block of 448 bytes is eight reads of 56 a few milliseconds apart while the instrument keeps acquiring, so it is not one instant |
 
 The twelve words of the two snapshots, as signed 32-bit numbers:

@@ -463,15 +463,16 @@ repeats the table and font checks on a stock image.
 `build_link_image.py --texts` replaces a text by pointing its slot at a string in the cave,
 after laying the string out as the first pass does and checking it against the box;
 `texts/es.txt` does it for the six titles, the amplitude label, six waveform names and the
-three entries of the oscilloscope's menu that begin with that word.
+three entries of the oscilloscope's menu that begin with that word (on the unit since
+2026-11-26: "Ajustes de CH1", "Ajustes de CH2", "Ajustes de disparo", each in two lines).
 `texts/es-english-rows.txt` does it for eighteen texts of the two-row tables, which changes
 them for every language but Chinese; the two panels, the bar and the boxes were painted in
 emulation by stock's own routines with that file, on a RAM dump of the unit (the
 measurements were not). The image is on the unit since 2026-11-26: the flash reads back as
 built and the calibration table is unchanged. Photographs show six of its ten measurement
 labels with their values, whole (Frec:, Ciclo+:, Anc+:, Anc-:, Vef:, Med:, beside stock's
-Amp: and Vp-p:), and a channel's panel as it was painted in emulation; the trigger's panel,
-the bar and the multimeter's boxes have not been reported.
+Amp: and Vp-p:), and the panels of a channel and of the trigger as they were painted in
+emulation; the bar with "Simple" and the multimeter's boxes have not been reported.
 
 ### The options of a setting (code, and stock's own routines run in emulation)
 

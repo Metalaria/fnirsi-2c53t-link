@@ -1,0 +1,17 @@
+snapshot  FFT CH1, 1 kHz, 200 us/div, detenido
+host      2026-11-26T13:59:50
+link      patch 6, mode 2 (oscilloscope), tick 327416
+200000F8   56  0101030009d3000000000000000000000000000001010001000000002e000000000000000000000000000000000d00000000ff0000000000
+follow    20000104 -> 00000000, not a RAM address: nothing read
+
+snapshot  FFT CH1, 1 kHz, 500 us/div, detenido
+host      2026-11-26T14:01:11
+link      patch 6, mode 2 (oscilloscope), tick 408918
+200000F8   56  0101030009d30000000000000000000000000000010100010000c1ff2e00000020c6ecffffffffff00000000000d00000000ff0000000000
+follow    20000104 -> 00000000, not a RAM address: nothing read
+
+snapshot  FFT CH1, 1 kHz, 100 us/div, detenido
+host      2026-11-26T14:01:54
+link      patch 6, mode 2 (oscilloscope), tick 452051
+200000F8   56  0101030009d30000000000000000000000000000010100010000f3ff2e0000006008fcffffffffff00000000000d00000000ff0000000000
+follow    20000104 -> 00000000, not a RAM address: nothing read

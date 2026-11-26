@@ -602,9 +602,31 @@ Photographs taken with the same image on the unit, the instrument in Spanish.
   are broken in the middle of a word: "Configuraci / ón CH1", "Configuraci / ón CH2" and
   "Configuraci / ón de dispa", the end of the last one missing. The cause is in
   `stock_v120_notes.md`, "Texts that do not fit". `texts/es.txt` has since gained three
-  texts for those entries; that image (`98b5d1b7…f2d9`) has not been flashed.
+  texts for those entries; that image (`98b5d1b7…f2d9`) is the one of the next section.
 - Three snapshots meant for the FFT block at three time bases saved one block each, not
   two: the pointer was not followed. The file was not passed on, so why is not known.
+
+## The oscilloscope's menu in Spanish on the unit, 2026-11-26
+
+The image with the three texts of the oscilloscope's menu added to the one above
+(`98b5d1b7…f2d9`, 756668 bytes, as in
+`reference/APP_2C53T_V1.2.0_link_patch6_menu_langmenu_es_english_rows.json`), flashed over
+it (sixteenth update). Before it, `fnlink.py verify` gave MATCH for the image above.
+
+| | |
+|---|---|
+| `fnlink.py verify` | MATCH (756668 bytes) |
+| Settings and calibration page | against a dump taken just before flashing: the calibration table is identical (`9cbf9bf5…ff00d`); 2 bytes of settings and 67 of the scratch area differ |
+| The oscilloscope's menu | three photographs: "Ajustes de / CH1", "Ajustes de / CH2" and "Ajustes de / disparo", each whole in its two lines, under the three entries that were already whole |
+| A channel's panel | CH1's and CH2's: "Canal:", "Sonda:", "Acoplamiento:", "FFT:" and their values, whole |
+| The trigger's panel | "Modo:" with Auto, "Flanco:" with the picture of the edge, "Canal:" with CH1, whole |
+| The bar with "Simple", the multimeter's MEDIA | not reported |
+
+The file of the three snapshots that had not followed the FFT's pointer was passed on: in
+all three the FFT row was off and the time base was 200 µs per division, so they say
+nothing about the FFT. They are kept in the session directory with a note of what they do
+hold: stopped, `ms[0x1A..0x1B]` read 0, -63 and -13 and `ms[0x20..0x27]` 0, -1260000 and
+-260000, 20000 times the other in both.
 
 ## Not answered
 
