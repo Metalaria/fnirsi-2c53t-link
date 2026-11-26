@@ -179,6 +179,7 @@ from `0x200000F8`) followed by 19 `0xA1` data events.
 | 20 | channels on: bit 0 CH1, bit 1 CH2 | checked (1, 2 and 3) |
 | 21 | low nibble: trigger source, 1 CH1, 2 CH2. High nibble: 1 with CH2 alone | assumed; seen `0x01` with CH1 alone and `0x12` with CH2 alone |
 | 22 | 0 with CH1 alone, 1 with CH2 alone | seen; not established (the selected channel?) |
+| 24 | trigger edge: 0 rising, 1 falling | checked: 0 in every reading with the rising edge, 1 in the one taken with the falling edge, the other settings unchanged (2026-11-26). It is where OpenScope's notes have it |
 | 28–29 | trigger level, signed 16 bits, in counts from the middle (128) | inferred: it changed by 2 when an arrow key was pressed with the arrows not on the scales |
 | 45 | time per division as an index: 0 = 10 ns, then 1-2-5 steps | checked at 8 (5 µs, photograph of the screen) and 13 (200 µs); 11 and 16 fit 50 µs and 2 ms |
 | 46 | 1 running, 0 stopped (the RUN/STOP key) | checked: three RAM dumps running, one stopped |
@@ -210,10 +211,8 @@ from `0x200000F8`) followed by 19 `0xA1` data events.
   record has to find the edge.
 - A wave that leaves the converter's range sits exactly on 5 and 244.
 - With both channels on, each acquisition gives a CH1 record and a CH2 record 1–2 ms apart.
-- The trigger edge has not been located. It is not in `ms[0x38..0x25F]` or `ms[0x354..0xFFF]`:
-  with the edge switched and back (2026-11-26), nothing there follows it but the samples, the
-  drawn arrays and stock's measurements. OpenScope's notes put it at offset 24 (0 rising,
-  1 falling); that byte reads 0 with the rising edge and has not been read with the falling
-  one.
+- Offset 49 was 1 in the readings with the rising edge and 0 in the one with the falling
+  edge on 2026-11-26, but it is not the edge: in the readings of earlier sessions, none taken
+  with the edge on falling, it is 0 in 53 and 1 in 32. What it is has not been established.
 - Stock computes its own measurements (frequency, duty, Vmax, Vmin, Vpp) and keeps them in
   RAM just after the scope state. The link does not send them; see `stock_v120_notes.md`.

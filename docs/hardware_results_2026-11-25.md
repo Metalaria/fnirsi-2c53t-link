@@ -388,7 +388,8 @@ builder took. `--menu-names` was written after this; the fonts turned out to hav
 Captures in
 [`sessions/2026-11-26_trigger_edge_slow_time_bases/`](../sessions/2026-11-26_trigger_edge_slow_time_bases/README.md).
 
-**The trigger edge is not where the snapshots looked.** This time the edge did change: in
+**The trigger edge is `ms[0x18]`: 0 rising, 1 falling.** It was found in two steps, the
+first of which looked in the wrong place. This time the edge did change: in
 the snapshot taken with the falling edge the drawn arrays are in the opposite phase and
 stock's positive and negative measurements have changed places, and in the third
 both are back. Of the 3796 bytes read, 385 are the same in the first and third snapshots
@@ -399,13 +400,40 @@ the time base and zeroes (`0x0803E55A`, `0x0803FF76`). So the edge is in neither
 was not read is `ms[0x00..0x37]`, left out because the session of the 25th had found nothing
 else changing there, when the edge had not in fact been switched, and the calibration
 tables. OpenScope's `STATE_STRUCTURE.md` has it at `ms[0x18]`, 0 rising and 1 falling; the
-`status` lines of this session, taken with the rising edge, show 0 there. A `status` with
-the falling edge is still to be taken.
+`status` lines of this session, taken with the rising edge, show 0 there.
+
+A `status` taken afterwards with the falling edge, at the same 20 ms per division, settles
+it: the 56 bytes differ from those read with the rising edge in two places, `ms[0x18]`
+(0, now 1) and `ms[0x31]` (1, now 0). The second is not the edge: in the 85 readings of
+the earlier sessions kept here, none taken with the edge switched to falling, `ms[0x18]` is
+0 in all and `ms[0x31]` is 0 in 53 and 1 in 32. `fnlink.py status` now names the edge.
 
 **5 and 20 ms per division.** With the generator's square wave at 100 Hz, `fnlink.py scope`
 gets 100 Hz from each of the two records saved at 5 ms and at 20 ms per division, so 25
 samples to a division holds there as well (at 20 ms a period is 12.5 samples). Stock's own
 measurement says 100 Hz at 5 ms and 104 Hz at 20 ms.
+
+## The tasks' stacks with the language menu, 2026-11-26
+
+`fnlink.py tasks` on the unit, whose flash had last been verified as the image with
+`--language-menu` and the thirteen texts (`4e7de994…7097`). The step before the command
+was: open Settings > Language, go through its eight entries, go through the generator's
+list, return to the multimeter.
+
+| Task | Priority | Stack | In use | Deepest since power-on | Never reached |
+|---|---|---|---|---|---|
+| `display` | 1 | 1536 | 284 | 817 | 719 |
+| `key` | 4 | 512 | 276 | 276 | 236 |
+| `osc` | 2 | 1024 | 276 | 780 | 244 |
+| `fpga` | 3 | 512 | 324 | 324 | 188 |
+| `dvom_TX` | 2 | 256 | 140 | 140 | 116 |
+| `dvom_RX` | 3 | 512 | 332 | 396 | 116 |
+| `IDLE` | 0 | 512 | 84 | 84 | 428 |
+
+Bytes. With the language panel in use, 719 of the `display` task's 1536 bytes were never
+reached; the dumps of 2026-11-24, with patch 3 and no panel, had 710. The figures are those
+of one power-on and of what was done in it: on the 24th `dvom_RX` had 21 bytes never
+reached and `key` 76.
 
 ## Not answered
 

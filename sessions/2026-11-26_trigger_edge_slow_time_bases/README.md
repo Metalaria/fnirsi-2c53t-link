@@ -7,7 +7,8 @@ read over USB, nothing written to the instrument). Written up in
 
 | File | What was done |
 |---|---|
-| `trigger_edge_snapshots.txt` | Three `fnlink.py snapshot`s with the generator's 100 Hz square wave on CH1: trigger on the rising edge, on the falling edge, on the rising edge again. Each holds `ms[0x38..0x25F]` (`20000130`, 552 bytes) and `ms[0x354..0xFFF]` (`2000044C`, 3244 bytes), `ms` being stock's state structure at `0x200000F8`. The gap between the two blocks is where stock keeps the calibration it loaded, which is not read; `ms[0x00..0x37]` was left out by mistake |
+| `trigger_edge_snapshots.txt` | Three `fnlink.py snapshot`s with the generator's 100 Hz square wave on CH1: trigger on the rising edge, on the falling edge, on the rising edge again. Each holds `ms[0x38..0x25F]` (`20000130`, 552 bytes) and `ms[0x354..0xFFF]` (`2000044C`, 3244 bytes), `ms` being stock's state structure at `0x200000F8`. The gap between the two blocks is where stock keeps the calibration it loaded, which is not read; `ms[0x00..0x37]` was left out by mistake; `trigger_edge_status.txt` has it |
 | `slow_time_bases.txt` | At 5 and at 20 ms per division: the two lines `fnlink.py scope` printed for the two records it saved (what the record itself measures, with 25 samples to a division), then the `generator`, `scope` and `CH1 shown` lines of `fnlink.py status` (stock's own measurements), copied from the terminal. The trigger was on the rising edge |
+| `trigger_edge_status.txt` | The `scope` line of `fnlink.py status` with the rising edge and, taken afterwards, with the falling edge: the 56 bytes of `ms[0x00..0x37]` that the snapshots lacked. Then the output of `fnlink.py tasks`, run before that second `status` |
 
 No calibration is in these files.
