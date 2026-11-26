@@ -14,7 +14,7 @@ that can stream what it measures.
 | Generator (patch 4): any waveform of 100 samples, played by stock's own generator | yes |
 | Languages (`--languages`): the six that stock still carries but no longer offers, by pressing OK on the second row | yes |
 | Languages (`--language-menu`): the same eight as entries of Settings > Language, one each | yes |
-| Texts (`--texts`): Spanish texts that stock cuts or mistranslates | yes: thirteen of the sixteen of `texts/es.txt`, and the eighteen of `texts/es-english-rows.txt`; the three added last, of the oscilloscope's menu, not yet |
+| Texts (`--texts`): Spanish texts that stock cuts or mistranslates | yes: the sixteen of `texts/es.txt` and the eighteen of `texts/es-english-rows.txt` |
 | Names of the added menu entries in a language (`--menu-names`) | emulated only |
 | Menu (patch 5, `--menu-wave`): waveforms added to the generator's own list, chosen on the instrument | yes |
 
@@ -208,8 +208,8 @@ check of each text, stock's own routines were run in emulation on a RAM dump of 
 (not kept here) and painted both panels, the bar and the boxes whole with it. It is on
 the unit since 2026-11-26: the flash reads back as built, the calibration table is
 unchanged, and photographs show the oscilloscope's measurements under their Spanish labels
-and a channel's panel, all whole. The trigger's panel, the bar and the multimeter's boxes
-on the unit have not been reported.
+and the panels of a channel and of the trigger, all whole. The bar with "Simple" and the
+multimeter's boxes on the unit have not been reported.
 The grid of buttons where the measurements are chosen stays as stock has it: those words
 are not strings of the image.
 
