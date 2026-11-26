@@ -313,6 +313,7 @@ python fnlink.py tasks                           # stock's tasks: stack size, in
 python fnlink.py status                          # generator settings, scope measurements, meter MAX/MEAN/MIN
 python fnlink.py status --events                 # the same from the status stream (patch 3)
 python fnlink.py keys --out keys.txt             # log what changes while you press the instrument's keys; typed lines are notes
+python fnlink.py keys --guide "up,down,blue"     # the same, the tool saying which key to press next, one every 5 s
 python fnlink.py wave sinc                       # patch 4: one period of a built-in shape into the generator
 python fnlink.py wave harmonics --harmonics 1:1,3:0.33,5:0.2
 python fnlink.py wave --file one_period.csv      # any count of numbers: resampled to 100, stretched to full scale

@@ -688,6 +688,62 @@ check("keys: the menus' cursors are given as offsets of stock's state, with the 
 check("keys: the log saved is what was printed, the starting blocks first",
       saved[:len(printed) - 1] == printed[:-1] and printed[1].startswith("20000F50   10  01010000e8030000321e")
       and printed[0].startswith("keys      ") and printed[0].endswith("test") and len(changes) == 4, str(printed[:8]))
+mem = _Memory({1: [(fnlink.UI_ADDR + 15, 0x2E)], 2: [(fnlink.UI_ADDR + 9, 1)]})
+with tempfile.TemporaryDirectory() as tmp:
+    log = Path(tmp) / "guided.txt"
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        rc = fnlink.main(["keys", "--guide", "azul, abajo,menu corto", "--step", "0.05", "--interval", "0.005", "--out", str(log)], transport=mem)
+    guided, saved = buf.getvalue().splitlines(), log.read_text()
+asked = [x.split("press     ", 1)[1] for x in guided if "  press     " in x]
+check("keys --guide: asks for each key in turn, ends by itself, and the bell stays out of the file",
+      rc == 0 and [a.rstrip("\a") for a in asked] == ["azul", "abajo", "menu corto"] and all(a.endswith("\a") for a in asked)
+      and "\a" not in saved and saved.count("  press     ") == 3 and guided[-2].startswith("end "), str(guided[-6:]))
+check("keys: the byte of the ui block that moves by itself is left out, the cursor next to it is not",
+      [x.split(" s  ", 1)[1] for x in guided if " s  ui" in x] == ["ui        [0xF69] 00>01"], str(guided))
+
+
+class _Dropping(_Memory):
+    """_Memory standing in for the HID transport: it stops answering after some requests, cannot be
+    reopened twice, and then answers again, as the instrument does while a menu is up."""
+    state = {}
+
+    def __init__(self, script=None):
+        if script is None:                               # the tool opening the link again
+            _Dropping.state["opens"] += 1
+            if _Dropping.state["opens"] <= 2:
+                raise fnlink.LinkError("no 1209:0001 device")
+            self.__dict__.update(_Dropping.state["first"].__dict__)
+            self.queue = []
+        else:
+            super().__init__(script)
+            _Dropping.state = {"opens": 0, "first": self, "writes": 0}
+
+    def write(self, rq):
+        _Dropping.state["writes"] += 1
+        if 12 <= _Dropping.state["writes"] < 14 and _Dropping.state["opens"] == 0:
+            raise OSError("not ready")
+        super().write(rq)
+
+    def close(self):
+        pass
+
+
+real_hid, fnlink.HidTransport = fnlink.HidTransport, _Dropping
+try:
+    drop = _Dropping({})
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        rc = fnlink.main(["keys", "--guide", "ch1,menu corto,ch2,menu corto", "--step", "0.6", "--interval", "0.01"], transport=drop)
+    dropped = [x.replace("\a", "") for x in buf.getvalue().splitlines()]
+finally:
+    fnlink.HidTransport = real_hid
+lost = [i for i, x in enumerate(dropped) if "  link      lost" in x]
+back = [i for i, x in enumerate(dropped) if "  link      back" in x]
+between = [x.split("press     ", 1)[1] for x in dropped[lost[0]:back[0]] if "  press     " in x] if lost and back else []
+check("keys: a link that goes away is picked up again, and the keys go on being asked for meanwhile",
+      rc == 0 and len(lost) == 1 and len(back) == 1 and lost[0] < back[0] and between
+      and [x.split("press     ", 1)[1] for x in dropped if "  press     " in x] == ["ch1", "menu corto", "ch2", "menu corto"], str(dropped))
 check("keys: an unchanged block gives no line", fnlink.keys_changes("ui", b"\x01\x02", b"\x01\x02", None, 0xF60) == []
       and fnlink.keys_changes("meter", bytes(8), bytes([0, 0, 0, 0, 0, 0, 0, 9]), fnlink.KEYS_METER_BYTES, 0) == [])
 for name, samples in (("101 samples", [0] * 101), ("a sample of 4095", [4095] * 100), ("a negative sample", [-1] + [0] * 99)):

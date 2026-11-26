@@ -1,0 +1,20 @@
+keys      2026-11-26T16:34:38  generador con notas
+20000F50   10  01100000d0070000321e
+20001020   56  f7040000000000000000000004010102ff0000000000000000000000000000000000c07f0000c07f0000c07f0402020000000a0a0a000000
+20001058   16  05640a000100046403000c0000000000
+2000044C    1  00
+200000F8   56  01010200b4d301000000000000000000000000000101000100000000ffff0000000000000000000000000000000d01000001ff0000000000
+            a line typed here and Enter is kept as a note; Ctrl-C ends
+   16.436 s  generator [1] 10>11   ? (index 17), 2kHz, duty 50 %, 3.0 V
+   20.725 s  generator [1] 11>10   ? (index 16), 2kHz, duty 50 %, 3.0 V
+   24.720 s  ui        [0xF69] 00>01
+   25.694 s  ui        [0xF6B] 00>02
+   27.255 s  ui        [0xF6B] 02>00
+   30.639 s  ui        [0xF69] 01>02
+   31.407 s  ui        [0xF6B] 00>10
+   33.015 s  generator [4] d0>da   ? (index 16), 2.01kHz, duty 50 %, 3.0 V
+   33.961 s  generator [4] da>d0   ? (index 16), 2kHz, duty 50 %, 3.0 V
+   34.851 s  ui        [0xF6B] 10>00
+   36.663 s  ui        [0xF69] 02>01
+   38.142 s  ui        [0xF69] 01>00
+end       39.8 s, 612 reads of the five blocks

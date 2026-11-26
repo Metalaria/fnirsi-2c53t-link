@@ -740,6 +740,58 @@ describe the home page. Which key each of those rows is cannot be told from the 
 `fnlink.py keys` was written after this, so that a sequence of keys can be followed in
 one log instead of a `status` after each press.
 
+## Logs of the keys, 2026-11-26
+
+`fnlink.py keys` on the unit, four logs in
+[`sessions/2026-11-26_keys/`](../sessions/2026-11-26_keys/README.md). The keys were asked for
+in an order and not noted in the logs, so what follows is what the bytes did; where a key
+is named, it is the one the order has at that place.
+
+**The generator.** `ms[0xF69]` took three values. From 0, twelve changes in the order
+asked for, none where the order has MENU, right or left with `ms[0xF69]` at 0 or 1:
+
+| `ms[0xF69]` | Change | Key the order has there |
+|---|---|---|
+| 0 | waveform index 16 to 17, then 17 to 16 | down, up |
+| 0 to 1 | | blue |
+| 1 | `ms[0xF6B]` 0 to 2, then 2 to 0 | down, up |
+| 1 to 2 | | blue |
+| 2 | `ms[0xF6B]` `00` to `10` | left |
+| 2 | frequency 2000 to 2010, then 2010 to 2000 | up, down |
+| 2 | `ms[0xF6B]` `10` to `00` | right |
+| 2 to 1, 1 to 0 | | MENU, MENU |
+
+In the first log, with `ms[0xF6B]` at 0, the frequency went 2000, 1999, 2000. So with
+`ms[0xF69]` at 2 the high nibble of `ms[0xF6B]` is the digit being changed, counted from
+the right, and its low nibble, 0 or 2 here, was chosen with `ms[0xF69]` at 1. The entry
+under the cursor was one whose duty row a photograph shows in grey; whether that is why
+1 was passed over was not tried with another waveform. `ms[0xF6A]` read 11 and 12 with
+the cursor on entry 16.
+
+**The multimeter.** Three things in 47 s, fewer than the order has keys: byte 14 of the
+meter's state went to 1 and back within 0.3 s; byte 20 (HOLD) went to 1; and then, in one
+reading, the menu entry went from 0 to 7, the function to 10, byte 14 to 1 and HOLD to 0.
+Nothing changed where the order has the right arrow first. Which key did each is not
+established. In the first log, back in the multimeter from the mode screen, HOLD also
+went to 1 after a key that was not noted.
+
+**The oscilloscope.** The time base went 13, 12, 13 with the arrows in mode 0, and each
+change started a count in `ms[0x28..0x29]` from about 297 down to 0 in about 3 s. CH1's
+range went from 2 to 1 once, the trigger level going from -1 to 100 in the same reading.
+The arrows' mode went 0, 1, 2, 0. In mode 1 the horizontal position `ms[0x1A]` went to 1
+and back, `ms[0x20..0x27]` reading 20000 with it, and CH1's position `ms[0x04]` went up
+one and down one, each with a count in `ms[0x2C]` from 99 down to 0 in about a second;
+the trigger level went from 100 to 99 with the second. The link was lost three times in
+twenty seconds where the order has the keys that open the menus. `ms[0x2E]` went to 0
+and back to 1 in 0.2 s where the order has the blue key twice. Then AUTO: `ms[0x2F]`
+went 01, 02, 03, 11, 12, 13, FF and back to 0 in 5.65 s, with CH1 alone, and left the
+time base at 9, where the sequence watched earlier, with both channels on, went 01, 02,
+03, 11, 21, 22, 32, F3, FF and returned it to 13.
+
+The link going away is the same thing as in the mode screen: the instrument stops
+answering while those screens are up, and `fnlink.py keys` picks it up again. After the
+first logs it gained `--guide`, which says which key to press next and writes it down.
+
 ## Not answered
 
 - What needs a write to the instrument's memory (the 20M limit; the per-channel "FFT" flag

@@ -1001,12 +1001,14 @@ def arrows_text(value: int) -> str:
 # ---- keys: what the instrument's state does while its keys are pressed ------------------------
 # Nothing here presses a key: the tool reads a few small blocks of stock's RAM over and over and
 # prints what changed, so that someone working the instrument by hand gets the whole sequence in
-# one file. A line typed on the computer goes into the log as a note, between the changes.
+# one file. A line typed on the computer goes into the log as a note, between the changes; with
+# --guide the tool itself says which key to press next and writes that down, so nothing is typed.
 UI_ADDR, UI_LEN = 0x20001058, 16        # ms[0xF60..0xF6F]: language, sound, system mode (0xF68), the menus' cursors
 KEYS_METER_BYTES = (5, 6, 14, 20)       # menu entry, function, variant, HOLD: the rest of the meter state moves with the reading
+KEYS_UI_BYTES = tuple(range(12))        # ms[0xF6F] moves about once a second with no key pressed (seen on the unit)
 KEYS_BLOCKS = (("generator", GENERATOR_ADDR, GENERATOR_LEN, None, 0),
                ("meter", METER_STATE_ADDR, METER_STATE_LEN, KEYS_METER_BYTES, 0),
-               ("ui", UI_ADDR, UI_LEN, None, 0xF60),
+               ("ui", UI_ADDR, UI_LEN, KEYS_UI_BYTES, 0xF60),
                ("arrows", ARROWS_ADDR, 1, None, 0),
                ("scope", SCOPE_STATE_ADDR, 56, None, 0))
 
@@ -1051,7 +1053,7 @@ def cmd_keys(link: Link, args) -> int:
     out = []
 
     def say(line: str) -> None:
-        out.append(line)
+        out.append(line.replace("\a", ""))
         print(line, flush=True)
 
     def read_all() -> dict:
@@ -1061,10 +1063,25 @@ def cmd_keys(link: Link, args) -> int:
     last = read_all()
     for name, addr, length, _, _ in KEYS_BLOCKS:
         say("%08X  %3d  %s" % (addr, length, last[name].hex()))
-    say("            a line typed here and Enter is kept as a note; Ctrl-C ends")
-    start, polls = time.monotonic(), 0
+    guide = [k.strip() for k in (args.guide or "").split(",") if k.strip()]
+    if guide:
+        say("            %d keys, one every %g s: press each one once when its line appears; it ends by itself" % (len(guide), args.step))
+    else:
+        say("            a line typed here and Enter is kept as a note; Ctrl-C ends")
+    start, polls, asked = time.monotonic(), 0, [0]
+
+    def guide_done() -> bool:
+        """Ask for the keys that are due; True once the last one has had its time."""
+        elapsed = time.monotonic() - start
+        while asked[0] < len(guide) and elapsed >= asked[0] * args.step:
+            say("%9.3f s  press     %s\a" % (elapsed, guide[asked[0]]))          # the bell is for the terminal only
+            asked[0] += 1
+        return bool(guide) and asked[0] == len(guide) and elapsed >= len(guide) * args.step
+
     try:
         while not (args.polls and polls >= args.polls) and not (args.seconds and time.monotonic() - start >= args.seconds):
+            if guide_done():
+                break
             note = _typed_line()
             if note:
                 say("%9.3f s  note      %s" % (time.monotonic() - start, note))
@@ -1074,8 +1091,11 @@ def cmd_keys(link: Link, args) -> int:
                 if not isinstance(link.t, HidTransport):
                     raise
                 say("%9.3f s  link      lost (%s)" % (time.monotonic() - start, e))
-                while True:                              # the link goes away while the instrument changes mode
+                now_blocks = None
+                while now_blocks is None:                # the link goes away while a menu or the mode screen is up
                     time.sleep(0.5)
+                    if guide_done():                     # the keys go on being asked for meanwhile: one of them closes that screen
+                        break
                     try:
                         try:
                             link.t.close()
@@ -1083,9 +1103,10 @@ def cmd_keys(link: Link, args) -> int:
                             pass
                         link.t = HidTransport()
                         now_blocks = read_all()
-                        break
                     except (LinkError, OSError, ValueError):
-                        continue
+                        now_blocks = None
+                if now_blocks is None:
+                    break
                 say("%9.3f s  link      back" % (time.monotonic() - start))
             polls += 1
             now = time.monotonic() - start
@@ -1443,6 +1464,8 @@ def main(argv=None, transport=None) -> int:
     p.add_argument("--interval", type=float, default=0.05, help="seconds between reads (default 0.05)")
     p.add_argument("--seconds", type=float, default=0, help="stop after this long (default: until Ctrl-C)")
     p.add_argument("--polls", type=int, default=0, help="stop after this many reads")
+    p.add_argument("--guide", metavar="KEY,KEY,...", help="say which key to press next, one after another, and write it in the log")
+    p.add_argument("--step", type=float, default=5.0, help="with --guide: seconds given to each key (default 5)")
     p.set_defaults(fn=cmd_keys)
     p = sub.add_parser("dump-cal", help="save the 4 KB settings/calibration page (0x08006000)")
     p.add_argument("out", type=Path)
