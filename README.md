@@ -434,6 +434,10 @@ USB ids default to `1209:0001`, the pid.codes test PID, which is for private tes
   [`sessions/2026-11-26_measurements_fft_pointer/`](sessions/2026-11-26_measurements_fft_pointer/README.md)
   has stock's measurements with screens to compare, and the block the FFT pointer points
   at.
+  [`sessions/2026-11-26_keys/`](sessions/2026-11-26_keys/README.md) has what each key
+  changes in the multimeter, the generator and the oscilloscope, from logs in which the
+  tool asks for each key and writes it down; the table of keys by mode is in
+  [`docs/stock_v120_notes.md`](docs/stock_v120_notes.md).
 - Going back to stock: flash `APP_2C53T_V1.2.0_251015.bin` through the factory IAP drive.
 
 ## Safety
