@@ -197,7 +197,9 @@ from `0x200000F8`) followed by 19 `0xA1` data events.
   scope` got 50 kHz from the record and stock's own measurement was 50 kHz (2026-11-25). At
   1 µs the record holds two periods of that wave, too few for `scope` to give a frequency,
   but its rising edges are 500 and 499 samples apart in the two records taken: 20 µs at
-  40 ns a sample. Below 1 µs and above 2 ms per division this was not checked; the fastest
+  40 ns a sample. At 5 and 20 ms per division, with the generator at 100 Hz, `scope` got
+  100 Hz from each of two records (2026-11-26; stock's own figure was 100 Hz at 5 ms and
+  104 Hz at 20 ms). Below 1 µs per division this was not checked; the fastest
   time bases cannot have 25 real samples per division.
 - The screen is 12 by 8 divisions: 300 samples wide, 200 counts tall, centred on 128.
 
@@ -208,6 +210,10 @@ from `0x200000F8`) followed by 19 `0xA1` data events.
   record has to find the edge.
 - A wave that leaves the converter's range sits exactly on 5 and 244.
 - With both channels on, each acquisition gives a CH1 record and a CH2 record 1–2 ms apart.
-- Coupling and trigger edge are somewhere in the state bytes and have not been located.
+- The trigger edge has not been located. It is not in `ms[0x38..0x25F]` or `ms[0x354..0xFFF]`:
+  with the edge switched and back (2026-11-26), nothing there follows it but the samples, the
+  drawn arrays and stock's measurements. OpenScope's notes put it at offset 24 (0 rising,
+  1 falling); that byte reads 0 with the rising edge and has not been read with the falling
+  one.
 - Stock computes its own measurements (frequency, duty, Vmax, Vmin, Vpp) and keeps them in
   RAM just after the scope state. The link does not send them; see `stock_v120_notes.md`.

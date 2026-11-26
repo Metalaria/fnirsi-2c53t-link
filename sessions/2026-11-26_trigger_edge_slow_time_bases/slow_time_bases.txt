@@ -1,0 +1,15 @@
+== generator: Square Wave, 100 Hz, 3.0 V, into CH1; 5 ms per division
+  799.362 s  CH1  seq   1  min  51  max 203  50mV/div X1  5ms/div  Vpp 304mV  100Hz  -> scope_000000_ch1_t799362.bin
+  799.579 s  CH1  seq   2  min  51  max 203  50mV/div X1  5ms/div  Vpp 304mV  100Hz  -> scope_000001_ch1_t799579.bin
+generator    Square Wave (index 1), 100Hz, duty 50 %, 3.0 V, byte0 1   raw 0101000064000000321e
+scope        RUN, 5ms/div, CH1 50mV/div X1 DC, CH2 500mV/div X10, channels CH1   state 01010202b40000010000000000000000000000000101000100000000ffff0000000000000000000000000000001101000001ff0000000000
+  CH1 shown   100Hz, period 10ms, duty +50.00 % / -50.00 %, width +5ms / -5ms, Vmax 301mV, Vmin -666uV, Vpp 301mV
+     words    100 10000000 5000 5000 5000000 5000000 300666 -666 301333 300000 212000 150000
+
+== the same, 20 ms per division
+  823.876 s  CH1  seq   3  min  51  max 203  50mV/div X1  20ms/div  Vpp 304mV  100Hz  -> scope_000000_ch1_t823876.bin
+  824.706 s  CH1  seq   4  min  51  max 202  50mV/div X1  20ms/div  Vpp 302mV  100Hz  -> scope_000001_ch1_t824706.bin
+generator    Square Wave (index 1), 100Hz, duty 50 %, 3.0 V, byte0 1   raw 0101000064000000321e
+scope        RUN, 20ms/div, CH1 50mV/div X1 DC, CH2 500mV/div X10, channels CH1   state 01010202b40000010000000000000000000000000101000100000000ffff0000000000000000000000000000001301000001ff0000000000
+  CH1 shown   104Hz, period 9.6ms, duty +50.00 % / -50.00 %, width +4.8ms / -4.8ms, Vmax 300mV, Vmin 0V, Vpp 300mV
+     words    104 9600000 5000 5000 4800000 4800000 300000 0 300000 300000 212000 150000

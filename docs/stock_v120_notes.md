@@ -339,7 +339,9 @@ repeats the table and font checks on a stock image.
   `0x08098FDC`, `0x080A0468`, `0x080B9000`): bitmap offset in the low 20 bits of the first
   word and the advance, in whole pixels, in the top 12; then box width, box height and the
   two offsets. The font descriptors used at run time are in RAM, `0x200010E4` + `0x30` x
-  font, with the line height at +8.
+  font, with the line height at +8. Of the accented Latin letters the five have
+  `Ä Í Ü ß à á â ã ä ç ê í ñ ó õ ö ü`: no `é` and no `ú`, which Spanish needs, and no
+  inverted question or exclamation mark.
 - **The multimeter's title.** Table of pointers at `0x0804C43C`: twelve functions
   (`ms[0xF2E]`: 0 auto, 1 DC V, 2 AC V, 3 continuity, 4 diode, 5 resistance, 6 capacitance,
   7 temperature, 8 and 9 small DC and AC current, 10 and 11 large) for each of eight
