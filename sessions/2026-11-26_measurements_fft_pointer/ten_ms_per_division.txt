@@ -1,0 +1,2 @@
+  786.953 s  CH1  seq   4  min  51  max 203  500mV/div X10  10ms/div  Vpp 3.04V  100Hz  -> scope_000000_ch1_t786953.bin
+  787.374 s  CH1  seq   5  min  50  max 203  500mV/div X10  10ms/div  Vpp 3.06V  100Hz  -> scope_000001_ch1_t787374.bin

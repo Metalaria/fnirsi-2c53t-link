@@ -444,6 +444,15 @@ bars500 = fft_seen[1][5]
 folded = [round((25000 - f) / 195.3125) for f in (23000, 21000, 19000, 17000, 15000, 13000)]
 check("FFT block: at 500 us per division the square's harmonics above 12.5 kHz are where 25 kHz minus them falls (10, 20, 31, 41, 51, 61)",
       folded == [10, 20, 31, 41, 51, 61] and all(bars500[k] > bars500[k - 1] and bars500[k] > bars500[k + 1] for k in folded), str([bars500[k - 1:k + 2] for k in folded]))
+# the same wave with CH1's probe setting at X10 (2026-11-26): the voltages carry the factor themselves
+WORDS_X10 = struct.pack("<6I6i", 1000, 1000000, 5001, 4998, 500160, 499840, 3030400, -20800, 3051200, 3040000, 2108800, 1490400)
+STATE_X10 = bytes.fromhex("01010200b4d301000000000000000000000000000101000100006affffff000010b6fdffffffffff00000000000d01000001ff0000000000")
+mx = fnlink.decode_scope_measurements(WORDS_X10)
+check("measurements at X10: words 6 to 11 are ten times those read at X1, with nothing to apply",
+      fnlink.scope_settings(STATE_X10)["channels"][0]["probe"] == 10 and fnlink.scope_settings(STATE_X10)["channels"][0]["volts_per_div"] == 0.5
+      and all(9.5 < a / b < 10.5 for a, b in ((mx["vmax"], 0.304), (mx["vpp"], 0.316), (mx["amp"], 0.316), (mx["vrms"], 0.208), (mx["avg"], 0.148))),
+      str(mx))
+check("scope: 10 ms per division is index 18", fnlink.seconds_per_div(18) == 0.01 and fnlink.seconds_per_div(17) == 0.005 and fnlink.seconds_per_div(19) == 0.02)
 check("status: the three of them on the line of each channel",
       "Vmax 304mV, Vmin -12mV, Vpp 316mV, Amp 316mV, Vrms 208mV, Avg 148mV" in text and "STOP, 200us/div" in text
       and "channels CH1, trigger Auto rising CH1" in text, text)

@@ -666,6 +666,31 @@ zero, over sixty readings in all from 10 µs to 500 µs per division. From 500 �
 nanoseconds stayed and the other followed. One reading kept in the tests, stopped at 5 µs
 on 2026-11-24, has -25 with -500000 and does not fit.
 
+## The voltages at X10, 10 ms per division, and the multimeter's keys, 2026-11-26
+
+With the image above; `status_probe_x10.txt` and `ten_ms_per_division.txt` in the same
+session directory.
+
+- **Words 9 to 11 at X10.** With CH1's probe setting at X10 and the same 1 kHz square,
+  `status` reads 3030400, -20800, 3051200, 3040000, 2108800 and 1490400 in words 6 to 11,
+  where the readings at X1 had 304000 to 308000, -12000 to -666, 304666 to 317125, 304000
+  to 316000, 208000 to 209500 and 146125 to 148000. All six carry the factor.
+- **10 ms per division.** Two records, 100 Hz from each with 25 samples to a division. The
+  procedure had the generator set to 100 Hz before them; no reading of the generator was
+  taken at that moment. An earlier attempt was at 10 µs per division by mistake and shows a
+  flat trace.
+- **The horizontal position after AUTO.** That `status` has -150 in `ms[0x1A..0x1B]` and
+  -150000 in `ms[0x20..0x27]` at 200 µs per division: the pair of 10 µs per division, where
+  the time base had been, not of 200 µs. `ms[0x31]` is 1 in it, so AUTO had been pressed
+  since the unit was started. The relation of the section above is therefore not kept by
+  whatever AUTO does to the time base; `formats.md` says so now.
+- **The multimeter's keys**, as the owner describes them on the unit: a short press of MENU
+  shows nothing; holding it for a few seconds lets him change between modes; the up and
+  down arrows do nothing; SELECT does nothing; the right arrow changes what is measured
+  (voltage, continuity, resistance, capacitance, ...); the blue key confirms. The left
+  arrow, the screen where the mode is changed and the generator's keys are still to be
+  described.
+
 ## Not answered
 
 - What needs a write to the instrument's memory (the 20M limit; the per-channel "FFT" flag

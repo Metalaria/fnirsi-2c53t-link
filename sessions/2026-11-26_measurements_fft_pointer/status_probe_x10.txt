@@ -1,0 +1,8 @@
+system mode  2 (oscilloscope)
+generator    Square Wave (index 1), 1kHz, duty 50 %, 3.0 V, byte0 1   raw 01010000e8030000321e
+scope        RUN, 200us/div, CH1 500mV/div X10 DC, CH2 10mV/div X1 DC, channels CH1, trigger Auto rising CH1   state 01010200b4d301000000000000000000000000000101000100006affffff000010b6fdffffffffff00000000000d01000001ff0000000000
+  arrows     scale: left/right change the time base, up/down the volts per division (byte 0x00; SELECT changes it)
+  CH1 shown   1kHz, period 1ms, duty +50.01 % / -49.98 %, width +500us / -500us, Vmax 3.03V, Vmin -20.8mV, Vpp 3.05V, Amp 3.04V, Vrms 2.11V, Avg 1.49V
+     words    1000 1000000 5001 4998 500160 499840 3030400 -20800 3051200 3040000 2108800 1490400
+  CH2 shown   0Hz, period 0s, duty +0.00 % / -0.00 %, width +0s / -0s, Vmax 0V, Vmin 0V, Vpp 0V, Amp 0V, Vrms 0V, Avg 0V
+     words    0 0 0 0 0 0 0 0 0 0 0 0

@@ -183,10 +183,10 @@ from `0x200000F8`) followed by 19 `0xA1` data events.
 | 22 | trigger channel: 0 CH1, 1 CH2 | switched to CH2 and back with both channels on, 2026-11-26: the only byte that changed. Earlier readings had 0 with CH1 alone and 1 with CH2 alone |
 | 23 | trigger mode: 0 Normal, 1 Auto, 2 Single | each selected on the unit, 2026-11-26: the only byte that changed between Auto and Normal; in Single offset 46 was 0 as well |
 | 24 | trigger edge: 0 rising, 1 falling | checked: 0 in every reading with the rising edge, 1 in the one taken with the falling edge, the other settings unchanged (2026-11-26). It is where OpenScope's notes have it |
-| 26–27 | horizontal position, signed 16 bits, in tenths of a division | in the readings kept under `sessions/` where it is not zero (over sixty, at 10 µs to 500 µs per division) it is offsets 32–39 divided by a tenth of the time per division; it moved when the left and right keys were pressed with the arrows in their mode 1 (2026-11-26). One stopped reading of 2026-11-24, at 5 µs, does not fit (-25 with -500000) |
+| 26–27 | horizontal position, signed 16 bits, in tenths of a division | in the readings kept under `sessions/` where it is not zero (over sixty, at 10 µs to 500 µs per division) it is offsets 32–39 divided by a tenth of the time per division; it moved when the left and right keys were pressed with the arrows in their mode 1 (2026-11-26). Two readings do not fit: one stopped on 2026-11-24, at 5 µs (-25 with -500000), and one taken after AUTO had been pressed, at 200 µs (-150 with -150000, the figures of 10 µs per division, where the time base had been before). So the two can disagree, and which one stock goes by then is not known |
 | 32–39 | the same position in nanoseconds, signed 64 bits | the same readings. On a change of time base while running this one was kept (-200000 at 500 µs and at 100 µs) and offsets 26–27 followed (-4, -20) |
 | 28–29 | trigger level, signed 16 bits, in counts from the middle (128) | inferred: it changed by 2 when an arrow key was pressed with the arrows not on the scales. The AUTO key's sequence ends by writing it (-1 before, 46 after, 2026-11-26) |
-| 45 | time per division as an index: 0 = 10 ns, then 1-2-5 steps | checked at 8 (5 µs, photograph of the screen) and 13 (200 µs); 11 and 16 fit 50 µs and 2 ms |
+| 45 | time per division as an index: 0 = 10 ns, then 1-2-5 steps | checked at 8 (5 µs, photograph of the screen) and 13 (200 µs); 11 and 16 fit 50 µs and 2 ms; 12, 14 and 18 read with the screen at "H=100uS", "H=500uS" and "H=10mS" (2026-11-26) |
 | 46 | 1 running, 0 stopped (the RUN/STOP key) | checked: three RAM dumps running, one stopped |
 | 47 | the step of the AUTO key's sequence, 0 when none is running | watched every 10 ms through one press of AUTO, 2026-11-26: `01`, `02`, `03`, `11`, `21`, `22`, `32`, `F3`, `FF`, then 0 after 5.8 s. See `stock_v120_notes.md` |
 | 49 | the couplings as the AUTO key found them: CH1's in the low nibble, CH2's in the high one | the same watch: `0x11` from the moment of the key, with both in DC, and the couplings (offsets 0 and 1), zero during the sequence, came back to 1. Stock's code packs it so (`0x0800CC46`, `0x0800CD8C`) and reads it at `0x08008E3E` |
@@ -208,7 +208,8 @@ from `0x200000F8`) followed by 19 `0xA1` data events.
   but its rising edges are 500 and 499 samples apart in the two records taken: 20 µs at
   40 ns a sample. At 5 and 20 ms per division, with the generator at 100 Hz, `scope` got
   100 Hz from each of two records (2026-11-26; stock's own figure was 100 Hz at 5 ms and
-  104 Hz at 20 ms). Below 1 µs per division this was not checked; the fastest
+  104 Hz at 20 ms), and at 10 ms per division from each of two more (the step before them
+  was to set the generator to 100 Hz; it was not read then). Below 1 µs per division this was not checked; the fastest
   time bases cannot have 25 real samples per division.
 - The screen is 12 by 8 divisions: 300 samples wide, 200 counts tall, centred on 128.
 
