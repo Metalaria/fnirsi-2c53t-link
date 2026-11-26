@@ -320,6 +320,33 @@ that returns the row for the first row and, on the second, the current language 
 is 2 to 7, so that stock's own `adds` steps to the next one. `tools/language_tables.py`
 repeats the table and font checks on a stock image.
 
+### Texts that do not fit (code, emulation, and the unit for the Spanish title)
+
+- **The text routine**, `0x0800F154(x, y, w, h, string, font, colour, align)`, draws the
+  characters of a line while the sum of their advances is at most `w` and drops the rest;
+  with align 1 what is drawn is centred. (emulation, with a RAM dump of the unit for the
+  fonts: a text of 215 px is whole in a box of 216, one of 232 loses its last word)
+- **Fonts.** Five, of 16, 18, 20, 25 and 28 px. Each has a character map (`0x080819A8`,
+  `0x0808C3CC`, `0x0809A194`, `0x080A1630`, `0x080BA1B8`) with a pointer at +8 to a sorted
+  list of 16-bit code points and their number at +16, and an array of 8-byte glyph
+  descriptors in the same order (`0x080807F0`, `0x0808B214`, `0x08098FDC`, `0x080A0468`,
+  `0x080B9000`): bitmap offset in the low 20 bits of the first word and the advance, in
+  whole pixels, in the top 12; then box width, box height and the two offsets. The font
+  descriptors used at run time are in RAM, `0x200010E4` + `0x30` x font.
+- **The multimeter's title.** Table of pointers at `0x0804C43C`: twelve functions
+  (`ms[0xF2E]`: 0 auto, 1 DC V, 2 AC V, 3 continuity, 4 diode, 5 resistance, 6 capacitance,
+  7 temperature, 8 and 9 small DC and AC current, 10 and 11 large) for each of eight
+  languages, read at `0x08010AE8` and `0x08015C28` and drawn at (52, 0) in a box of 216 x 29
+  in the 28 px font. Chinese, English, Japanese and Korean fit. The Spanish names of
+  functions 1, 2 and 8 to 11 are 234 to 306 px wide, and the first 207 px of the two
+  voltages are the same words, so both read alike on the screen; the currents are cut one
+  to five letters into the word that tells DC from AC. (seen on the unit, 2026-11-26, and
+  reproduced in emulation) By the same sum, the same six functions do not fit in Russian
+  (248 to 330 px) or Portuguese (270 to 308), and four of them in German (221 to 244).
+
+`build_link_image.py --texts` replaces a text by pointing its slot at a string in the cave,
+after checking the string against the font and the box; `texts/es.txt` does it for those six.
+
 ### The options of a setting (code, and stock's own routines run in emulation)
 
 The settings screen (system mode 4) has the list of seven settings on the left and the

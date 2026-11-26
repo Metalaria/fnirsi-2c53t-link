@@ -1,0 +1,21 @@
+# Spanish texts for stock V1.2.0, for build_link_image.py --texts.
+#
+# Each line replaces one text: SLOT WAS FONT WIDTH TEXT
+#   SLOT   address of the pointer in stock's table (hex)
+#   WAS    the pointer stock has there (hex): the builder refuses anything else
+#   FONT   height in px of the font the text is drawn in
+#   WIDTH  width in px of the box it is drawn in: stock cuts what does not fit, and the
+#          builder refuses a text wider than this
+#   TEXT   the new text, to the end of the line
+#
+# The multimeter's title: table at 0x0804C43C, twelve functions for each of eight languages,
+# drawn in the 28 px font in a box 216 px wide (0x08015C08). Spanish is the fifth row. Stock's
+# Spanish names for the voltages and the currents are 22 to 29 characters long and are cut
+# before the word that says whether it is DC or AC; these fit. CC and CA are the usual
+# Spanish abbreviations, and the unit says which of the two current ranges it is.
+0x0804C500 0x080BBF63 28 216 Tensión continua
+0x0804C504 0x080BBED1 28 216 Tensión alterna
+0x0804C51C 0x080BBF99 28 216 Corriente CC (mA)
+0x0804C520 0x080BBF05 28 216 Corriente CA (mA)
+0x0804C524 0x080BBF81 28 216 Corriente CC (A)
+0x0804C528 0x080BBEEE 28 216 Corriente CA (A)

@@ -13,7 +13,8 @@ that can stream what it measures.
 | Status (patch 3): the generator's settings, the scope's own measurements with RUN/STOP, the rest of the meter's state | yes |
 | Generator (patch 4): any waveform of 100 samples, played by stock's own generator | yes |
 | Languages (`--languages`): the six that stock still carries but no longer offers, by pressing OK on the second row | yes |
-| Languages (`--language-menu`): the same eight as entries of Settings > Language, one each | emulated only |
+| Languages (`--language-menu`): the same eight as entries of Settings > Language, one each | flashed and read back; the menu not reported on yet |
+| Texts (`--texts`): the Spanish names of the multimeter's functions, which stock cuts | emulated only |
 | Menu (patch 5, `--menu-wave`): waveforms added to the generator's own list, chosen on the instrument | yes |
 
 **Status: runs on one unit.** On 2026-11-23 both images were flashed on a retail 2C53T
@@ -62,7 +63,12 @@ the USB entry played at once.
 reads back as the image, the calibration table is unchanged and the instrument is in Spanish.
 Choosing a language by pressing OK again and again on a row that says "English" is not what
 a menu should ask for, which is what `--language-menu` is for: it passes the emulated tests,
-its panel has been painted with the unit's own fonts in the emulator, and it has not been
+its panel has been painted with the unit's own fonts in the emulator, and it was flashed on
+2026-11-26: the flash reads back as the image and the calibration table is unchanged.
+
+Using the instrument in Spanish showed why FNIRSI may have dropped these languages: the
+multimeter's title for the voltages and the currents is too long for its box and is cut
+before the word that tells DC from AC. `--texts` replaces such texts; it has not been
 flashed.
 
 > **One unit is not a guarantee.** The board revision of that unit is unknown and nothing
@@ -74,7 +80,7 @@ flashed.
 
 | | |
 |---|---|
-| Stock bytes changed | 10: 6 at `0x0802A994` (SysTick handler) and 4 at `0x0803E49A` (tail of the `fpga` task loop), each a `b.w` into the cave. With `--languages`, 4 more at `0x0800BECA` (a `bl` into the cave). With `--language-menu` instead, 5: 4 at `0x0801CF7E` (a `b.w`) and one byte of data at `0x0800B1D8`. With menu entries, 49 more: see below |
+| Stock bytes changed | 10: 6 at `0x0802A994` (SysTick handler) and 4 at `0x0803E49A` (tail of the `fpga` task loop), each a `b.w` into the cave. With `--languages`, 4 more at `0x0800BECA` (a `bl` into the cave). With `--language-menu` instead, 5: 4 at `0x0801CF7E` (a `b.w`) and one byte of data at `0x0800B1D8`. With `--texts`, the pointer of each text replaced (data; 2 bytes differ in each of the six of `texts/es.txt`). With menu entries, 49 more: see below |
 | Code added | ~2.9 KB at `0x080BE700`, after the stock image; ~4.2 KB with five menu entries, ~4.7 KB with the list of languages too |
 | SRAM used | `0x20037000`–`0x20037A53`, above stock's stack top and below the factory IAP's RAM magic |
 | Stock SRAM written | the USB core's class and descriptor pointers (`0x20002B28`, `0x20002B2C`) and the endpoint bookkeeping the stock class itself writes. From patch 4, on a `WAVE` request only: the generator's table of samples, `0x20000F5A`–`0x20001021` |
@@ -160,6 +166,20 @@ page of the language in use; opening it puts the cursor on the first entry, as s
 The panel runs in stock's display task and takes 56 bytes more of its stack than stock's
 own; `fnlink.py tasks` reads how much of each task's stack has ever been used.
 
+**Texts (`--texts FILE`, optional).** The translations stock still carries were not all made
+to fit. In Spanish the multimeter's title reads "Voltaje de Corriente" for both DC and AC
+volts, because the text routine draws the characters that fit in the box and drops the
+rest, and the word that differs comes last; the four current ranges fare the same. Stock
+keeps its texts as pointers in tables with a row per language, so a text is replaced by
+pointing its slot at a string of ours after the cave's code: data only, no code. A file of
+`SLOT WAS FONT WIDTH TEXT` lines says which; `texts/es.txt` has the six of the Spanish
+multimeter (Tensión continua, Tensión alterna, Corriente CC (mA), ...). The builder
+refuses a slot that does not hold the pointer expected, a character the font has no glyph
+for, and a text wider than its box, measured with the advances of stock's own font, which
+is the same sum the routine makes: in emulation 215 px is drawn whole in the title's 216
+and 232 is cut. The texts in such a file are ours; FNIRSI's are not copied into this
+repository.
+
 ## Build
 
 ```bash
@@ -168,7 +188,8 @@ python3 build_link_image.py --stock APP_2C53T_V1.2.0_251015.bin --out APP_2C53T_
 ```
 
 `--languages` adds the language call described above, `--language-menu` the list of
-languages (one or the other), and the menu entries are added like
+languages (one or the other), `--texts texts/es.txt` the Spanish texts, and the menu entries
+are added like
 this (each with the stock waveform, 0 to 12, whose picture it borrows after the `@`):
 
 ```bash
@@ -189,7 +210,8 @@ stock facts the cave relies on, and re-reads its own output. With Ubuntu 24.04's
 has been on hardware, `*_patch4*.json` for patch 4 with and without `--languages`, and
 `*_patch5*.json` for patch 5 without options and with five menu entries (`AM 80%=am@10` there),
 and `*_patch6*.json` for patch 6: without options, with the example above, with it and
-`--languages`, with it and `--language-menu`, and with `--language-menu` alone.
+`--languages`, with it and `--language-menu`, with those two and `--texts texts/es.txt`, and
+with `--language-menu` alone.
 
 No patched image is distributed: it contains FNIRSI's firmware.
 

@@ -323,6 +323,27 @@ What it does not give is a list: the panel goes on showing its two rows, 中文 
 by counting presses. The owner's verdict was that each language should have its own entry;
 `--language-menu` was written after this.
 
+## `--language-menu` on the unit, 2026-11-26
+
+Patch 6 with the five entries and `--language-menu` (`25127f01…3643`, as in
+`reference/APP_2C53T_V1.2.0_link_patch6_menu_langmenu.json`), flashed over the image above
+(ninth update).
+
+| | |
+|---|---|
+| `fnlink.py info` | protocol 1, patch 6, the five entries |
+| `fnlink.py verify` | MATCH (756028 bytes) |
+| Settings and calibration page | against the dump taken after the image above: the calibration table is identical (`9cbf9bf5…ff00d`); 1 byte of settings differs and 207 in the scratch area |
+| The instrument | starts in Spanish, as it was left, and measures |
+
+What the owner reported is not about the menu but about the language: in Spanish the
+multimeter's title is cut. A video shows "Voltaje de Corriente" over a DC voltage; the
+full names of the two voltages differ only in the word that does not fit, and the four
+currents are in the same case (and the Spanish for "small" is in the wrong gender). The
+cause and the measurements are in `stock_v120_notes.md`, "Texts that do not fit";
+`--texts` was written after this. Still to come from this session: how the language menu
+looks and `fnlink.py tasks` after using it.
+
 ## Not answered
 
 - What needs a write to the instrument's memory (the 20M limit, the per-channel "FFT" flag)
