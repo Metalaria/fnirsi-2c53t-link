@@ -177,7 +177,7 @@ from `0x200000F8`) followed by 19 `0xA1` data events.
 | 4, 5 | vertical position of CH1, CH2, signed: zero volts is sample value 128 + position | CH1 checked in three sessions; CH2 assumed |
 | 6, 7 | probe setting of CH1, CH2: 0 = X1, 1 = X10 | both checked both ways (2026-11-25): at X10 the record scaled ten times larger gives 3.36 V and 3.30 V where stock's own measurement gives 3.35 V and 3.29 V |
 | 10, 11 | FFT of CH1, CH2: 1 on, 0 off | each switched on and off with both channels on, 2026-11-26 |
-| 12–15, 16–19 | while the FFT of CH1 (12–15) or CH2 (16–19) is on, the 32-bit value `0x20033940`; zero while it is off | the same readings: these four bytes and the flag are all that changed. What is at that address was not read |
+| 12–15, 16–19 | while the FFT of CH1 (12–15) or CH2 (16–19) is on, the 32-bit value `0x20033940`; zero while it is off | the same readings: these four bytes and the flag are all that changed. At that address: 128 bytes and then floats, the spectrum stock draws (see `stock_v120_notes.md`) |
 | 20 | channels on: bit 0 CH1, bit 1 CH2 | checked (1, 2 and 3) |
 | 21 | not established | seen `0x01` with CH1 alone, `0x12` with CH2 alone and `0x02` with both on. It is not the trigger's channel: with both on it stayed `0x02` while that was switched (2026-11-26) |
 | 22 | trigger channel: 0 CH1, 1 CH2 | switched to CH2 and back with both channels on, 2026-11-26: the only byte that changed. Earlier readings had 0 with CH1 alone and 1 with CH2 alone |

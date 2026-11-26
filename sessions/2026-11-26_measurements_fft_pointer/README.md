@@ -1,4 +1,4 @@
-# Stock's measurements against a stopped screen, and what the FFT pointer points at, 2026-11-26
+# Stock's measurements against the screen, and the block the FFT pointer points at, 2026-11-26
 
 Read over USB from the unit (stock V1.2.0 with patch 6), nothing written to the instrument.
 The generator's 1 kHz square wave was on CH1 at 100 mV per division, CH2 on at 10 mV per
@@ -11,6 +11,8 @@ division. Written up in
 | `status_english_rows_image.txt` | The oscilloscope's lines of `fnlink.py status`, copied from the terminal, taken while the image built with `texts/es-english-rows.txt` was on the unit |
 | `measurement_snapshots.txt` | Two `fnlink.py snapshot`s of CH1's twelve words as shown (`0x20000208`, 48 bytes) and of `ms[0x00..0x37]`: the first with the oscilloscope stopped, the second running again. Both carry the same label |
 | `fft_pointer_snapshot.txt` | One snapshot with CH1's "FFT:" row on: `ms[0x00..0x37]`, and 56 bytes from the address held in `ms[0x0C..0x0F]` |
+| `status_stopped.txt` | Later, with the image built with `texts/es-english-rows.txt` on the unit again: the oscilloscope's lines of `fnlink.py status`, stopped, CH1 alone |
+| `fft_block_snapshots.txt` | Three snapshots, running, CH1 alone, of `ms[0x00..0x37]` and 448 bytes at `0x20033940`: CH1's FFT on with the 1 kHz square, on with the probe taken off the generator, and off. Each block of 448 bytes is eight reads of 56 a few milliseconds apart while the instrument keeps acquiring, so it is not one instant |
 
 The twelve words of the two snapshots, as signed 32-bit numbers:
 
@@ -20,7 +22,24 @@ The twelve words of the two snapshots, as signed 32-bit numbers:
 | running | 1000 | 1000000 | 4993 | 5006 | 499333 | 500666 | 304333 | -2333 | 306666 | 304000 | 209166 | 147833 |
 
 A photograph of the screen, stopped, taken a minute before the first snapshot, shows three
-measurements for CH1: "Freq:1.00KHz", "Duty+:50.40%" and "Vp-p:312.0mV". The photograph is
-not kept here.
+measurements for CH1: "Freq:1.00KHz", "Duty+:50.40%" and "Vp-p:312.0mV".
+
+What three later photographs show for CH1, with eight measurements chosen in the
+oscilloscope's "Parameter Measurement" menu (the labels are those of
+`texts/es-english-rows.txt`; in stock's words: Freq, Duty+, Wid+, Wid-, Amp, Vrms, Vp-p, Avg):
+
+| Photograph | Frec | Ciclo+ | Anc+ | Anc- | Amp | Vef | Vp-p | Med |
+|---|---|---|---|---|---|---|---|---|
+| 13:15:05, stopped, CH1 and CH2 | 1.00KHz | 50.40% | 504.0uS | 496.0uS | 304.0mV | 212.0mV | 308.0mV | 148.0mV |
+| 13:15:22, stopped, CH1 alone | 1.00KHz | 49.60% | 496.0uS | 504.0uS | 316.0mV | 208.0mV | 316.0mV | 144.0mV |
+| 13:16:37, running, CH1's FFT on | 1.00KHz | 49.97% | 499.8uS | 500.2uS | 316.0mV | 209.2mV | 316.5mV | 146.4mV |
+
+`status_stopped.txt` was taken between the verification of the flash and 13:16:26. Its CH1
+words are those of neither stopped photograph (against the first, Vp-p, Amp and Vef differ;
+against the second, the duty, the widths and Med), so for CH1 no photograph and reading
+here are of the same acquisition. For CH2 the first photograph shows "Frec:923.3KHz",
+"Ciclo+:56.47%", "Anc-:472.0nS" and "Vp-p:6.00mV", and the reading, taken with CH2 off,
+has 5647, 472 and 6000 in CH2's words 2, 5 and 8, and 846076 and 1181 in words 0 and 1.
+The photographs are not kept here.
 
 No calibration is in these files.

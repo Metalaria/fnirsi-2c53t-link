@@ -252,15 +252,18 @@ def decode_generator(block: bytes) -> dict:
 def decode_scope_measurements(words: bytes) -> dict:
     """One channel's twelve 32-bit words of stock's own measurements, in SI units.
 
-    "extra" are the three words not identified (the first looks like a second amplitude).
-    Checked for CH1 against a photograph of the screen; CH2's block follows CH1's and was only
-    seen with the channel off (a frequency and its period, the rest zero)."""
+    Words 0 to 8 were checked for CH1 against photographs of the screen. "amp", "vrms" and
+    "avg" are words 9 to 11 under the names stock prints in front of them (its code prints
+    word i after label i); on 2026-11-26 stopped screens showed 316.0, 208.0 and 148.0 mV
+    under those labels and the words read 316000, 208000 and 148000, though no photograph and
+    reading were of the same acquisition. "extra" is the same three words, as before."""
     if len(words) < 4 * SCOPE_MEASURED_WORDS:
         raise LinkError("measurement block too short")
     w = struct.unpack_from("<6I6i", words)             # the voltages are signed: Vmin goes below zero
     return {"frequency_hz": w[0], "period_s": w[1] * 1e-9, "duty_positive_percent": w[2] / 100.0,
             "duty_negative_percent": w[3] / 100.0, "width_positive_s": w[4] * 1e-9, "width_negative_s": w[5] * 1e-9,
-            "vmax": w[6] * 1e-6, "vmin": w[7] * 1e-6, "vpp": w[8] * 1e-6, "extra": [x * 1e-6 for x in w[9:12]]}
+            "vmax": w[6] * 1e-6, "vmin": w[7] * 1e-6, "vpp": w[8] * 1e-6,
+            "amp": w[9] * 1e-6, "vrms": w[10] * 1e-6, "avg": w[11] * 1e-6, "extra": [x * 1e-6 for x in w[9:12]]}
 
 
 def decode_meter_stats(state: bytes) -> list:
@@ -993,10 +996,11 @@ def status_lines(mode: int, meter: bytes, scope: bytes, measured: bytes, generat
     for ch in (0, 1):
         block = measured[48 * ch:48 * ch + 48]
         m = decode_scope_measurements(block)
-        out.append("  CH%d shown   %s, period %s, duty +%.2f %% / -%.2f %%, width +%s / -%s, Vmax %s, Vmin %s, Vpp %s" % (
+        out.append("  CH%d shown   %s, period %s, duty +%.2f %% / -%.2f %%, width +%s / -%s, Vmax %s, Vmin %s, Vpp %s, Amp %s, Vrms %s, Avg %s" % (
             ch + 1, _eng(m["frequency_hz"], "Hz"), _eng(m["period_s"], "s"), m["duty_positive_percent"],
             m["duty_negative_percent"], _eng(m["width_positive_s"], "s"), _eng(m["width_negative_s"], "s"),
-            _eng(m["vmax"], "V"), _eng(m["vmin"], "V"), _eng(m["vpp"], "V")))
+            _eng(m["vmax"], "V"), _eng(m["vmin"], "V"), _eng(m["vpp"], "V"),
+            _eng(m["amp"], "V"), _eng(m["vrms"], "V"), _eng(m["avg"], "V")))
         out.append("     words    %s" % " ".join(str(x) for x in struct.unpack_from("<6I6i", block)))
     held = held_screen(meter)
     out.append("meter        menu %d (%s), measuring %d (%s), variant %d, screen byte %d, unit code %d, HOLD %s%s" % (
