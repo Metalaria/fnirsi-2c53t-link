@@ -632,6 +632,64 @@ old_patch = _Recorder(features=1)
 check("wave: a link without the feature bit is told so and nothing is sent", fnlink.main(["wave", "sine"], transport=old_patch) == 2
       and not [x for x in old_patch.sent if x[0] == 4])
 check("wave --show works on any patch", fnlink.main(["wave", "--show"], transport=_Recorder(features=1)) == 0)
+
+
+# ---- keys: the log of what changes while the instrument is worked by hand ---------------------
+class _Memory:
+    """A transport that answers READ from a few regions of RAM, which change between rounds of
+    reads as a script says: {round: [(address, byte), ...]}. Nothing else is answered."""
+
+    def __init__(self, script):
+        self.script, self.rounds, self.queue, self.requests = script, 0, [], []
+        self.mem = {fnlink.GENERATOR_ADDR: bytearray(bytes.fromhex("01010000e8030000321e")),
+                    fnlink.METER_STATE_ADDR: bytearray(56), fnlink.UI_ADDR: bytearray(bytes.fromhex("05640a00010004640300000000000000")),
+                    fnlink.ARROWS_ADDR: bytearray(1), fnlink.SCOPE_STATE_ADDR: bytearray(56)}
+
+    def write(self, rq):
+        cmd, seq, n = rq[0], rq[1], rq[2]
+        addr = struct.unpack_from("<I", rq, 4)[0]
+        self.requests.append((cmd, addr, n))
+        if addr == fnlink.GENERATOR_ADDR:               # the first block of a round: apply what the script has for it
+            for at, value in self.script.get(self.rounds, []):
+                base = max(b for b in self.mem if b <= at)
+                self.mem[base][at - base] = value
+            self.rounds += 1
+        rs = bytearray(64)
+        rs[0], rs[1], rs[3] = cmd | 0x80, seq, n
+        rs[4:8] = rq[4:8]
+        base = max(b for b in self.mem if b <= addr)
+        rs[8:8 + n] = self.mem[base][addr - base:addr - base + n]
+        self.queue.append(bytes(rs))
+
+    def read(self, timeout_ms):
+        return self.queue.pop(0) if self.queue else None
+
+
+script = {1: [(fnlink.GENERATOR_ADDR + 1, 0)],                                            # up arrow: the previous waveform
+          2: [(fnlink.METER_STATE_ADDR + 8, 0x7F), (fnlink.METER_STATE_ADDR + 5, 1)],     # a reading moves, and the menu entry
+          3: [(fnlink.UI_ADDR + 8, 1), (fnlink.UI_ADDR + 9, 1), (fnlink.ARROWS_ADDR, 2)]}
+mem = _Memory(script)
+with tempfile.TemporaryDirectory() as tmp:
+    log = Path(tmp) / "keys.txt"
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        rc = fnlink.main(["keys", "--polls", "4", "--interval", "0", "--label", "test", "--out", str(log)], transport=mem)
+    printed, saved = buf.getvalue().splitlines(), log.read_text().splitlines()
+changes = [x.split(" s  ", 1)[1] for x in printed if " s  " in x]
+check("keys: reads the five blocks each round, and nothing but reads", rc == 0 and mem.rounds == 5
+      and {r[0] for r in mem.requests} == {2} and len(mem.requests) == 5 * 5, str(mem.requests[:6]))
+check("keys: a change of waveform is a line with what the generator now says",
+      any(x.startswith("generator [1] 01>00") and "Sine Wave (index 0), 1kHz, duty 50 %, 3.0 V" in x for x in changes), str(changes))
+check("keys: of the meter's state only the menu bytes are reported, not the reading",
+      [x for x in changes if x.startswith("meter")] == ["meter     [5] 00>01"], str(changes))
+check("keys: the menus' cursors are given as offsets of stock's state, with the system mode when it changes",
+      any(x.startswith("ui        [0xF68] 03>01 [0xF69] 00>01") and "system mode 1 (multimeter)" in x for x in changes)
+      and any(x.startswith("arrows    [0] 00>02") and "move:" in x for x in changes), str(changes))
+check("keys: the log saved is what was printed, the starting blocks first",
+      saved[:len(printed) - 1] == printed[:-1] and printed[1].startswith("20000F50   10  01010000e8030000321e")
+      and printed[0].startswith("keys      ") and printed[0].endswith("test") and len(changes) == 4, str(printed[:8]))
+check("keys: an unchanged block gives no line", fnlink.keys_changes("ui", b"\x01\x02", b"\x01\x02", None, 0xF60) == []
+      and fnlink.keys_changes("meter", bytes(8), bytes([0, 0, 0, 0, 0, 0, 0, 9]), fnlink.KEYS_METER_BYTES, 0) == [])
 for name, samples in (("101 samples", [0] * 101), ("a sample of 4095", [4095] * 100), ("a negative sample", [-1] + [0] * 99)):
     rec = _Recorder()
     try:
