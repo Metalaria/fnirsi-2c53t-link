@@ -1,0 +1,375 @@
+keys      2026-11-26T16:37:07  osciloscopio con notas
+20000F50   10  01100000d0070000321e
+20001020   56  f7040000000000ff00000000040001020c0000000000000000000000000000000000c07f0000c07f0000c07f0402040000010a0a0b000000
+20001058   16  05640a0001000464020000000000002f
+2000044C    1  00
+200000F8   56  01010200b4d301000000000000000000000000000101000100000000ffff0000000000000000000000000000000d01000001ff0000000000
+            a line typed here and Enter is kept as a note; Ctrl-C ends
+    0.795 s  ui        [0xF6F] 2f>2e
+    1.828 s  ui        [0xF6F] 2e>2f
+    1.828 s  scope     [40] 00>29 [41] 00>01 [45] 0d>0c
+    1.890 s  scope     [40] 29>23
+    1.952 s  scope     [40] 23>1c
+    2.014 s  scope     [40] 1c>16
+    2.077 s  scope     [40] 16>10
+    2.140 s  scope     [40] 10>0a
+    2.206 s  scope     [40] 0a>03
+    2.272 s  scope     [40] 03>fc [41] 01>00
+    2.338 s  scope     [40] fc>f6
+    2.404 s  scope     [40] f6>ef
+    2.468 s  scope     [40] ef>e9
+    2.533 s  scope     [40] e9>e2
+    2.600 s  scope     [40] e2>dc
+    2.667 s  scope     [40] dc>d5
+    2.731 s  scope     [40] d5>ce
+    2.795 s  ui        [0xF6F] 2f>2b
+    2.795 s  scope     [40] ce>c8
+    2.860 s  scope     [40] c8>c2
+    2.924 s  scope     [40] c2>bb
+    2.985 s  scope     [40] bb>b5
+    3.048 s  scope     [40] b5>af
+    3.111 s  scope     [40] af>a8
+    3.175 s  scope     [40] a8>a2
+    3.239 s  scope     [40] a2>9c
+    3.300 s  scope     [40] 9c>96
+    3.362 s  scope     [40] 96>8f
+    3.426 s  scope     [40] 8f>89
+    3.492 s  scope     [40] 89>82
+    3.559 s  scope     [40] 82>7c
+    3.625 s  scope     [40] 7c>75
+    3.690 s  scope     [40] 75>6f
+    3.753 s  scope     [40] 6f>68
+    3.816 s  ui        [0xF6F] 2b>2e
+    3.816 s  scope     [40] 68>62
+    3.879 s  scope     [40] 62>5c
+    3.944 s  scope     [40] 5c>55
+    4.008 s  scope     [40] 55>4f
+    4.072 s  scope     [40] 4f>48
+    4.137 s  scope     [40] 48>42
+    4.203 s  scope     [40] 42>3b
+    4.266 s  scope     [40] 3b>35
+    4.330 s  scope     [40] 35>2f
+    4.393 s  scope     [40] 2f>28
+    4.457 s  scope     [40] 28>22
+    4.521 s  scope     [40] 22>1b
+    4.586 s  scope     [40] 1b>15
+    4.649 s  scope     [40] 15>0f
+    4.718 s  scope     [40] 0f>08
+    4.782 s  ui        [0xF6F] 2e>2d
+    4.782 s  scope     [40] 08>01
+    4.845 s  scope     [40] 01>00
+    5.165 s  scope     [40] 00>26 [41] 00>01 [45] 0c>0d
+    5.229 s  scope     [40] 26>20
+    5.295 s  scope     [40] 20>19
+    5.359 s  scope     [40] 19>13
+    5.425 s  scope     [40] 13>0c
+    5.489 s  scope     [40] 0c>06
+    5.553 s  scope     [40] 06>ff [41] 01>00
+    5.619 s  scope     [40] ff>f9
+    5.681 s  scope     [40] f9>f2
+    5.743 s  scope     [40] f2>ec
+    5.807 s  ui        [0xF6F] 2d>2c
+    5.807 s  scope     [40] ec>e6
+    5.868 s  scope     [40] e6>e0
+    5.931 s  scope     [40] e0>d9
+    5.996 s  scope     [40] d9>d3
+    6.057 s  scope     [40] d3>cd
+    6.118 s  scope     [40] cd>c7
+    6.182 s  scope     [40] c7>c0
+    6.246 s  scope     [40] c0>ba
+    6.311 s  scope     [40] ba>b3
+    6.374 s  scope     [40] b3>ad
+    6.439 s  scope     [40] ad>a7
+    6.505 s  scope     [40] a7>a0
+    6.569 s  scope     [40] a0>9a
+    6.632 s  scope     [40] 9a>93
+    6.696 s  scope     [40] 93>8d
+    6.760 s  scope     [40] 8d>87
+    6.824 s  ui        [0xF6F] 2c>2b
+    6.824 s  scope     [40] 87>80
+    6.888 s  scope     [40] 80>7a
+    6.952 s  scope     [40] 7a>73
+    7.013 s  scope     [40] 73>6d
+    7.076 s  scope     [40] 6d>67
+    7.140 s  scope     [40] 67>61
+    7.206 s  scope     [40] 61>5a
+    7.274 s  scope     [40] 5a>53
+    7.337 s  scope     [40] 53>4d
+    7.401 s  scope     [40] 4d>46
+    7.465 s  scope     [40] 46>40
+    7.529 s  scope     [40] 40>3a
+    7.591 s  scope     [40] 3a>33
+    7.656 s  scope     [40] 33>2d
+    7.721 s  scope     [40] 2d>26
+    7.787 s  ui        [0xF6F] 2b>2c
+    7.787 s  scope     [40] 26>20
+    7.851 s  scope     [40] 20>19
+    7.916 s  scope     [40] 19>13
+    7.980 s  scope     [40] 13>0c
+    8.045 s  scope     [40] 0c>06
+    8.108 s  scope     [40] 06>00
+    8.814 s  ui        [0xF6F] 2c>2d
+    9.781 s  ui        [0xF6F] 2d>2f
+   10.802 s  ui        [0xF6F] 2f>2e
+   11.822 s  ui        [0xF6F] 2e>2f
+   13.811 s  ui        [0xF6F] 2f>2e
+   14.525 s  scope     [2] 02>01 [28] ff>64 [29] ff>00
+   14.783 s  ui        [0xF6F] 2e>2c
+   15.802 s  ui        [0xF6F] 2c>2e
+   15.865 s  arrows    [0] 00>01   mode 1 (the time base did not change with it; the horizontal position did) (byte 0x01; SELECT changes it)
+   16.779 s  ui        [0xF6F] 2e>2c
+   17.810 s  ui        [0xF6F] 2c>2e
+   18.961 s  scope     [26] 00>01 [32] 00>20 [33] 00>4e [40] 00>29 [41] 00>01
+   19.027 s  scope     [40] 29>23
+   19.091 s  scope     [40] 23>1c
+   19.155 s  scope     [40] 1c>16
+   19.219 s  scope     [40] 16>10
+   19.283 s  scope     [40] 10>09
+   19.348 s  scope     [40] 09>03
+   19.415 s  scope     [40] 03>fc [41] 01>00
+   19.481 s  scope     [40] fc>f5
+   19.546 s  scope     [40] f5>ef
+   19.608 s  scope     [40] ef>e9
+   19.672 s  scope     [40] e9>e2
+   19.735 s  scope     [40] e2>dc
+   19.799 s  ui        [0xF6F] 2e>2c
+   19.799 s  scope     [40] dc>d6
+   19.866 s  scope     [40] d6>cf
+   19.933 s  scope     [40] cf>c8
+   19.996 s  scope     [40] c8>c2
+   20.061 s  scope     [40] c2>bb
+   20.127 s  scope     [40] bb>b5
+   20.190 s  scope     [40] b5>ae
+   20.254 s  scope     [40] ae>a8
+   20.317 s  scope     [40] a8>a2
+   20.383 s  scope     [40] a2>9b
+   20.447 s  scope     [26] 01>00 [32] 20>00 [33] 4e>00 [40] 9b>2a [41] 00>01
+   20.512 s  scope     [40] 2a>23
+   20.578 s  scope     [40] 23>1d
+   20.642 s  scope     [40] 1d>16
+   20.707 s  scope     [40] 16>10
+   20.770 s  ui        [0xF6F] 2c>2b
+   20.770 s  scope     [40] 10>09
+   20.833 s  scope     [40] 09>03
+   20.898 s  scope     [40] 03>fd [41] 01>00
+   20.961 s  scope     [40] fd>f6
+   21.030 s  scope     [40] f6>ef
+   21.096 s  scope     [40] ef>e9
+   21.160 s  scope     [40] e9>e2
+   21.224 s  scope     [40] e2>dc
+   21.288 s  scope     [40] dc>d6
+   21.352 s  scope     [40] d6>cf
+   21.416 s  scope     [40] cf>c9
+   21.481 s  scope     [40] c9>c2
+   21.546 s  scope     [40] c2>bc
+   21.612 s  scope     [40] bc>b5
+   21.678 s  scope     [40] b5>af
+   21.741 s  scope     [40] af>a8
+   21.802 s  ui        [0xF6F] 2b>2c
+   21.802 s  scope     [40] a8>a2
+   21.866 s  scope     [40] a2>9c
+   21.931 s  scope     [40] 9c>95
+   21.994 s  scope     [4] b4>b5 [40] 95>8f [44] 00>63
+   22.056 s  scope     [40] 8f>89 [44] 63>5d
+   22.119 s  scope     [40] 89>83 [44] 5d>57
+   22.182 s  scope     [40] 83>7c [44] 57>50
+   22.244 s  scope     [40] 7c>76 [44] 50>4a
+   22.308 s  scope     [40] 76>70 [44] 4a>44
+   22.371 s  scope     [40] 70>69 [44] 44>3d
+   22.433 s  scope     [40] 69>63 [44] 3d>37
+   22.495 s  scope     [40] 63>5d [44] 37>31
+   22.559 s  scope     [40] 5d>57 [44] 31>2b
+   22.623 s  scope     [40] 57>50 [44] 2b>24
+   22.688 s  scope     [40] 50>4a [44] 24>1e
+   22.750 s  scope     [40] 4a>43 [44] 1e>17
+   22.817 s  ui        [0xF6F] 2c>2a
+   22.817 s  scope     [40] 43>3d [44] 17>11
+   22.880 s  scope     [40] 3d>36 [44] 11>0a
+   22.945 s  scope     [40] 36>30 [44] 0a>04
+   23.009 s  scope     [40] 30>2a [44] 04>00
+   23.074 s  scope     [40] 2a>23
+   23.137 s  scope     [40] 23>1d
+   23.202 s  scope     [40] 1d>16
+   23.266 s  scope     [40] 16>10
+   23.335 s  scope     [40] 10>09
+   23.400 s  scope     [40] 09>02
+   23.463 s  scope     [40] 02>00
+   23.527 s  scope     [4] b5>b4 [28] 64>63 [44] 00>62
+   23.591 s  scope     [44] 62>5b
+   23.655 s  scope     [44] 5b>55
+   23.719 s  scope     [44] 55>4f
+   23.783 s  ui        [0xF6F] 2a>2b
+   23.783 s  scope     [44] 4f>48
+   23.847 s  scope     [44] 48>42
+   23.913 s  scope     [44] 42>3b
+   23.980 s  scope     [44] 3b>34
+   24.044 s  scope     [44] 34>2e
+   24.109 s  scope     [44] 2e>27
+   24.170 s  scope     [44] 27>21
+   24.235 s  scope     [44] 21>1b
+   24.301 s  scope     [44] 1b>14
+   24.367 s  scope     [44] 14>0e
+   24.433 s  scope     [44] 0e>07
+   24.498 s  scope     [44] 07>01
+   24.563 s  scope     [44] 01>00
+   24.821 s  ui        [0xF6F] 2b>2e
+   25.662 s  arrows    [0] 01>02   move: left/right move the trace sideways, up/down the trigger level (byte 0x02; SELECT changes it)
+   25.794 s  ui        [0xF6F] 2e>2c
+   26.819 s  ui        [0xF6F] 2c>2e
+   30.958 s  arrows    [0] 02>00   scale: left/right change the time base, up/down the volts per division (byte 0x00; SELECT changes it)
+   31.813 s  ui        [0xF6F] 2e>2c
+   32.773 s  ui        [0xF6F] 2c>2e
+   34.778 s  ui        [0xF6F] 2e>2f
+   35.781 s  ui        [0xF6F] 2f>2e
+   38.132 s  link      lost (write failed: IOHIDDeviceSetReport failed: (0xE00002EB) (iokit/common) operation aborted)
+   42.694 s  link      back
+   42.695 s  ui        [0xF6F] 2e>22
+   42.826 s  ui        [0xF6F] 22>2f
+   43.771 s  link      lost (write failed: IOHIDDeviceSetReport failed: (0xE00002D8) (iokit/common) not ready)
+   53.890 s  link      back
+   53.890 s  ui        [0xF6F] 2f>30
+   54.011 s  link      lost (write failed: IOHIDDeviceSetReport failed: (0xE00002D8) (iokit/common) not ready)
+   57.558 s  link      back
+   57.558 s  ui        [0xF6F] 30>27
+   57.558 s  scope     [46] 01>00
+   57.750 s  scope     [46] 00>01
+   57.814 s  ui        [0xF6F] 27>2b
+   58.777 s  ui        [0xF6F] 2b>2e
+   60.782 s  ui        [0xF6F] 2e>2f
+   60.909 s  scope     [0] 01>00 [2] 01>00 [4] b4>00 [45] 0d>04 [47] 00>01 [50] ff>03
+   60.974 s  scope     [50] 03>09
+   61.042 s  scope     [50] 09>10
+   61.106 s  scope     [50] 10>16
+   61.173 s  scope     [50] 16>1d
+   61.236 s  scope     [50] 1d>23
+   61.299 s  scope     [50] 23>2a
+   61.361 s  scope     [47] 01>02 [50] 2a>30
+   61.426 s  scope     [50] 30>36
+   61.492 s  scope     [50] 36>3d
+   61.563 s  scope     [50] 3d>44
+   61.627 s  scope     [50] 44>4a
+   61.691 s  scope     [50] 4a>51
+   61.753 s  scope     [50] 51>57
+   61.816 s  ui        [0xF6F] 2f>12
+   61.816 s  scope     [50] 57>5d
+   61.877 s  scope     [50] 5d>63
+   61.942 s  scope     [45] 04>09 [47] 02>03 [50] 63>6a
+   62.005 s  scope     [50] 6a>70
+   62.070 s  scope     [47] 03>11 [50] 70>04
+   62.137 s  scope     [50] 04>0a
+   62.203 s  scope     [50] 0a>11
+   62.269 s  scope     [50] 11>18
+   62.333 s  scope     [50] 18>1e
+   62.395 s  scope     [50] 1e>24
+   62.458 s  scope     [2] 00>01 [50] 24>01
+   62.524 s  scope     [50] 01>07
+   62.590 s  scope     [50] 07>0e
+   62.655 s  scope     [50] 0e>14
+   62.720 s  scope     [50] 14>1b
+   62.783 s  ui        [0xF6F] 12>0f
+   62.783 s  scope     [50] 1b>21
+   62.845 s  scope     [50] 21>27
+   62.909 s  scope     [2] 01>02 [50] 27>05
+   62.974 s  scope     [50] 05>0b
+   63.039 s  scope     [50] 0b>12
+   63.104 s  scope     [50] 12>18
+   63.171 s  scope     [50] 18>1f
+   63.236 s  scope     [50] 1f>25
+   63.301 s  scope     [47] 11>12 [50] 25>02
+   63.365 s  scope     [50] 02>08
+   63.429 s  scope     [50] 08>0f
+   63.493 s  scope     [50] 0f>15
+   63.556 s  scope     [50] 15>1b
+   63.621 s  scope     [50] 1b>22
+   63.685 s  scope     [50] 22>28
+   63.753 s  scope     [0] 00>01 [47] 12>13 [50] 28>05
+   63.816 s  scope     [50] 05>0b
+   63.880 s  scope     [50] 0b>12
+   63.944 s  scope     [50] 12>18
+   64.008 s  scope     [50] 18>1f
+   64.071 s  scope     [50] 1f>25
+   64.135 s  scope     [4] 00>9c [50] 25>02
+   64.199 s  scope     [50] 02>09
+   64.263 s  scope     [50] 09>0f
+   64.333 s  scope     [50] 0f>16
+   64.395 s  scope     [50] 16>1c
+   64.460 s  scope     [50] 1c>23
+   64.525 s  scope     [50] 23>29
+   64.589 s  scope     [4] 9c>b1 [47] 13>ff [50] 29>07
+   64.654 s  scope     [50] 07>0d
+   64.717 s  scope     [50] 0d>14
+   64.782 s  ui        [0xF6F] 0f>10
+   64.782 s  scope     [50] 14>1a
+   64.850 s  scope     [50] 1a>21
+   64.914 s  scope     [50] 21>27
+   64.978 s  scope     [50] 27>2e
+   65.043 s  scope     [50] 2e>34
+   65.108 s  scope     [50] 34>3b
+   65.169 s  scope     [50] 3b>41
+   65.232 s  scope     [50] 41>47
+   65.292 s  scope     [50] 47>4d
+   65.357 s  scope     [50] 4d>53
+   65.422 s  scope     [50] 53>5a
+   65.486 s  scope     [50] 5a>60
+   65.550 s  scope     [50] 60>67
+   65.616 s  scope     [50] 67>6d
+   65.680 s  scope     [50] 6d>74
+   65.745 s  scope     [50] 74>7a
+   65.809 s  ui        [0xF6F] 10>11
+   65.809 s  scope     [50] 7a>81
+   65.873 s  scope     [50] 81>87
+   65.935 s  scope     [50] 87>8d
+   65.998 s  scope     [50] 8d>94
+   66.059 s  scope     [50] 94>9a
+   66.123 s  scope     [50] 9a>a0
+   66.186 s  scope     [50] a0>a6
+   66.248 s  scope     [50] a6>ad
+   66.310 s  scope     [50] ad>b3
+   66.374 s  scope     [50] b3>b9
+   66.436 s  scope     [50] b9>bf
+   66.500 s  scope     [50] bf>c6
+   66.563 s  scope     [28] 63>f8 [29] 00>ff [47] ff>00 [50] c6>01
+   66.623 s  scope     [50] 01>07
+   66.686 s  scope     [50] 07>0d
+   66.748 s  scope     [50] 0d>14
+   66.809 s  ui        [0xF6F] 11>18
+   66.809 s  scope     [50] 14>1a
+   66.870 s  scope     [50] 1a>20
+   66.931 s  scope     [50] 20>26
+   66.995 s  scope     [50] 26>2c
+   67.059 s  scope     [50] 2c>33
+   67.122 s  scope     [50] 33>39
+   67.185 s  scope     [50] 39>3f
+   67.249 s  scope     [50] 3f>46
+   67.310 s  scope     [50] 46>4c
+   67.371 s  scope     [50] 4c>52
+   67.433 s  scope     [50] 52>58
+   67.495 s  scope     [50] 58>5e
+   67.558 s  scope     [50] 5e>65
+   67.619 s  scope     [50] 65>6b
+   67.682 s  scope     [50] 6b>71
+   67.744 s  scope     [50] 71>77
+   67.806 s  ui        [0xF6F] 18>32
+   67.806 s  scope     [50] 77>7d
+   67.873 s  scope     [50] 7d>84
+   67.937 s  scope     [50] 84>8a
+   67.999 s  scope     [50] 8a>91
+   68.063 s  scope     [50] 91>97
+   68.123 s  scope     [50] 97>9d
+   68.184 s  scope     [50] 9d>a3
+   68.246 s  scope     [50] a3>a9
+   68.307 s  scope     [50] a9>b0
+   68.371 s  scope     [50] b0>b6
+   68.435 s  scope     [50] b6>bc
+   68.497 s  scope     [50] bc>c3
+   68.558 s  scope     [50] c3>c9
+   68.619 s  scope     [50] c9>cf
+   68.683 s  scope     [50] cf>d5
+   68.744 s  scope     [50] d5>db
+   68.811 s  scope     [50] db>e2
+   68.877 s  scope     [50] e2>e9
+   68.938 s  scope     [50] e9>ef
+   69.000 s  scope     [50] ef>f5
+   69.063 s  scope     [50] f5>fb
+   69.124 s  scope     [50] fb>ff
+end       73.8 s, 864 reads of the five blocks

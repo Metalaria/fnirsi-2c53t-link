@@ -1,0 +1,19 @@
+keys      2026-11-26T16:29:46  generador, teclas una a una
+20000F50   10  01100000d0070000321e
+20001020   56  f7040000000000000000000004010102ff0000000000000000000000000000000000c07f0000c07f0000c07f0402020000000a0a0a000000
+20001058   16  05640a000100046403010b0000000000
+2000044C    1  00
+200000F8   56  01010200b4d301000000000000000000000000000101000100000000ffff0000000000000000000000000000000d01000001ff0000000000
+            a line typed here and Enter is kept as a note; Ctrl-C ends
+   14.606 s  ui        [0xF69] 01>02
+   16.986 s  generator [4] d0>cf   ? (index 16), 2kHz, duty 50 %, 3.0 V
+   19.385 s  generator [4] cf>d0   ? (index 16), 2kHz, duty 50 %, 3.0 V
+   21.528 s  ui        [0xF69] 02>01
+   28.149 s  ui        [0xF6B] 00>02
+   29.379 s  ui        [0xF69] 01>00 [0xF6B] 02>00
+   47.323 s  link      lost (write failed: IOHIDDeviceSetReport failed: (0xE00002D8) (iokit/common) not ready)
+   63.495 s  link      back
+   63.495 s  meter     [14] 01>00
+   63.495 s  ui        [0xF68] 03>01 [0xF6A] 0b>00   system mode 1 (multimeter)
+   65.382 s  meter     [20] 00>01
+end       75.3 s, 907 reads of the five blocks
