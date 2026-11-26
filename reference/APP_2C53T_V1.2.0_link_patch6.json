@@ -12,6 +12,8 @@
   "calls": [],
   "menu": [],
   "menu_sites": [],
+  "language_menu": [],
+  "language_menu_sites": [],
   "changed_stock_bytes": [
     "0x0802a994",
     "0x0802a995",

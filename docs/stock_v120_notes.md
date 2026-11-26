@@ -270,8 +270,8 @@ its own takes it from there. (code)
 ### Languages
 
 V1.2.0 offers Chinese and English, but the tables of eight languages that V1.1.0 added are
-still in the image and still indexed by the language byte. (code; nothing of this was tried on
-the unit)
+still in the image and still indexed by the language byte. (code; on the unit, Spanish has
+been in use since 2026-11-25 with `--languages`)
 
 - `ms[0xF60]`: 1 Chinese, 2 English, 3 Russian, 4 Japanese, 5 Spanish, 6 Portuguese, 7 German,
   8 Korean, by the order of the rows of every table.
@@ -319,6 +319,50 @@ the unit)
 that returns the row for the first row and, on the second, the current language while that
 is 2 to 7, so that stock's own `adds` steps to the next one. `tools/language_tables.py`
 repeats the table and font checks on a stock image.
+
+### The options of a setting (code, and stock's own routines run in emulation)
+
+The settings screen (system mode 4) has the list of seven settings on the left and the
+options of the selected one on the right. `ms[0xF6A]` is the setting, `ms[0xF69]` is 1 while
+the cursor is among the options and `ms[0xF6B]` is the option under it.
+
+- **Keys.** Handler 12 (`0x0800A900`, next) moves the option cursor at `0x0800ABC2`: it stops
+  at the byte of a table indexed by the setting, `0x0800B1D8`: `01 01 03 03 00 00 01`. Handler
+  11 (`0x0800A148`, previous) stops at 0. OK (`0x0800BD60`) with the cursor in the list opens
+  the options with the cursor on the first; with the cursor on an option of Language it
+  stores that option plus one as the language, whatever the option is. Keys 1 and 10 leave the
+  options. So raising the first byte of that table is all it takes for the cursor to reach,
+  and OK to choose, an eighth language.
+- **Painting.** One routine, `0x0801CF50` (called at `0x080111DA` after the band is cleared,
+  and listed in the table of routines at `0x0804C130`), switches on the setting: seven cases,
+  Language at `0x0801CF7E`, Auto Shutdown at `0x0801D292`, one exit at `0x0801D28C`. A panel
+  has four slots, 36 px apart from y = 61. Language uses the first and third for its two
+  fixed rows; Start-up mode and Auto Shutdown use all four (loop at `0x0801D03C`).
+- **A row.** Under the cursor: picture `72.jpg` at (121, y), then the mark, `75.jpg` at
+  (166, y + 8) when it is the one in use or `78.jpg` at (165, y + 8), and the text in colour
+  index 2 (`0x055F`) of the table at `0x0804C180`. Off the cursor: a fill with `0x18C3` of
+  x 122..303, y + 1..y + 32, the mark `74.jpg` or `77.jpg` at (166, y + 10), and the text in
+  colour index 1 (white). The text is `0x0800F154(x, y, w, h, string, font, colour, align)`
+  with (182, y, 92, 34), the 18 px font's descriptor `0x20001114` and align 1 (centred);
+  strings are UTF-8. Pictures are `0x08039F6C(path, x, y)`.
+- **Bands.** The screen is painted a band at a time. The band is described at `0x20008350`:
+  x, y, width and height as 16-bit values, then a pointer to width x height RGB565 pixels.
+  The fill tests every pixel against it; the picture and text routines clip for themselves.
+- **Stack.** All of this runs in the `display` task (1536 bytes of stack). With the text
+  routine really running, a panel reaches 264 bytes below the routine's entry. On the unit,
+  after sessions in the three instruments, 710 bytes of that stack had never been written
+  (2026-11-24, patch 3). The other tasks are tighter: `dvom_RX` had 21 bytes of 512 left,
+  `key` 76 of 512. `fnlink.py tasks` reads these figures from the heap, where each task's
+  stack sits just before its control block and what was never reached is still zero.
+
+`build_link_image.py --language-menu` uses this instead of the call above: the table's first
+byte becomes 7 and the Language case branches to `link_language_panel()` (`langmenu.c`),
+which paints the four slots of the cursor's page as Auto Shutdown's are painted and leaves
+through the routine's exit. The image has no name for six of the languages; the builder
+supplies them and checks them against the fonts (`日` of 日本語 is in none of the five).
+In emulation the result was compared with stock's own Auto Shutdown panel in the same state:
+the same calls with the same arguments, the same pixels outside the text, in every
+combination of cursor and language, and with the band whole, partial and elsewhere.
 
 ## FreeRTOS
 

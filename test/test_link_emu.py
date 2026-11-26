@@ -189,13 +189,16 @@ def language_ok(image, ram, cursor, language):
     return at, mu.mem_read(STATE_BASE + 0xF60, 1)[0], regs, writes
 
 
-def run_code(image, ram, entry, stops, state=(), regs=(), follow=(), limit=200000):
+def run_code(image, ram, entry, stops, state=(), regs=(), follow=(), limit=200000, skip=None, setup=None):
     """Run code of an image from `entry` until one of `stops` (or the return to the caller) on a
     copy of `ram`, with the bytes of stock's state structure in `state` ({offset: value}) and
     the registers in `regs` ({name: value}). A bl into stock is skipped, r0 untouched, unless
     its target is in `follow`; a bl into the cave is always followed. `stops` may map an
-    address to a function called with the emulator before stopping there. Returns the
-    emulator, the address it stopped at and the list of SRAM writes below the test stack."""
+    address to a function called with the emulator before stopping there. `skip` maps the
+    entry of a routine to a function called with the emulator when it is reached, from stock
+    or from the cave, after which the routine returns at once. `setup` is called with the
+    emulator before it starts. Returns the emulator, the address it stopped at and the list of
+    SRAM writes below the test stack."""
     from unicorn import Uc, UC_ARCH_ARM, UC_MODE_THUMB, UC_MODE_MCLASS, UC_HOOK_CODE, UC_HOOK_MEM_WRITE
     from unicorn import arm_const as A
     mu = Uc(UC_ARCH_ARM, UC_MODE_THUMB | UC_MODE_MCLASS)
@@ -211,10 +214,16 @@ def run_code(image, ram, entry, stops, state=(), regs=(), follow=(), limit=20000
         mu.reg_write(getattr(A, "UC_ARM_REG_" + name.upper()), v)
     writes, steps, at = [], [0], [None]
     stops = stops if isinstance(stops, dict) else {a: None for a in stops}
+    skip = skip or {}
+    if setup:
+        setup(mu)
 
     def code(mu, addr, size, _):
         steps[0] += 1
-        if addr in stops or steps[0] > limit:
+        if addr in skip:                                                 # seen with its arguments, not run
+            skip[addr](mu)
+            mu.reg_write(A.UC_ARM_REG_PC, mu.reg_read(A.UC_ARM_REG_LR) | 1)
+        elif addr in stops or steps[0] > limit:
             at[0] = addr
             if stops.get(addr):
                 stops[addr](mu)
@@ -233,7 +242,7 @@ def run_code(image, ram, entry, stops, state=(), regs=(), follow=(), limit=20000
                     if stops[target]:
                         stops[target](mu)
                     mu.emu_stop()
-                elif target < CAVE_ADDR and target not in follow:        # a call into stock: skipped
+                elif target < CAVE_ADDR and target not in follow and target not in skip:   # a call into stock: skipped
                     mu.reg_write(A.UC_ARM_REG_PC, (addr + 4) | 1)
 
     mu.hook_add(UC_HOOK_CODE, code)
@@ -258,7 +267,7 @@ def main() -> int:
     args = ap.parse_args()
     stock = args.stock.read_bytes()
     image = args.image.read_bytes()
-    manifest = json.loads(args.image.with_suffix(".json").read_text())
+    manifest = json.loads(args.image.with_suffix(".json").read_text(encoding="utf-8"))
     sym = {k: int(v, 16) for k, v in manifest["symbols"].items()}
     vid, pid = (int(x, 16) for x in manifest["usb_vid_pid"].split(":"))
     has_scope = "0x0803e49a" in manifest["hooks"]
@@ -1269,6 +1278,186 @@ def main() -> int:
         check("no menu in this image: the builder, the list, the keys and the pictures are stock's bytes",
               all(image[a - 0x08007000:a - 0x08007000 + 4] == stock[a - 0x08007000:a - 0x08007000 + 4]
                   for a in (0x08029E14, 0x080157E6, 0x080108EA, 0x080127BC, 0x0801F8EE, 0x0800A9C0, 0x0800C2AA, 0x0802E000)))
+
+    # ---- --language-menu: Settings > Language with one entry per language ---------------------
+    # Stock's own key handlers and its routine for the options of a setting, run on the menu's
+    # state bytes. The pictures and the text are not drawn here (no file system, no fonts set
+    # up): the two routines are recorded with their arguments. What a row off the cursor is
+    # filled with is painted for real, into a band of pixels placed outside stock's SRAM.
+    langmenu = manifest.get("language_menu", [])
+    OPTIONS, PICTURE, TEXT = 0x0801CF50, 0x08039F6C, 0x0800F154
+    BAND_AT, BAND_PIXELS, BAND_ROOM = 0x20008350, 0x60000000, 0x40000
+    key_handlers = [h & ~1 for h in struct.unpack_from("<16I", stock, 0x08046548 - 0x08007000)]
+    KEY_PREVIOUS, KEY_NEXT, KEY_OK = key_handlers[10], key_handlers[11], key_handlers[14]
+
+    def menu_bytes(mu):
+        return tuple(mu.mem_read(STATE_BASE + o, 1)[0] for o in (0xF68, 0xF69, 0xF6A, 0xF6B, 0xF60))
+
+    def press(img, handler, row, cursor, language=2, inside=1):
+        """One key handler on the settings menu: (where it ended, the menu's bytes, SRAM written).
+        A handler that goes on to a peripheral ends there, in both images alike."""
+        from unicorn import UcError
+        seen = {}
+
+        def keep(mu):
+            seen["mu"] = mu
+
+        try:
+            mu, at, writes = run_code(img, ram, handler, (), {0xF68: 4, 0xF69: inside, 0xF6A: row, 0xF6B: cursor, 0xF60: language},
+                                      limit=30000, setup=keep)
+        except UcError as ex:
+            return "stopped: %s" % ex, menu_bytes(seen["mu"]), []
+        return at, menu_bytes(mu), sorted({w[0] for w in writes})
+
+    def cstring(mu, at):
+        return bytes(mu.mem_read(at, 64)).split(b"\0")[0]
+
+    def paint(img, state, band=(118, 58, 60, 150)):
+        """Stock's options routine over one band: (where it ended, the calls, the pixels, the
+        callee-saved registers, SRAM writes, (lowest sp at a call of the two routines, deepest
+        stack byte written), bytes past the band)."""
+        from unicorn import UC_HOOK_MEM_WRITE
+        from unicorn import arm_const as A
+        calls, deepest, at_calls = [], [0x20036F00], [0x20036F00]
+
+        def picture(mu):
+            at_calls[0] = min(at_calls[0], mu.reg_read(A.UC_ARM_REG_SP))
+            calls.append(("picture", cstring(mu, mu.reg_read(A.UC_ARM_REG_R0)).decode("latin1"),
+                          mu.reg_read(A.UC_ARM_REG_R1), mu.reg_read(A.UC_ARM_REG_R2)))
+
+        def text(mu):
+            at_calls[0] = min(at_calls[0], mu.reg_read(A.UC_ARM_REG_SP))
+            a = struct.unpack("<4I", mu.mem_read(mu.reg_read(A.UC_ARM_REG_SP), 16))
+            calls.append(("text",) + tuple(mu.reg_read(getattr(A, "UC_ARM_REG_R%d" % i)) for i in range(4))
+                         + (cstring(mu, a[0]).decode("utf-8"),) + a[1:])
+
+        def setup(mu):
+            mu.mem_map(BAND_PIXELS, BAND_ROOM)
+            mu.mem_write(BAND_AT, struct.pack("<HHHHI", *band, BAND_PIXELS))
+            mu.hook_add(UC_HOOK_MEM_WRITE, lambda mu, acc, addr, size, value, _: deepest.__setitem__(0, min(deepest[0], addr)),
+                        begin=0x20036000, end=0x20036F00)
+
+        mu, at, writes = run_code(img, ram, OPTIONS, (), state, seed, skip={PICTURE: picture, TEXT: text},
+                                  setup=setup, limit=3000000)
+        used = 2 * band[2] * band[3]
+        return (at, calls, bytes(mu.mem_read(BAND_PIXELS, used)), regs_of(mu, callee), writes, (at_calls[0], deepest[0]),
+                any(mu.mem_read(BAND_PIXELS + used, BAND_ROOM - used)))
+
+    # the keys: every handler over every setting and every cursor position, against stock. Where
+    # the list goes on, the key must do what stock's does on its one step, from the first row
+    # to the second: the same end, the same writes, the cursor one further.
+    odd = []
+    step = press(stock, KEY_NEXT, 0, 0)
+    for handler in key_handlers:
+        for row in range(7):
+            for cursor in range(8):
+                ref, got = press(stock, handler, row, cursor), press(image, handler, row, cursor)
+                if langmenu and handler == KEY_NEXT and row == 0 and 1 <= cursor <= 6:
+                    if ref[1][3] != cursor or ref[2]:
+                        odd.append(("stock moved", row, cursor))
+                    ref = (step[0], step[1][:3] + (cursor + 1,) + step[1][4:], step[2])
+                if has_languages and handler == KEY_OK and row == 0:
+                    continue                                 # --languages: its own section above
+                if got != ref:
+                    odd.append(("%08X" % handler, row, cursor, got[1]))
+    check("stock: the next-option key steps from the first language to the second and writes the cursor",
+          step[1] == (4, 1, 0, 1, 2) and STATE_BASE + 0xF6B in step[2], str(step))
+    check("language menu: the next-option key goes on to the eighth entry, every other key and setting as stock"
+          if langmenu else "no language menu: all sixteen key handlers as stock over the settings menu", not odd, str(odd[:6]))
+    walk, cursor = [], 0
+    for _ in range(9):
+        cursor = press(image, KEY_NEXT, 0, cursor)[1][3]
+        walk.append(cursor)
+    for _ in range(9):
+        cursor = press(image, KEY_PREVIOUS, 0, cursor)[1][3]
+        walk.append(cursor)
+    last = 7 if langmenu else 1
+    check("language menu: the cursor walks down to entry %d, stays, and back up to 0" % last,
+          walk == [min(i, last) for i in range(1, 10)] + [max(last - i, 0) for i in range(1, 10)], str(walk))
+    if not has_languages:
+        stored = [press(image, KEY_OK, 0, cursor, language)[1][4] for cursor in range(last + 1) for language in (1, 2, 5, 8)]
+        check("language menu: OK stores the entry under the cursor plus one, whatever the language was",
+              stored == [cursor + 1 for cursor in range(last + 1) for _ in range(4)], str(stored))
+    opened = [press(image, KEY_OK, 0, 0, language, inside=0)[1] for language in (1, 5, 8)]
+    check("language menu: opening the options puts the cursor on the first entry and keeps the language",
+          opened == [(4, 1, 0, 0, language) for language in (1, 5, 8)], str(opened))
+
+    # the other six settings: the routine paints what stock paints
+    differ = []
+    for row in range(1, 7):
+        for inside in (0, 1):
+            for cursor in range(4):
+                state = {0xF68: 4, 0xF69: inside, 0xF6A: row, 0xF6B: cursor, 0xF60: 5, 0xF64: 1, 0xF65: 2}
+                ref, got = paint(stock, state), paint(image, state)
+                if ref != got or got[0] != usbemu.RET_MAGIC:
+                    differ.append((row, inside, cursor))
+    check("options routine: the six other settings painted exactly as stock (calls, pixels, registers, writes)",
+          not differ, str(differ[:6]))
+
+    if langmenu:
+        NAMES = ("中文", "English", "Русский", "にほんご", "Español", "Português", "Deutsch", "한국어")
+        check("language menu: the manifest lists the eight names", tuple(langmenu) == NAMES, str(langmenu))
+        glyphs = language_tables.font_characters(language_tables.Image(stock), language_tables.FONT_CMAPS[18])
+        check("language menu: the 18 px font has a glyph for every character of every name",
+              all(ord(c) in glyphs for n in NAMES for c in n))
+        P = "3:/System file/%d.jpg"
+        wrong, unlike, frames, strays = [], [], set(), []
+        cases = [(1, cursor, language) for cursor in range(8) for language in range(1, 9)]
+        cases += [(0, 0, language) for language in range(1, 9)]
+        cases += [(1, 3, 0), (1, 4, 9), (0, 0, 0), (0, 0, 9), (0, 0, 255), (1, 8, 2), (1, 200, 6)]
+        for inside, cursor, language in cases:
+            shown = cursor if inside else language - 1
+            first = 4 if 4 <= shown < 8 else 0
+            want = []
+            for slot in range(4):
+                entry, y = first + slot, 61 + 36 * slot
+                chosen = language == entry + 1
+                if inside and cursor == entry:
+                    want += [("picture", P % 72, 121, y), ("picture", P % (75 if chosen else 78), 166 if chosen else 165, y + 8)]
+                    colour = 0x055F
+                else:
+                    want += [("picture", P % (74 if chosen else 77), 166, y + 10)]
+                    colour = 0xFFFF
+                want += [("text", 182, y, 92, 34, NAMES[entry], 0x20001114, colour, 1)]
+            got = paint(image, {0xF68: 4, 0xF69: inside, 0xF6A: 0, 0xF6B: cursor, 0xF60: language})
+            if got[1] != want:
+                wrong.append((inside, cursor, language))
+            if got[0] != usbemu.RET_MAGIC or got[3] != tuple(seed[r] for r in callee[:-1]) + (0x20036F00,) or got[4] or got[6]:
+                strays.append((inside, cursor, language))
+            # stock's own four rows (Auto Shutdown) with the cursor and the mark in the same slots
+            slot_chosen = language - 1 - first
+            ref = paint(stock, {0xF68: 4, 0xF69: inside, 0xF6A: 3, 0xF6B: (cursor - first) & 0xFF if inside else 0,
+                                0xF60: 2, 0xF65: slot_chosen if 0 <= slot_chosen < 4 else 9})
+            same_calls = [c[:5] + c[6:] if c[0] == "text" else c for c in ref[1]] == [c[:5] + c[6:] if c[0] == "text" else c for c in got[1]]
+            if not same_calls or ref[2] != got[2]:
+                unlike.append((inside, cursor, language))
+            frames.add((ref[5][0] - got[5][0], ref[5][1] - got[5][1]))
+        check("language menu: four entries of the right page, with stock's pictures, places, font and colours, in all %d states" % len(cases),
+              not wrong, str(wrong[:6]))
+        check("language menu: the same pictures, text boxes and pixels as stock's own four-row panel in the same state",
+              not unlike, str(unlike[:6]))
+        check("language menu: leaves through stock's exit with r4-r11 and sp intact, no SRAM write, nothing past the band",
+              not strays, str(strays[:6]))
+        # stock's text routine alone takes 112 bytes below its caller, the picture routine 48 and more
+        check("language menu: at the calls of stock's routines, %d bytes more stack than stock's own panel; %d in its own leaf"
+              % (max(f[0] for f in frames), max(f[1] for f in frames)),
+              max(f[0] for f in frames) <= 64 and max(f[1] for f in frames) <= 96, str(sorted(frames)))
+        bands = []
+        for band in ((0, 0, 320, 240), (150, 80, 100, 70), (0, 0, 320, 61), (300, 100, 20, 140), (130, 93, 3, 5)):
+            got = paint(image, {0xF68: 4, 0xF69: 1, 0xF6A: 0, 0xF6B: 5, 0xF60: 5}, band)
+            ref = paint(stock, {0xF68: 4, 0xF69: 1, 0xF6A: 3, 0xF6B: 1, 0xF60: 2, 0xF65: 0}, band)
+            if got[2] != ref[2] or got[6] or got[4] or got[0] != usbemu.RET_MAGIC:
+                bands.append(band)
+        check("language menu: clipped to the band as stock clips its own rows (whole screen, partial, none)", not bands, str(bands))
+        changed = {int(a, 16) for a in manifest["changed_stock_bytes"]}
+        check("language menu: its five stock bytes are the Language case's first instruction and the limit of that setting",
+              {0x0801CF7E, 0x0801CF7F, 0x0801CF80, 0x0801CF81, 0x0800B1D8} <= changed
+              and image[0x0800B1D8 - 0x08007000:0x0800B1DF - 0x08007000] == bytes([7, 1, 3, 3, 0, 0, 1]))
+    else:
+        got = paint(image, {0xF68: 4, 0xF69: 1, 0xF6A: 0, 0xF6B: 0, 0xF60: 2})
+        check("no language menu: the Language options are stock's two rows",
+              got == paint(stock, {0xF68: 4, 0xF69: 1, 0xF6A: 0, 0xF6B: 0, 0xF60: 2})
+              and [c[5] for c in got[1] if c[0] == "text"] == ["中文", "English"], str(got[1]))
 
     # ---- audit of every SRAM write made by cave code ---------------------------------------
     allowed_core = {UDEV + 4, UDEV + 8,                              # class / descriptor pointers

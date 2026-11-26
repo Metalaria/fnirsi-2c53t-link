@@ -12,7 +12,8 @@ that can stream what it measures.
 | Oscilloscope: each channel's 1024-sample record plus the scope state | yes |
 | Status (patch 3): the generator's settings, the scope's own measurements with RUN/STOP, the rest of the meter's state | yes |
 | Generator (patch 4): any waveform of 100 samples, played by stock's own generator | yes |
-| Languages (patch 4, `--languages`): the six that stock still carries but no longer offers | emulated only |
+| Languages (`--languages`): the six that stock still carries but no longer offers, by pressing OK on the second row | yes |
+| Languages (`--language-menu`): the same eight as entries of Settings > Language, one each | emulated only |
 | Menu (patch 5, `--menu-wave`): waveforms added to the generator's own list, chosen on the instrument | yes |
 
 **Status: runs on one unit.** On 2026-11-23 both images were flashed on a retail 2C53T
@@ -38,7 +39,7 @@ identical to the image, the settings and calibration page was identical before a
 two waveforms were written, read back and seen on the instrument's own oscilloscope; a change
 of frequency on the instrument kept them. The record is in
 [`docs/hardware_results_2026-11-25.md`](docs/hardware_results_2026-11-25.md). The builder's
-`--languages` is separate and optional: it passes the emulated tests and has not been flashed.
+`--languages` is separate and optional; it reached the unit later, with patch 6 (below).
 
 **Patch 5 runs on the same unit** since the evening of 2026-11-25, built with the five menu
 entries of the example below. Without options it is patch 4 with a longer INFO; with
@@ -57,6 +58,13 @@ receives for the USB entry and writes the playing table only while that entry is
 On the unit, a sinc sent under Square Wave left the square playing, and a bell sent under
 the USB entry played at once.
 
+**The same image with `--languages`** has run on the unit since 2026-11-25 as well: the flash
+reads back as the image, the calibration table is unchanged and the instrument is in Spanish.
+Choosing a language by pressing OK again and again on a row that says "English" is not what
+a menu should ask for, which is what `--language-menu` is for: it passes the emulated tests,
+its panel has been painted with the unit's own fonts in the emulator, and it has not been
+flashed.
+
 > **One unit is not a guarantee.** The board revision of that unit is unknown and nothing
 > has been tried on another. If you flash this, read [Safety](#safety) first and keep the
 > official `APP_2C53T_V1.2.0_251015.bin` at hand: the factory bootloader is untouched, so the
@@ -66,8 +74,8 @@ the USB entry played at once.
 
 | | |
 |---|---|
-| Stock bytes changed | 10: 6 at `0x0802A994` (SysTick handler) and 4 at `0x0803E49A` (tail of the `fpga` task loop), each a `b.w` into the cave. With `--languages`, 4 more at `0x0800BECA` (a `bl` into the cave). With menu entries, 49 more: see below |
-| Code added | ~2.9 KB at `0x080BE700`, after the stock image; ~4.2 KB with five menu entries |
+| Stock bytes changed | 10: 6 at `0x0802A994` (SysTick handler) and 4 at `0x0803E49A` (tail of the `fpga` task loop), each a `b.w` into the cave. With `--languages`, 4 more at `0x0800BECA` (a `bl` into the cave). With `--language-menu` instead, 5: 4 at `0x0801CF7E` (a `b.w`) and one byte of data at `0x0800B1D8`. With menu entries, 49 more: see below |
+| Code added | ~2.9 KB at `0x080BE700`, after the stock image; ~4.2 KB with five menu entries, ~4.7 KB with the list of languages too |
 | SRAM used | `0x20037000`–`0x20037A53`, above stock's stack top and below the factory IAP's RAM magic |
 | Stock SRAM written | the USB core's class and descriptor pointers (`0x20002B28`, `0x20002B2C`) and the endpoint bookkeeping the stock class itself writes. From patch 4, on a `WAVE` request only: the generator's table of samples, `0x20000F5A`–`0x20001021` |
 | Flash written at run time | none |
@@ -134,6 +142,24 @@ to English. The list itself still shows two rows, and neither is marked while a 
 language is in use. `tools/language_tables.py` checks the tables and the fonts of your own
 stock image.
 
+**The list of languages (`--language-menu`, optional, instead of `--languages`).** Settings >
+Language shows the eight languages as eight entries, four to a page: 中文, English, Русский,
+にほんご, Español, Português, Deutsch, 한국어. The cursor moves through them with the keys that
+move it through any other setting, the one in use carries stock's mark, and OK chooses the
+one under the cursor. Two things are changed in stock for it. The byte that says where the
+cursor stops in this setting goes from 1 to 7 (`0x0800B1D8`, in a table with one byte per
+setting); stock's OK handler already stores "the row under the cursor plus one" and is left
+alone. And the first instruction of the Language case of the routine that paints a
+setting's options (`0x0801CF7E`) becomes a branch to ~470 bytes in the cave that paint four
+rows the way stock paints the four of Auto Shutdown, with stock's own picture and text
+routines, pictures, font and colours, and then leave through that routine's own exit. The
+names are each language's own, except that stock's fonts have no glyph for 日, so Japanese is
+written in hiragana; the builder checks every character of every name against the five
+fonts of your image. While the cursor is still in the list of settings the panel shows the
+page of the language in use; opening it puts the cursor on the first entry, as stock does.
+The panel runs in stock's display task and takes 56 bytes more of its stack than stock's
+own; `fnlink.py tasks` reads how much of each task's stack has ever been used.
+
 ## Build
 
 ```bash
@@ -141,7 +167,8 @@ sudo apt install gcc-arm-none-eabi
 python3 build_link_image.py --stock APP_2C53T_V1.2.0_251015.bin --out APP_2C53T_V1.2.0_link.bin
 ```
 
-`--languages` adds the language call described above, and the menu entries are added like
+`--languages` adds the language call described above, `--language-menu` the list of
+languages (one or the other), and the menu entries are added like
 this (each with the stock waveform, 0 to 12, whose picture it borrows after the `@`):
 
 ```bash
@@ -161,7 +188,8 @@ stock facts the cave relies on, and re-reads its own output. With Ubuntu 24.04's
 `gcc-arm-none-eabi 15:13.2.rel1-2` the results are in `reference/`: patch 3, the one that
 has been on hardware, `*_patch4*.json` for patch 4 with and without `--languages`, and
 `*_patch5*.json` for patch 5 without options and with five menu entries (`AM 80%=am@10` there),
-and `*_patch6*.json` for patch 6 with the example above.
+and `*_patch6*.json` for patch 6: without options, with the example above, with it and
+`--languages`, with it and `--language-menu`, and with `--language-menu` alone.
 
 No patched image is distributed: it contains FNIRSI's firmware.
 
@@ -204,6 +232,7 @@ python fnlink.py snapshot "stopped, 10us" 0x200000F8:56 0x20000EA8:96 --out sess
 python fnlink.py watch 0x2000013D:1 --seconds 5  # one small block read over and over: every change, with its time
 python fnlink.py verify APP_2C53T_V1.2.0_link.bin
 python fnlink.py read 0x20001060 16
+python fnlink.py tasks                           # stock's tasks: stack size, in use, deepest since power-on
 python fnlink.py status                          # generator settings, scope measurements, meter MAX/MEAN/MIN
 python fnlink.py status --events                 # the same from the status stream (patch 3)
 python fnlink.py wave sinc                       # patch 4: one period of a built-in shape into the generator
