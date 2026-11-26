@@ -380,6 +380,15 @@ check("scope state: 2 us and 1 us per division are checked time bases, 500 ns is
       fnlink.scope_settings(STEP_2US)["time_base_checked"] and abs(fnlink.scope_settings(STEP_2US)["seconds_per_div"] - 2e-6) < 1e-15
       and fnlink.scope_settings(STEP_2US[:45] + b"\x06" + STEP_2US[46:])["time_base_checked"]
       and not fnlink.scope_settings(STEP_2US[:45] + b"\x05" + STEP_2US[46:])["time_base_checked"])
+# the trigger edge: the same settings read on the unit with the rising and with the falling edge (2026-11-26)
+EDGE_RISING = bytes.fromhex("01010202b40000010000000000000000000000000101000100000000ffff0000000000000000000000000000001301000001ff0000000000")
+EDGE_FALLING = bytes.fromhex("01010202b40000010000000000000000000000000101000101000000ffff0000000000000000000000000000001301000000ff0000000000")
+check("scope state: byte 24 is the trigger edge, 0 rising and 1 falling; anything else is not named",
+      fnlink.scope_settings(EDGE_RISING)["trigger_edge"] == "rising" and fnlink.scope_settings(EDGE_FALLING)["trigger_edge"] == "falling"
+      and fnlink.scope_settings(EDGE_RISING[:24] + b"\x02" + EDGE_RISING[25:])["trigger_edge"] is None
+      and [i for i in range(56) if EDGE_RISING[i] != EDGE_FALLING[i]] == [24, 49])
+text = "\n".join(fnlink.status_lines(2, IDLE, EDGE_FALLING, STOPPED, bytes.fromhex("0101000064000000321e")))
+check("status: the scope line says which edge", "20ms/div, CH1 50mV/div X1 DC, CH2 500mV/div X10, channels CH1, trigger falling" in text, text)
 text = "\n".join(fnlink.status_lines(2, IDLE, STEP_AC, STOPPED, bytes.fromhex("0100000050c30000321e")))
 check("status: CH1's coupling on the scope line, and the first waveform of the menu by its name",
       "CH1 50mV/div X1 AC, CH2 100mV/div X1, channels CH1" in text and "Sine Wave (index 0), 50kHz" in text, text)

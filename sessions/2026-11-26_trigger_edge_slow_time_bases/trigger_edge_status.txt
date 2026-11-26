@@ -1,0 +1,17 @@
+== trigger on the rising edge, 20 ms per division (the status of slow_time_bases.txt)
+scope        RUN, 20ms/div, CH1 50mV/div X1 DC, CH2 500mV/div X10, channels CH1   state 01010202b40000010000000000000000000000000101000100000000ffff0000000000000000000000000000001301000001ff0000000000
+
+== trigger on the falling edge, nothing else touched
+scope        RUN, 20ms/div, CH1 50mV/div X1 DC, CH2 500mV/div X10, channels CH1   state 01010202b40000010000000000000000000000000101000101000000ffff0000000000000000000000000000001301000000ff0000000000
+  CH1 shown   96Hz, period 10.4ms, duty +53.84 % / -46.16 %, width +5.6ms / -4.8ms, Vmax 302mV, Vmin -2mV, Vpp 304mV
+     words    96 10400000 5384 4616 5600000 4800000 302000 -2000 304000 300000 220000 160000
+
+== fnlink.py tasks, run before the status above, after going through Settings > Language and the generator's list
+task          prio  stack at    size  in use now  deepest ever  never reached
+display          1  0x20006730  1536         284           817            719
+key              4  0x20006D98   512         276           276            236
+osc              2  0x20007000  1024         276           780            244
+fpga             3  0x20007468   512         324           324            188
+dvom_TX          2  0x200076D0   256         140           140            116
+dvom_RX          3  0x20007838   512         332           396            116
+IDLE             0  0x20007AA0   512          84            84            428

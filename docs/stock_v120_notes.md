@@ -401,8 +401,9 @@ the cursor is among the options and `ms[0xF6B]` is the option under it.
 - **Stack.** All of this runs in the `display` task (1536 bytes of stack). With the text
   routine really running, a panel reaches 264 bytes below the routine's entry. On the unit,
   after sessions in the three instruments, 710 bytes of that stack had never been written
-  (2026-11-24, patch 3). The other tasks are tighter: `dvom_RX` had 21 bytes of 512 left,
-  `key` 76 of 512. `fnlink.py tasks` reads these figures from the heap, where each task's
+  (2026-11-24, patch 3); with the language panel of `--language-menu` in use, 719
+  (2026-11-26). The other tasks are tighter: on the 24th `dvom_RX` had 21 bytes of 512 left
+  and `key` 76 of 512. `fnlink.py tasks` reads these figures from the heap, where each task's
   stack sits just before its control block and what was never reached is still zero.
 
 `build_link_image.py --language-menu` uses this instead of the call above: the table's first
