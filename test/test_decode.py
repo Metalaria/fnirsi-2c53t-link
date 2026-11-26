@@ -516,8 +516,9 @@ check("private: the calibration page in flash and the tables in RAM, to the byte
                                                            (0x20000357, 1), (0x20000357, 2), (0x2000044A, 1), (0x2000044B, 1),
                                                            (fnlink.ARROWS_ADDR, 1), (0x2000044E, 602))]
       == [False, True, True, False, False, True, True, False, False, False])
-check("arrows: the two modes seen on the unit, the channel bit, and a value never seen",
+check("arrows: the three modes seen on the unit, the channel bit, and a value never seen",
       fnlink.arrows_text(0x00).startswith("scale: left/right change the time base") and fnlink.arrows_text(0x02).startswith("move:")
+      and fnlink.arrows_text(0x01).startswith("position: left/right move the trace sideways, up/down the channel's trace")
       and ", acting on CH2" in fnlink.arrows_text(0x80) and fnlink.arrows_text(0x07).startswith("mode 7 (unknown)"))
 t0 = [(0.0, b"\x05"), (0.010, b"\x06"), (0.020, b"\x07"), (0.030, b"\x08"), (0.040, b"\x09")]
 text = "\n".join(fnlink.watch_summary(t0, 400, 1.0, 1))
@@ -784,6 +785,70 @@ check("tasks: both control blocks found and nothing else, with name, priority, s
 check("tasks: what is in use now and what was never reached",
       [(t["in_use"], t["untouched"]) for t in found] == [(0x40, 0x100 - 0x90), (0x30, 0x80 - 0x30)], str(found))
 check("tasks: an empty block has none", fnlink.find_tasks(bytes(0x400), heap_base) == [])
+
+
+# The guided key logs kept under sessions/: what the notes say each key did, held against the logs.
+def guided(name: str) -> list:
+    """(key asked for, [(block, offset, old, new), ...]) for each prompt of the last run in a guided log."""
+    text = (Path(__file__).resolve().parent.parent / "sessions" / "2026-11-26_keys" / name).read_text()
+    out = []
+    for line in text.split("\nkeys      ")[-1].split("\n"):
+        m = re.match(r"\s*[\d.]+ s  (\w+)\s+(.*)", line)
+        if not m:
+            continue
+        if m.group(1) == "press":
+            out.append((m.group(2).strip(), []))
+        elif m.group(1) == "link":
+            out[-1][1].append(("link", m.group(2).split()[0], "", ""))
+        else:
+            for off, old, new in re.findall(r"\[(?:0x)?([0-9A-Fa-f]+)\] ([0-9a-f]{2})>([0-9a-f]{2})", m.group(2)):
+                out[-1][1].append((m.group(1), off, old, new))
+    return out
+
+
+def first(changes: list, block: str, off: str):
+    hits = [(o, n) for b, f, o, n in changes if b == block and f == off]
+    return hits[0] if hits else None
+
+
+g = guided("guided_multimeter.txt")
+check("guided multimeter: twenty keys, and the ones that changed nothing",
+      len(g) == 20 and [k for k, c in g if not c] == ["select", "trigger", "prm", "save", "save", "ch1", "ch2", "arriba", "abajo", "menu corto"])
+check("guided multimeter: right and left step the menu entry and wrap both ways, 0 1 2 1 0 7 0 1",
+      [first(c, "meter", "5") for k, c in g[:7]] == [("00", "01"), ("01", "02"), ("02", "01"), ("01", "00"), ("00", "07"), ("07", "00"), ("00", "01")]
+      and [k for k, c in g[:7]] == ["derecha", "derecha", "izquierda", "izquierda", "izquierda", "derecha", "derecha"])
+check("guided multimeter: DC to AC after MOVE, Automatic after AUTO, HOLD after the blue key",
+      dict(g)["move"] == [("meter", "6", "01", "02"), ("meter", "14", "01", "02")] and first(dict(g)["auto"], "meter", "5") == ("01", "00")
+      and dict(g)["azul"] == [("meter", "20", "00", "01")])
+g = guided("guided_generator.txt")
+check("guided generator: the level ms[0xF69] goes down with the blue key and up with MENU, and MENU does nothing at 0",
+      [(k, first(c, "ui", "F69")) for k, c in g if k in ("azul", "menu corto")]
+      == [("menu corto", None), ("menu corto", None), ("azul", ("00", "01")), ("azul", ("01", "02")), ("menu corto", ("02", "01")), ("menu corto", ("01", "00"))])
+check("guided generator: up and down by level: the waveform, ms[0xF6B], the frequency; right and left logged nothing",
+      [c[0] for k, c in g if k in ("arriba", "abajo")]
+      == [("generator", "1", "10", "11"), ("generator", "1", "11", "10"), ("ui", "F6B", "00", "02"), ("ui", "F6B", "02", "00"),
+          ("generator", "4", "d0", "d1"), ("generator", "4", "d1", "d0")]
+      and all(not c for k, c in g if k in ("derecha", "izquierda")))
+g = guided("guided_oscilloscope.txt")
+check("guided oscilloscope: SELECT takes the arrows' mode 0, 1, 2, 0",
+      [c for k, c in g if k == "select"] == [[("arrows", "0", "00", "01")], [("arrows", "0", "01", "02")], [("arrows", "0", "02", "00")]])
+check("guided oscilloscope: mode 0, right and left the time base, up and down the range",
+      [(k, first(c, "scope", "45") or first(c, "scope", "2")) for k, c in g[0:4]]
+      == [("derecha", ("09", "08")), ("izquierda", ("08", "09")), ("arriba", ("02", "03")), ("abajo", ("03", "02"))])
+check("guided oscilloscope: mode 1, right and left the horizontal position, up and down CH1's position with the trigger level",
+      [(k, first(c, "scope", "26") or first(c, "scope", "4"), first(c, "scope", "28")) for k, c in g[5:9]]
+      == [("derecha", ("00", "01"), None), ("izquierda", ("01", "00"), None), ("arriba", ("b1", "b2"), ("f7", "f8")), ("abajo", ("b2", "b1"), ("f8", "f7"))])
+check("guided oscilloscope: mode 2, right and left the horizontal position, up and down the trigger level alone",
+      [(k, first(c, "scope", "26") or first(c, "scope", "28"), first(c, "scope", "4")) for k, c in g[10:14]]
+      == [("derecha", ("00", "01"), None), ("izquierda", ("01", "00"), None), ("arriba", ("f7", "f8"), None), ("abajo", ("f8", "f7"), None)])
+check("guided oscilloscope: MOVE logged nothing; CH1, CH2, TRIGGER and PRM lose the link and MENU brings it back",
+      [(k, [x[:2] for x in c]) for k, c in g[15:25]]
+      == [("move", []), ("move", [])] + [(k, [("link", "lost")]) if k != "menu corto" else (k, [("link", "back")])
+                                         for k in ("ch1", "menu corto", "ch2", "menu corto", "trigger", "menu corto", "prm", "menu corto")])
+check("guided oscilloscope: the blue key stops and runs, and AUTO's steps with CH1 alone",
+      [c for k, c in g if k == "azul"] == [[("scope", "46", "01", "00")], [("scope", "46", "00", "01")]]
+      and [n for k, c in g[27:] for b, f, o, n in c if f == "47"] == ["01", "02", "03", "11", "12", "13", "ff", "00"])
+
 
 import build_link_image as builder  # noqa: E402
 

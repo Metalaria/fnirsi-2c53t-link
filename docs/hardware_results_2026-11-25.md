@@ -29,8 +29,8 @@ nibble of `ms[0x354]` (`0x2000044C`):
 | Value | Arrow keys | Source |
 |---|---|---|
 | 0 | left/right: time base `ms[0x2D]` (right is one step faster); up/down: range `ms[2]` (up is one step more volts per division) | code and unit |
-| 1 | not looked at | |
-| 2 | left/right: `ms[0x1A]`, the horizontal position, one screen column a press; up/down: `ms[0x1C]` | unit |
+| 1 | left/right: `ms[0x1A]`, the horizontal position; up/down: the channel's position `ms[4]`, and `ms[0x1C]` by the same amount | unit, 2026-11-26, with CH1 alone |
+| 2 | left/right: `ms[0x1A]`, the horizontal position, one screen column a press; up/down: `ms[0x1C]` alone | unit |
 | 3 | cursors, reached only when they are on | code |
 
 Code: the left/right handler tests the nibble at `0x0800B3A6`, and time base changes only at 0.
@@ -792,6 +792,102 @@ The link going away is the same thing as in the mode screen: the instrument stop
 answering while those screens are up, and `fnlink.py keys` picks it up again. After the
 first logs it gained `--guide`, which says which key to press next and writes it down.
 
+## The keys, one at a time, 2026-11-26
+
+Three more logs, taken with `fnlink.py keys --guide`: the tool asks for a key every 5 s
+and writes the request down, so each change follows the name of a key
+([`sessions/2026-11-26_keys/`](../sessions/2026-11-26_keys/README.md), the `guided_*`
+files). A change came 0.7 to 1.9 s after its request except where said. "Nothing" below
+means: no change in the bytes the tool watches (the generator's settings, bytes 5, 6, 14
+and 20 of the meter's state, `ms[0xF60..0xF6B]`, the arrows' mode and the 56 bytes of
+the oscilloscope's state) and the link not lost. It does not say the key did nothing
+else.
+
+**The multimeter**, starting in Automatic (menu entry 0):
+
+| Key | What the log has |
+|---|---|
+| right | the menu entry one up: 0 to 1 (DC Voltage, variant 1), 1 to 2 (Continuity, variant 2), and from 7 to 0 |
+| left | the menu entry one down: 2 to 1, 1 to 0, and from 0 to 7 (Large DC current, variant 1) |
+| MOVE | in entry 1, the function from DC Voltage to AC Voltage and the variant from 1 to 2. Logged 3.65 s after the request, 1.3 s before the next one |
+| AUTO | from entry 1 to entry 0, Automatic |
+| blue | byte 20 (HOLD) from 0 to 1 |
+| SELECT, TRIGGER, PRM, SAVE (twice), CH1, CH2, up, down, a short MENU | nothing |
+
+So the list of functions goes round both ways. HOLD was left on at the end of the log.
+
+**The generator**, starting on the list of waveforms with `ms[0xF69]` at 0 and the cursor
+on entry 16:
+
+| `ms[0xF69]` | Key | What the log has |
+|---|---|---|
+| 0 | a short MENU (twice) | nothing |
+| 0 | down, up | the waveform's index 16 to 17, 17 to 16 |
+| 0 | right, left | nothing |
+| 0 | blue | `ms[0xF69]` 0 to 1 |
+| 1 | down, up | `ms[0xF6B]` 0 to 2, 2 to 0 |
+| 1 | right, left | nothing |
+| 1 | blue | `ms[0xF69]` 1 to 2 |
+| 2 | left | nothing |
+| 2 | up, down | the frequency 2000 to 2001 Hz, 2001 to 2000 |
+| 2 | right | nothing |
+| 2 | a short MENU | `ms[0xF69]` 2 to 1 |
+| 1 | a short MENU | `ms[0xF69]` 1 to 0 |
+
+This is the order the unguided `generator_keys.txt` was asked for, and the two agree
+except at the left arrow with `ms[0xF69]` at 2: there `ms[0xF6B]` went from `00` to `10`
+and the two keys after it changed the frequency by 10; here no change is logged after
+the request for left, and the two keys after it changed the frequency by 1. 1.2 s after
+`ms[0xF69]` went to 1, `ms[0xF66]` read 5 instead of 4 for 66 ms; what that byte is has not
+been looked at.
+
+**The oscilloscope**, running, CH1 alone with its range index at 2 and its probe at X10,
+10 µs per division, the arrows in mode 0. SELECT took the mode 0, 1, 2 and back to 0, and
+in each one the four arrows were pressed:
+
+| Mode | right | left | up | down |
+|---|---|---|---|---|
+| 0 | time base index 9 to 8 | 8 to 9 | range index 2 to 3; `ms[0x1C]` -8 to -44 | 3 to 2; -44 to -9 |
+| 1 | `ms[0x1A]` 0 to 1, `ms[0x20..0x27]` 0 to 1000 | back to 0 | `ms[4]` -79 to -78; `ms[0x1C]` -9 to -8 | -78 to -79; -8 to -9 |
+| 2 | `ms[0x1A]` 0 to 1, `ms[0x20..0x27]` 0 to 1000 | back to 0 | `ms[0x1C]` -9 to -8 | -8 to -9 |
+
+Three counters run down after those changes, each read on its way to 0:
+
+| Bytes | First read at | Reaches 0 after | Started by |
+|---|---|---|---|
+| `ms[0x28..0x29]` | 294 to 299 | 2.95 to 3.03 s | a change of time base (mode 0) or of the horizontal position (modes 1 and 2) |
+| `ms[0x2A..0x2B]` | 295, 297 | 2.95, 3.00 s | a change of `ms[0x1C]` in mode 2 |
+| `ms[0x2C]` | 97, 100 | 0.97, 1.02 s | a change of the channel's position in mode 1 |
+
+With the range, `ms[0x1C]` changed so that it stayed the same voltage above the
+channel's zero, if it is counted from the middle of the screen as `formats.md` has it:
+with the position at -79, a level of -8 is 71 counts above zero, 2.84 divisions at range
+index 2; -44 is 35 counts, 1.40 divisions at index 3, where a division is twice the
+volts; and -9 is 70 counts, 2.80 divisions at index 2 again. In mode 1 it moved one
+count with the position, which keeps that distance too.
+
+The rest of that log:
+
+| Key | What the log has |
+|---|---|
+| MOVE (twice) | nothing |
+| CH1, CH2, TRIGGER, PRM | the link lost 1.4 to 2.3 s after each request |
+| a short MENU after each of those four | the link back 2.5 to 3.1 s after the request |
+| blue, blue | `ms[0x2E]` 1 to 0 (stopped), then 0 to 1 |
+| AUTO | `ms[0x2F]` 01, 02, 03, 11, 12, 13, FF and back to 0, 5.69 s from the first to the last |
+
+AUTO in more detail, with CH1 alone: at the first step the coupling `ms[0]` went to 0,
+the range to 0, the position to 0, the time base to 4 and `ms[0x31]` to 1; the range
+then went to 1 and to 2 during step 01; the time base went to 10 on entering step 03;
+the coupling came back to 1 on entering step 13; the position went to -96 and, on
+entering step FF, to -74; and the last change, with `ms[0x2F]` back to 0, wrote the
+trigger level, 1. It started at 10 µs per division (index 9) and ended at 20 µs (index
+10); in the unguided log, also with CH1 alone, it started at index 13 and ended at 9.
+
+What these logs do not have: the screen where the mode is chosen (the link is lost while
+it is up, so the arrows there cannot be logged), a long press of any key, SAVE in the
+oscilloscope (it stores a capture, so it was left out), and any of this with CH2 on.
+
 ## Not answered
 
 - What needs a write to the instrument's memory (the 20M limit; the per-channel "FFT" flag
@@ -800,6 +896,6 @@ first logs it gained `--guide`, which says which key to press next and writes it
   and the one thing it writes, from patch 4, is the generator's table.
 - The idle counter with USB disconnected: without USB there is no link.
 - Whether the unit really powers off at 900 counts with USB connected: not waited for.
-- The zoom-out sampling rule (above), mode 1 of the arrow keys, and all of this with both
+- The zoom-out sampling rule (above), and all of this with both
   channels on or at a captured time base below 4, where their notes expect the record to be
   interleaved.

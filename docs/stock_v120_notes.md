@@ -256,13 +256,22 @@ how the couplings were at the last AUTO; it read 0 after the unit had been refla
 restarts it. What was connected to the inputs during the watch was not
 noted, so the ranges and positions it ended at say nothing by themselves.
 
+With CH1 alone the steps were `01`, `02`, `03`, `11`, `12`, `13`, `FF` and 0 after 5.69 s
+(the guided key log, `sessions/2026-11-26_keys/guided_oscilloscope.txt`): the range went
+0, 1, 2 during step `01` as above, the time base went from 4 to 10 on entering `03`, the
+coupling came back on entering `13`, the position was written during `13` and again on
+entering `FF`, and the trigger level with the return to 0. `ms[0x31]` went from 0 to
+`0x01`.
+
 What the arrow keys do is the low nibble of state `+0x354` (`0x2000044C`): 0 changes the time
-base and the range, 2 moves the trace and the trigger level, 3 is for the cursors; with 1
-the keys pressed to change the time base left it alone and moved the horizontal position
-`ms[0x1A]` (unit, 2026-11-26: the screen's top bar showed two small arrows where it shows
-"V" and "H" in mode 0); SELECT
-steps it (code: handler `0x0800D2F8`, entry 4 of the key table at `0x08046548`; unit: 2 -> 0
-with one press). While stopped, the display array at `+0x356` is a slice of the record at the
+base and the range, 1 moves the trace sideways and up and down, 2 moves it sideways and
+the trigger level up and down, 3 is for the cursors (unit, 2026-11-26, one key at a time
+with CH1 alone: in 1 left and right changed the horizontal position `ms[0x1A]` and up and
+down the channel's position `ms[4]`, the trigger level `ms[0x1C]` moving by the same
+count; in 2 left and right did the same and up and down changed `ms[0x1C]` alone. In 1
+the screen's top bar showed two small arrows where it shows "V" and "H" in mode 0); SELECT
+steps it (code: handler `0x0800D2F8`, entry 4 of the key table at `0x08046548`; unit: 0, 1,
+2 and 0 again, a press each). While stopped, the display array at `+0x356` is a slice of the record at the
 captured time base, the record through a 16-tap interpolator when zoomed in, and is left alone
 when zoomed out; the rules, checked on 56 snapshots, are in
 [`hardware_results_2026-11-25.md`](hardware_results_2026-11-25.md). (unit, code)
@@ -332,15 +341,31 @@ its own takes it from there. (code)
   `ms[0xF62]` when that is not 0 (the click, see the buzzer above) and the idle counter
   `ms[0xF6C]` is zeroed.
 
-What the owner sees on the unit (2026-11-26; not looked up in the code). Holding MENU for a
-few seconds brings the screen where the mode is chosen: left and right move between modes,
-the blue key in the middle of the arrows enters one. In the multimeter a short press of
-MENU shows nothing, the up and down arrows and SELECT do nothing, and the right arrow goes
-through the functions and from the last one back to Automatic. In the generator no key
-changes anything until the blue key has been pressed; then up and down go to the previous
-and the next waveform (read back: index 1 to 0 and to 1 again), and SELECT does nothing.
-To change the frequency: the blue key on the waveform, the blue key again, left and right
-to the digit, up and down to change it, MENU to leave (read back: 1 kHz to 2 kHz).
+What each key did on the unit (2026-11-26; not looked up in the code beyond the handler of
+SELECT). The rows with a change are from the guided logs of `fnlink.py keys`
+(`sessions/2026-11-26_keys/guided_*.txt`, written up in `hardware_results_2026-11-25.md`,
+"The keys, one at a time"); "nothing" is no change in the bytes that tool watches and the
+link not lost. Short presses, except where said.
+
+| Key | Multimeter | Generator | Oscilloscope (CH1 alone) |
+|---|---|---|---|
+| right, left | the next and the previous entry of the list of functions, going round at both ends (0 to 7 and 7 to 0) | nothing logged at any level (see below for the digit) | arrows' mode 0: the time base, right one index down. Modes 1 and 2: the horizontal position `ms[0x1A]`, right one up |
+| up, down | nothing | by level, `ms[0xF69]`: at 0 the previous and the next waveform; at 1 `ms[0xF6B]`, 0 to 2 with down; at 2 the frequency, one more and one less | mode 0: the range, up one index up. Mode 1: the channel's position `ms[4]`, the trigger level `ms[0x1C]` moving with it. Mode 2: the trigger level alone |
+| blue | HOLD, byte 20 of the meter's state, to 1 | `ms[0xF69]` one up: 0 to 1, 1 to 2 | `ms[0x2E]` 1 to 0 (stopped) and back to 1 |
+| MENU | nothing | at 0 nothing; `ms[0xF69]` 2 to 1 and 1 to 0 | after CH1, CH2, TRIGGER or PRM, the link comes back |
+| SELECT | nothing | not asked for in the guided log; the owner: nothing | the arrows' mode: 0, 1, 2, 0 |
+| MOVE | in the voltage entry, DC to AC (function 1 to 2, variant 1 to 2) | not asked for | nothing |
+| AUTO | back to entry 0, Automatic | not asked for; the owner: nothing | the sequence in `ms[0x2F]` ("The AUTO key", above) |
+| CH1, CH2, TRIGGER, PRM | nothing | not asked for | the link is lost until MENU |
+| SAVE | nothing | not asked for; the owner: nothing | not asked for: it stores a capture |
+
+Not in a log, from the owner at the unit: holding MENU for a few seconds, in the multimeter
+or in the generator, brings the screen where the mode is chosen; there left and right move
+between modes and the blue key enters the one shown (the link is lost while that screen
+is up). In the
+generator, with `ms[0xF69]` at 2, left and right go to the digit that up and down change:
+an unguided log has `ms[0xF6B]` going from `00` to `10` and the frequency then changing
+by 10, and the guided one has no change after the request for left.
 
 ### Languages
 

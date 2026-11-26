@@ -1,0 +1,57 @@
+keys      2026-11-26T16:48:15  multimetro guiado
+20000F50   10  01100000d0070000321e
+20001020   56  f7040000000000000000000000010000ff0000000000000000000000000000000000c07f0000c07f0000c07f000000000000000000000000
+20001058   16  05640a00010004640100000000000000
+2000044C    1  00
+200000F8   56  01010200b1d301000000000000000000000000000101000100000000f8ff0000000000000000000000000000000901000000ff0000000000
+            20 keys, one every 5 s: press each one once when its line appears; it ends by itself
+    0.000 s  press     derecha
+    2.132 s  meter     [5] 00>01 [6] 00>01 [14] 00>01
+    5.037 s  press     derecha
+    7.506 s  meter     [5] 01>02 [6] 01>03 [14] 01>02
+   10.019 s  press     izquierda
+   12.614 s  meter     [5] 02>01 [6] 03>01 [14] 02>01
+   15.057 s  press     izquierda
+end       16.3 s, 253 reads of the five blocks
+
+keys      2026-11-26T16:49:13  multimetro guiado
+20000F50   10  01100000d0070000321e
+20001020   56  f7040000000000000000000004010001ff0000000000000000000000000000000000c07f0000c07f0000c07f040404000000000000000000
+20001058   16  05640a00010004640100000000000000
+2000044C    1  00
+200000F8   56  01010200b1d301000000000000000000000000000101000100000000f8ff0000000000000000000000000000000901000000ff0000000000
+            20 keys, one every 5 s: press each one once when its line appears; it ends by itself
+    0.000 s  press     derecha
+    1.446 s  meter     [5] 00>01 [6] 00>01 [14] 00>01
+    5.056 s  press     derecha
+    6.869 s  meter     [5] 01>02 [6] 01>03 [14] 01>02
+   10.038 s  press     izquierda
+   11.282 s  meter     [5] 02>01 [6] 03>01 [14] 02>01
+   15.033 s  press     izquierda
+   16.141 s  meter     [5] 01>00
+   16.402 s  meter     [6] 01>00 [14] 01>00
+   20.022 s  press     izquierda
+   21.519 s  meter     [5] 00>07 [6] 00>0a [14] 00>01
+   25.048 s  press     derecha
+   26.217 s  meter     [5] 07>00
+   26.546 s  meter     [6] 0a>00 [14] 01>00
+   30.039 s  press     derecha
+   31.034 s  meter     [5] 00>01 [6] 00>01 [14] 00>01
+   35.023 s  press     select
+   40.036 s  press     move
+   43.690 s  meter     [6] 01>02 [14] 01>02
+   45.026 s  press     trigger
+   50.001 s  press     prm
+   55.049 s  press     auto
+   56.730 s  meter     [5] 01>00 [14] 02>01
+   57.123 s  meter     [6] 02>00 [14] 01>00
+   60.025 s  press     save
+   65.049 s  press     save
+   70.031 s  press     ch1
+   75.056 s  press     ch2
+   80.011 s  press     azul
+   81.258 s  meter     [20] 00>01
+   85.049 s  press     arriba
+   90.049 s  press     abajo
+   95.004 s  press     menu corto
+end       100.0 s, 1540 reads of the five blocks
