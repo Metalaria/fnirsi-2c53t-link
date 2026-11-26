@@ -341,8 +341,28 @@ multimeter's title is cut. A video shows "Voltaje de Corriente" over a DC voltag
 full names of the two voltages differ only in the word that does not fit, and the four
 currents are in the same case (and the Spanish for "small" is in the wrong gender). The
 cause and the measurements are in `stock_v120_notes.md`, "Texts that do not fit";
-`--texts` was written after this. Still to come from this session: how the language menu
-looks and `fnlink.py tasks` after using it.
+`--texts` was written after this. Still to come from this session: `fnlink.py tasks` after
+using the menu.
+
+## `--texts` on the unit, 2026-11-26
+
+The same image with `--texts texts/es.txt`, when that file had the six titles of the
+multimeter and nothing else (`3560264c…06e2`, 756136 bytes), flashed over the one above
+(tenth update).
+
+| | |
+|---|---|
+| `fnlink.py info` | protocol 1, patch 6, the five entries |
+| `fnlink.py verify` | MATCH (756136 bytes) |
+| Settings and calibration page | against the dump taken after the image above: the calibration table is identical; 207 bytes differ in the scratch area and none in the settings |
+| The multimeter in Spanish | the owner finds nothing left to report in it |
+| The language menu | nothing reported against it either |
+
+What he reports now is in the generator, in Spanish: the third setting reads "Amplitu",
+and the sawtooth is called "Onda diente", which he doubts. Both are stock's: the first is
+a word one pixel wider than its box (see `stock_v120_notes.md`), the second a translation
+cut short by its author. `texts/es.txt` has since gained that label and six waveform
+names; that image has not been flashed.
 
 ## Not answered
 

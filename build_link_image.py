@@ -236,7 +236,7 @@ def font_advances(stock: bytes, px: int) -> dict:
 
 def text_width(stock: bytes, px: int, text: str) -> int:
     """The width stock's text routine gives a text in one of its fonts: the sum of the advances.
-    The routine draws the characters that fit in the box it is given and drops the rest."""
+    A text no wider than its box is drawn on one line; see text_lines() for the rest."""
     adv = font_advances(stock, px)
     missing = [c for c in text if ord(c) not in adv]
     if missing:
@@ -244,10 +244,40 @@ def text_width(stock: bytes, px: int, text: str) -> int:
     return sum(adv[ord(c)] for c in text)
 
 
+def text_lines(stock: bytes, px: int, width: int, text: str) -> list:
+    """The lines stock's text routine (0x0800F154) makes of a text in a box of this width, as its
+    first pass does (0x0800F22A..0x0800F2A0): a line ends after the last space before the
+    character that does not fit, and a word wider than the box is broken where it stops
+    fitting, which is refused here. The routine keeps these lines when they fit the height
+    of the box (a line is as high as the font's name says) and otherwise falls back to
+    breaking anywhere, with whatever is below the box left to chance."""
+    adv = font_advances(stock, px)
+    text_width(stock, px, text)                              # refuses a character without a glyph
+    lines, start, i, acc, spaced = [], 0, 0, 0, False
+    while i < len(text):
+        acc += adv[ord(text[i])]
+        spaced = spaced or text[i] == " "
+        if acc <= width:
+            i += 1
+            continue
+        if text[i] == " ":
+            cut = i + 1                                      # the space that did not fit ends the line
+        elif not spaced:
+            raise BuildError("text %r: %r does not fit in %d px in the %d px font: stock would break the word"
+                             % (text, text[start:].split(" ")[0], width, px))
+        else:
+            cut = text.rindex(" ", start, i) + 1
+        lines.append(text[start:cut])
+        start = i = cut
+        acc, spaced = 0, False
+    lines.append(text[start:])
+    return lines
+
+
 def parse_texts(paths, stock: bytes) -> list:
-    """--texts FILE ...: lines of `SLOT WAS FONT WIDTH TEXT`. SLOT is the address of the pointer
-    replaced and WAS the pointer stock has there; FONT (px) and WIDTH (px) are those of the box
-    the text is drawn in, which the text must fit."""
+    """--texts FILE ...: lines of `SLOT WAS FONT WIDTH HEIGHT TEXT`. SLOT is the address of the
+    pointer replaced and WAS the pointer stock has there; FONT (px) is the font the text is
+    drawn in and WIDTH and HEIGHT (px) the box, which the text must fit as stock lays it out."""
     texts, seen = [], set()
     for path in paths or ():
         try:
@@ -258,12 +288,13 @@ def parse_texts(paths, stock: bytes) -> list:
             if not line.strip() or line.lstrip().startswith("#"):
                 continue
             where = "%s line %d" % (path, n)
-            parts = line.split(None, 4)
+            parts = line.split(None, 5)
             try:
-                slot, was, px, width = int(parts[0], 16), int(parts[1], 16), int(parts[2]), int(parts[3])
-                text = parts[4].strip()
+                slot, was = int(parts[0], 16), int(parts[1], 16)
+                px, width, height = int(parts[2]), int(parts[3]), int(parts[4])
+                text = " ".join(parts[5].split())
             except (ValueError, IndexError):
-                raise BuildError("%s: SLOT WAS FONT WIDTH TEXT, the first two in hex" % where) from None
+                raise BuildError("%s: SLOT WAS FONT WIDTH HEIGHT TEXT, the first two in hex" % where) from None
             if px not in FONT_CMAPS:
                 raise BuildError("%s: font %d: one of %s" % (where, px, sorted(FONT_CMAPS)))
             if slot % 4 or not APP_BASE <= slot <= APP_BASE + len(stock) - 4 or slot in seen:
@@ -277,12 +308,16 @@ def parse_texts(paths, stock: bytes) -> list:
             raw = text.encode("utf-8")
             if not 1 <= len(raw) <= TEXT_MAX_BYTES or any(ord(c) < 0x20 for c in text):
                 raise BuildError("%s: a text of 1 to %d bytes" % (where, TEXT_MAX_BYTES))
-            need = text_width(stock, px, text)
-            if need > width:
-                raise BuildError("%s: %r is %d px wide in the %d px font and its box is %d: stock would cut it"
-                                 % (where, text, need, px, width))
+            try:
+                lines = text_lines(stock, px, width, text)
+            except BuildError as e:
+                raise BuildError("%s: %s" % (where, e)) from None
+            if len(lines) * px > height:
+                raise BuildError("%s: %r takes %d line%s of %d px (%d px wide) and its box is %d px wide and %d high: "
+                                 "stock would not draw it whole" % (where, text, len(lines), "s" * (len(lines) > 1), px,
+                                                                    text_width(stock, px, text), width, height))
             seen.add(slot)
-            texts.append({"slot": slot, "was": was, "font": px, "box": width, "width": need, "text": text})
+            texts.append({"slot": slot, "was": was, "font": px, "box": [width, height], "lines": lines, "text": text})
     return texts
 
 
@@ -640,7 +675,7 @@ def main() -> int:
                     help="Settings > Language lists the eight languages stock still carries, one entry each, "
                          "in two pages of four (5 stock bytes changed). Instead of --languages")
     ap.add_argument("--texts", type=Path, action="append", metavar="FILE",
-                    help="replace texts of stock by those of FILE (repeatable): lines of `SLOT WAS FONT WIDTH TEXT`, "
+                    help="replace texts of stock by those of FILE (repeatable): lines of `SLOT WAS FONT WIDTH HEIGHT TEXT`, "
                          "see texts/. Four bytes of stock data per text, no code")
     ap.add_argument("--menu-wave", action="append", metavar="LABEL=SHAPE[:ARG][@ICON]",
                     help="add an entry to the generator's own list of waveforms, after stock's thirteen (repeatable). "
@@ -685,7 +720,7 @@ def main() -> int:
         "language_menu": list(LANGMENU_NAMES) if langmenu else [],
         "language_menu_sites": ["%#010x" % LANGMENU_SITE[0], "%#010x" % LANGMENU_LIMIT[0]] if langmenu else [],
         "texts": [{"slot": "%#010x" % t["slot"], "was": "%#010x" % t["was"], "at": "%#010x" % t["at"], "font": t["font"],
-                   "box": t["box"], "width": t["width"], "text": t["text"]} for t in texts],
+                   "box": t["box"], "lines": t["lines"], "text": t["text"]} for t in texts],
         "changed_stock_bytes": ["%#010x" % a for a in diff],
         "usb_vid_pid": "%04x:%04x" % (args.vid, args.pid),
         "symbols": {k: "%#010x" % v for k, v in sorted(syms.items())},
@@ -697,7 +732,9 @@ def main() -> int:
     if langmenu:
         print("language %s" % ", ".join(LANGMENU_NAMES))
     for t in texts:
-        print("text    %#010x: %s (%d of %d px)" % (t["slot"], t["text"], t["width"], t["box"]))
+        print("text    %#010x: %s (%s px in a box of %d x %d)" % (
+            t["slot"], " / ".join(l.strip() for l in t["lines"]),
+            " + ".join(str(text_width(stock, t["font"], l.rstrip())) for l in t["lines"]), *t["box"]))
     for e in menu:
         print("menu    %d %-17s %s, picture of waveform %d" % (e["index"], e["label"], e["source"], e["icon"]))
     print("image   %s (%d bytes) -> %s" % (manifest["image_sha256"], len(image), args.out))
