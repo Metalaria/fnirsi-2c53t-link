@@ -33,6 +33,9 @@ oscilloscope's "Parameter Measurement" menu (the labels are those of
 | 13:15:05, stopped, CH1 and CH2 | 1.00KHz | 50.40% | 504.0uS | 496.0uS | 304.0mV | 212.0mV | 308.0mV | 148.0mV |
 | 13:15:22, stopped, CH1 alone | 1.00KHz | 49.60% | 496.0uS | 504.0uS | 316.0mV | 208.0mV | 316.0mV | 144.0mV |
 | 13:16:37, running, CH1's FFT on | 1.00KHz | 49.97% | 499.8uS | 500.2uS | 316.0mV | 209.2mV | 316.5mV | 146.4mV |
+| 13:59:37, stopped, CH1 alone | 1.00KHz | 50.40% | 504.0uS | 496.0uS | 316.0mV | 212.0mV | 320.0mV | 148.0mV |
+| 14:01:01, running, CH1 alone | 1.00KHz | 50.03% | 500.3uS | 499.7uS | 315.4mV | 208.3mV | 317.2mV | 146.3mV |
+| 14:01:46, stopped, CH1 alone | 1.00KHz | 50.40% | 504.0uS | 496.0uS | 316.0mV | 208.0mV | 316.0mV | 148.0mV |
 
 `status_stopped.txt` was taken between the verification of the flash and 13:16:26. Its CH1
 words are those of neither stopped photograph (against the first, Vp-p, Amp and Vef differ;
@@ -40,6 +43,8 @@ against the second, the duty, the widths and Med), so for CH1 no photograph and 
 here are of the same acquisition. For CH2 the first photograph shows "Frec:923.3KHz",
 "Ciclo+:56.47%", "Anc-:472.0nS" and "Vp-p:6.00mV", and the reading, taken with CH2 off,
 has 5647, 472 and 6000 in CH2's words 2, 5 and 8, and 846076 and 1181 in words 0 and 1.
+The photograph of 14:01:46 shows exactly the eight values of `status_stopped.txt`, taken
+some three quarters of an hour earlier: another acquisition with the same result.
 The photographs are not kept here.
 
 No calibration is in these files.

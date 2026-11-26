@@ -39,3 +39,12 @@
 0x0804C708 0x080BBD34 18 100 36 Subida exponencial
 0x0804C70C 0x080BC6F2 18 100 36 Bajada exponencial
 0x0804C718 0x080BC6C9 18 100 36 Pulso sinc
+
+# The oscilloscope's menu: table at 0x0804C804, eight entries for each language, six drawn
+# at a time by 0x08012DE0 in the 18 px font in a box of 76 x 36, so two lines of 76 px.
+# Stock's "Configuración" is 88 px wide: the routine breaks it after "Configuraci", and of
+# the third entry the end falls on a third line that is not drawn ("Configuraci / ón de
+# dispa"). The other five entries fit and stay.
+0x0804C890 0x080BB933 18 76 36 Ajustes de CH1
+0x0804C894 0x080BB983 18 76 36 Ajustes de CH2
+0x0804C898 0x080BCA39 18 76 36 Ajustes de disparo

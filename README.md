@@ -14,7 +14,7 @@ that can stream what it measures.
 | Generator (patch 4): any waveform of 100 samples, played by stock's own generator | yes |
 | Languages (`--languages`): the six that stock still carries but no longer offers, by pressing OK on the second row | yes |
 | Languages (`--language-menu`): the same eight as entries of Settings > Language, one each | yes |
-| Texts (`--texts`): Spanish texts that stock cuts or mistranslates | yes: the thirteen of `texts/es.txt` |
+| Texts (`--texts`): Spanish texts that stock cuts or mistranslates | yes: thirteen of the sixteen of `texts/es.txt`, and the eighteen of `texts/es-english-rows.txt`; the three added last, of the oscilloscope's menu, not yet |
 | Names of the added menu entries in a language (`--menu-names`) | emulated only |
 | Menu (patch 5, `--menu-wave`): waveforms added to the generator's own list, chosen on the instrument | yes |
 
@@ -189,9 +189,11 @@ that does not hold the pointer expected, a character without a glyph, a word wid
 box, and more lines than the box is high. The emulator suite then runs stock's routine
 itself on every text and checks that each line is drawn, and nothing outside the box.
 
-`texts/es.txt` has thirteen: the multimeter's six titles (Tensión continua, Tensión alterna,
-Corriente CC (mA), ...), the generator's amplitude label, and six of its waveform names
-(the sawtooth, the two staircases, the two exponentials and the sinc pulse). The texts in
+`texts/es.txt` has sixteen: the multimeter's six titles (Tensión continua, Tensión alterna,
+Corriente CC (mA), ...), the generator's amplitude label, six of its waveform names
+(the sawtooth, the two staircases, the two exponentials and the sinc pulse), and three
+entries of the oscilloscope's menu that stock breaks in the middle of a word (Ajustes de
+CH1, Ajustes de CH2, Ajustes de disparo). The texts in
 such a file are ours; FNIRSI's are not copied into this repository.
 
 Some of stock's tables have no Spanish to replace: two rows, Chinese and English, and every
@@ -205,8 +207,9 @@ it goes after `texts/es.txt`: `--texts` can be given more than once. Besides the
 check of each text, stock's own routines were run in emulation on a RAM dump of the unit
 (not kept here) and painted both panels, the bar and the boxes whole with it. It is on
 the unit since 2026-11-26: the flash reads back as built, the calibration table is
-unchanged, and photographs show the oscilloscope's measurements under their Spanish labels,
-whole. The panels, the bar and the multimeter's boxes on the unit have not been reported.
+unchanged, and photographs show the oscilloscope's measurements under their Spanish labels
+and a channel's panel, all whole. The trigger's panel, the bar and the multimeter's boxes
+on the unit have not been reported.
 The grid of buttons where the measurements are chosen stays as stock has it: those words
 are not strings of the image.
 
