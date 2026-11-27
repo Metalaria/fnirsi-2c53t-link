@@ -185,6 +185,30 @@ check("AC V from the generator: 20, 400 and 1000 Hz in the frame's last two byte
       and sorted({event(fn, f, s)["text"].strip() for _, fn, f, s in ac_gen}) == ["1.0377", "1.0474", "1.0475", "1.0535", "1.0536"])
 check("no frequency outside AC V", all(event(fn, f, s)["frequency_hz"] is None for _, fn, f, s in second if fn != "AC V"))
 
+# DC current with a current flowing (2026-11-27): 5 mA through the mA input and through the 10 A input,
+# about 0.9 A through the 10 A input, and an overload of the mA input. Stock's own value is in the state.
+dc_current = meter_lines("meter_dc_current.txt")
+parts = [dc_current[k:k + 40] for k in (0, 40, 80, 120)]
+check("DC current: four parts of 40 frames, DC mA, DC A, DC A, DC mA",
+      len(dc_current) == 160 and [{fn for _, fn, _, _ in part} for part in parts] == [{"DC mA"}, {"DC A"}, {"DC A"}, {"DC mA"}])
+check("DC current: every frame decodes to what was printed",
+      all(t.split()[0] == event(fn, f, s)["text"].strip() and event(fn, f, s)["consistent"] for t, fn, f, s in dc_current))
+# Stock's value is that of the frame it came with or, while the current was falling, of the one before.
+behind = [k for part in parts[:3] for k, (_, fn, f, s) in enumerate(part)
+          if not stock_value_matches(event(fn, f, s), s)
+          and not (k and stock_value_matches(event(part[k - 1][1], part[k - 1][2], part[k - 1][3]), s))]
+check("DC current: stock's own value agrees, two frames of the falling current being one reading behind",
+      not behind and sum(1 for part in parts[:3] for _, fn, f, s in part if not stock_value_matches(event(fn, f, s), s)) == 2, str(behind))
+check("DC current: 5.044 and 5.043 mA positive with byte 7 at 0x01, which is the m and not a sign",
+      sorted({event(fn, f, s)["text"].strip() for _, fn, f, s in parts[0]}) == ["5.043", "5.044"]
+      and all(f[7] == 0x01 and not f[2] & 0x10 and (event(fn, f, s)["unit"], event(fn, f, s)["prefix"]) == ("A", "m") for _, fn, f, s in parts[0]))
+check("DC current: the 10 A input reads four decimals with byte 8 at 0x81: 0.0041 A, and -0.9124 to -0.8267 A",
+      {event(fn, f, s)["text"].strip() for _, fn, f, s in parts[1]} == {"0.0041"}
+      and event(*parts[2][0][1:])["text"].strip() == "-0.9124" and event(*parts[2][-1][1:])["text"].strip() == "-0.8267"
+      and all(f[8] == 0x81 and s[12] == 4 for part in parts[1:3] for _, _, f, s in part))
+check("DC current: the mA input overloaded reads 0.L",
+      {t.split()[0] for t, _, _, _ in parts[3]} == {"0.L"} and all(event(fn, f, s)["value"] is None for _, fn, f, s in parts[3]))
+
 # 8. AC V with the probes in the hand: a couple of volts of mains hum, and the frequency stock
 #    shows above the reading. It is the frame's last byte and, a frame later, state[18..19].
 rows = [(f, s, event(fn, f, s)) for _, fn, f, s in ac_hand]

@@ -1046,6 +1046,35 @@ Replayed through OpenScope-2C53T's decoder built on a host, as for their #101: i
 and 65 Hz; the branch of their PR #97 (`700fbb1`) gives the same without its
 function-confirmed flag and, with it, stock's reading and the frequency for all 120.
 
+## DC current with a current flowing, 2026-11-27
+
+Every current frame in the repository so far was taken with nothing connected. These
+four captures of 40 frames have a current, with a second multimeter (a Brymen) in the
+circuit: [`test/data/meter_dc_current.txt`](../test/data/meter_dc_current.txt).
+
+| Function, input | Source | Stock's reading | Second multimeter |
+|---|---|---|---|
+| DC mA, mA input | an Arduino's 5 V pin (5.0488 V by the second multimeter) through 1 kΩ, both meters in series | 5.044 mA in 33 frames, 5.043 mA in 7 | 5.051 mA |
+| DC A, 10 A input | the same circuit | 0.0041 A in all 40 | 0.0048 A |
+| DC A, 10 A input | a 9 V battery the other way round and, by a wiring mistake, without the resistor that was to limit its current | -0.9124 A falling to -0.8267 A over 6.4 s | about -0.84 A, falling |
+| DC mA, mA input | the same mistake | overload, `0.L` | overload |
+
+In the three captures with a number, stock's own state had the same value as the frame
+(in two frames of the falling current, the value of the frame before), 4 decimals and
+the unit A at the 10 A input, 3 decimals and mA at the mA input. All the frames of the
+10 A input have byte 8 at `0x81` and no point bit: the `x.xxxx` reading of the lowest
+range, here with digits other than zeros for the first time. All the DC mA frames have
+byte 7 at `0x01`, the "m", with a positive reading; so do the 66 other DC mA and AC mA
+frames of `test/data` that stock was showing in mA, whatever their sign.
+
+Through OpenScope-2C53T's decoder built on a host (its `main` at `e5fdee0`): the frames
+of the 10 A input read ten times stock's value (0.041 A, -9.124 A), which is the DC A
+difference of their issue #101 and what their PR #111 changes; and the 5 mA frames read
+-5.044 mA, negative, because that decoder takes byte 7 bit 0 as a sign in DC mA.
+
+The mA inputs of both meters showed overload in that mistake, and both measured the 5 mA
+of the first row afterwards.
+
 ## Not answered
 
 - What needs a write to the instrument's memory (the 20M limit; the per-channel "FFT" flag
