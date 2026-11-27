@@ -1,10 +1,10 @@
 {
   "stock_sha256": "a17c5c35c97bb898f15672a1747bc1041d8ed507c16999ddba0d1e4e2ec0c760",
-  "image_sha256": "b9a13af50531ead1d58bd3687fdbda2835b6287a0e56f14b01fadca0e203e853",
-  "image_len": 756552,
+  "image_sha256": "9ba79a4bbaa4742ec2c5699923302fba89c47879dc1ed66491a0a944a6506ffb",
+  "image_len": 756564,
   "cave_addr": "0x080be700",
-  "cave_len": 5192,
-  "cave_sha256": "56171bb7dbe5ddc6ffb477645b502a168269e4af130409766b166e470c68bfce",
+  "cave_len": 5204,
+  "cave_sha256": "90e4db8997c631817394d7cddd6ea73dc9ec261357f274240ab4d71f234e68ab",
   "hooks": [
     "0x0802a994",
     "0x0803e49a"
@@ -178,9 +178,37 @@
       "text": "Corriente CA (A)"
     },
     {
+      "slot": "0x0804c5ec",
+      "was": "0x080bbe46",
+      "at": "0x080bfab1",
+      "font": 18,
+      "box": [
+        54,
+        22
+      ],
+      "lines": [
+        "Frec."
+      ],
+      "text": "Frec."
+    },
+    {
+      "slot": "0x0804c5f0",
+      "was": "0x080bca28",
+      "at": "0x080bfab7",
+      "font": 18,
+      "box": [
+        54,
+        22
+      ],
+      "lines": [
+        "Ciclo"
+      ],
+      "text": "Ciclo"
+    },
+    {
       "slot": "0x0804c5f4",
       "was": "0x080bc085",
-      "at": "0x080bfab1",
+      "at": "0x080bfabd",
       "font": 18,
       "box": [
         54,
@@ -194,7 +222,7 @@
     {
       "slot": "0x0804c6f4",
       "was": "0x080bc29f",
-      "at": "0x080bfab9",
+      "at": "0x080bfac5",
       "font": 18,
       "box": [
         100,
@@ -208,7 +236,7 @@
     {
       "slot": "0x0804c700",
       "was": "0x080bca5f",
-      "at": "0x080bfaca",
+      "at": "0x080bfad6",
       "font": 18,
       "box": [
         100,
@@ -222,7 +250,7 @@
     {
       "slot": "0x0804c704",
       "was": "0x080bca6c",
-      "at": "0x080bfad3",
+      "at": "0x080bfadf",
       "font": 18,
       "box": [
         100,
@@ -236,7 +264,7 @@
     {
       "slot": "0x0804c708",
       "was": "0x080bbd34",
-      "at": "0x080bfae4",
+      "at": "0x080bfaf0",
       "font": 18,
       "box": [
         100,
@@ -251,7 +279,7 @@
     {
       "slot": "0x0804c70c",
       "was": "0x080bc6f2",
-      "at": "0x080bfaf7",
+      "at": "0x080bfb03",
       "font": 18,
       "box": [
         100,
@@ -266,7 +294,7 @@
     {
       "slot": "0x0804c718",
       "was": "0x080bc6c9",
-      "at": "0x080bfb0a",
+      "at": "0x080bfb16",
       "font": 18,
       "box": [
         100,
@@ -280,7 +308,7 @@
     {
       "slot": "0x0804c890",
       "was": "0x080bb933",
-      "at": "0x080bfb15",
+      "at": "0x080bfb21",
       "font": 18,
       "box": [
         76,
@@ -295,7 +323,7 @@
     {
       "slot": "0x0804c894",
       "was": "0x080bb983",
-      "at": "0x080bfb24",
+      "at": "0x080bfb30",
       "font": 18,
       "box": [
         76,
@@ -310,7 +338,7 @@
     {
       "slot": "0x0804c898",
       "was": "0x080bca39",
-      "at": "0x080bfb33",
+      "at": "0x080bfb3f",
       "font": 18,
       "box": [
         76,
@@ -400,6 +428,10 @@
     "0x0804c525",
     "0x0804c528",
     "0x0804c529",
+    "0x0804c5ec",
+    "0x0804c5ed",
+    "0x0804c5f0",
+    "0x0804c5f1",
     "0x0804c5f4",
     "0x0804c5f5",
     "0x0804c6f4",

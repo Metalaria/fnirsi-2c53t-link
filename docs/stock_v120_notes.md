@@ -524,7 +524,9 @@ repeats the table and font checks on a stock image.
 
 `build_link_image.py --texts` replaces a text by pointing its slot at a string in the cave,
 after laying the string out as the first pass does and checking it against the box;
-`texts/es.txt` does it for the six titles, the amplitude label, six waveform names and the
+`texts/es.txt` does it for the six titles, the generator's three labels ("Frec." and "Ciclo"
+for the two that the unit showed as "Frecuen / cia" and "Ciclo de / trabajo", on the unit
+since 2026-11-27, and "Amplit."), six waveform names and the
 three entries of the oscilloscope's menu that begin with that word (on the unit since
 2026-11-26: "Ajustes de CH1", "Ajustes de CH2", "Ajustes de disparo", each in two lines).
 `texts/es-english-rows.txt` does it for eighteen texts of the two-row tables, which changes
