@@ -8,7 +8,7 @@
 # drawn whole. Whether they read well is for someone who speaks the language to say:
 # corrections are welcome.
 #
-# Only what stock cuts is replaced: the multimeter's titles that do not fit their box of
+# First, what stock does not draw whole: the multimeter's titles that do not fit their box of
 # 216 x 29 (28 px font), and the generator's third label, whose second line falls off the
 # screen (box of 54 x 22, 18 px font).
 # The fonts lack fifteen Cyrillic letters, most of them capitals (among them the capitals of
@@ -20,3 +20,28 @@
 0x0804C4C4 0x080BDEEB 28 216 29 Пост. ток (А)
 0x0804C4C8 0x080BDF3D 28 216 29 Перем. ток (А)
 0x0804C5DC 0x080BDAC7 18 54 22 Амплит.
+
+# Added on 2026-11-27, after going through stock's texts of this language in the four tables
+# whose boxes are known (docs/stock_v120_notes.md, "Languages"), as texts/es.txt does for
+# Spanish. Still not reviewed by a native speaker and not seen on a unit.
+
+# The generator's second label (box of 54 x 22, 18 px font, 32 px apart): stock's takes two
+# lines, cut inside the word.
+0x0804C5D8 0x080BD3CF 18 54 22 Заполн.
+
+# The oscilloscope's menu (box of 76 x 36, 18 px font: two lines). Stock's first, third,
+# seventh and eighth entries have a word wider than the box, which the routine cuts where it
+# stops fitting; of the third the end goes to a third line, on top of the next entry. The seventh is
+# also the wrong word: stock has the one for an afterword where the entry is the persistence
+# of the trace. It is written with a hyphen and a space where Russian would divide the word:
+# the routine only ends a line at a space, and the text being wider than the box, that space
+# ends the first line and leaves the hyphen at its end.
+0x0804C844 0x080BD2EB 18 76 36 Режим дисплея
+0x0804C84C 0x080BDC8A 18 76 36 Измерение параметров
+0x0804C85C 0x080BDC62 18 76 36 После- свечение
+0x0804C860 0x080BD30D 18 76 36 Математика
+
+# The generator's sinc pulse (box of 100 x 36, 18 px font): stock's name says "zinc". The two
+# exponentials, which stock calls an index that rises and one that falls, stay: the fonts have
+# no small or capital э, which the word for an exponential needs.
+0x0804C6B0 0x080BCFFE 18 100 36 Импульс sinc

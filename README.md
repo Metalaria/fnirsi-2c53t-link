@@ -219,7 +219,10 @@ are not strings of the image.
 
 `texts/pt.txt`, `texts/de.txt` and `texts/ru.txt` give Portuguese, German and Russian the
 multimeter's six titles and the generator's amplitude label, which stock cuts in those
-languages as it does in Spanish. They pass the same checks, **but nobody who speaks those
+languages as it does in Spanish, and, since 2026-11-27, what else stock does not draw whole
+or cuts inside a word in the generator's labels and the oscilloscope's menu, with a few
+names of waveforms: seventeen, twenty-one and thirteen texts. They pass the same checks,
+the builder's and stock's own routine in emulation, **but nobody who speaks those
 languages has reviewed the wording and none has been seen on a unit**; each file says so.
 A correction from a speaker is welcome.
 

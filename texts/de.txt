@@ -8,7 +8,7 @@
 # drawn whole. Whether they read well is for someone who speaks the language to say:
 # corrections are welcome.
 #
-# Only what stock cuts is replaced: the multimeter's titles that do not fit their box of
+# First, what stock does not draw whole: the multimeter's titles that do not fit their box of
 # 216 x 29 (28 px font), and the generator's third label, whose second line falls off the
 # screen (box of 54 x 22, 18 px font).
 # Two of stock's four names for the currents fit; all four are replaced so that they match.
@@ -19,3 +19,36 @@
 0x0804C584 0x080BC729 28 216 29 Gleichstrom (A)
 0x0804C588 0x080BC752 28 216 29 Wechselstrom (A)
 0x0804C60C 0x080BC117 18 54 22 Amplit.
+
+# Added on 2026-11-27, after going through stock's texts of this language in the four tables
+# whose boxes are known (docs/stock_v120_notes.md, "Languages"), as texts/es.txt does for
+# Spanish. Still not reviewed by a native speaker and not seen on a unit.
+
+# The generator's first two labels (box of 54 x 22, 18 px font, 32 px apart): stock's take two
+# lines each, cut inside the word. "Tastv." stands for stock's "Tastverhältnis".
+0x0804C604 0x080BCEE9 18 54 22 Freq.
+0x0804C608 0x080BCD31 18 54 22 Tastv.
+
+# The oscilloscope's menu (box of 76 x 36, 18 px font: two lines). Stock's first seven entries
+# are single words wider than the box, which the routine cuts where they stop fitting, in the
+# middle of a syllable. The routine only ends a line at a space, so each of these is written
+# with a hyphen and a space where German would divide the word: the text is wider than the box
+# and the space ends the first line, which leaves the hyphen at its end. The singular
+# "Einstellung" is used because the plural is wider than the box.
+0x0804C8C4 0x080BCD9E 18 76 36 Anzeige- modus
+0x0804C8C8 0x080BC39F 18 76 36 Cursor- Messung
+0x0804C8CC 0x080BC3AE 18 76 36 Parameter- messung
+0x0804C8D0 0x080BC793 18 76 36 CH1- Einstellung
+0x0804C8D4 0x080BC7A5 18 76 36 CH2- Einstellung
+0x0804C8D8 0x080BC7D1 18 76 36 Trigger- Einstellung
+0x0804C8DC 0x080BC3BF 18 76 36 Nach- leuchten
+
+# The generator's waveforms (box of 100 x 36, 18 px font). These five replace names that are
+# not what the waveform is called: the two staircases (a "step wave" and a "reversed wave"),
+# the two exponentials (word for word "index up" and "index decline") and the sinc pulse
+# ("sink").
+0x0804C768 0x080BC1FA 18 100 36 Treppe
+0x0804C76C 0x080BC1C7 18 100 36 Umgekehrte Treppe
+0x0804C770 0x080BC697 18 100 36 Exponentiell steigend
+0x0804C774 0x080BC345 18 100 36 Exponentiell fallend
+0x0804C780 0x080BCD41 18 100 36 Sinc-Impuls
