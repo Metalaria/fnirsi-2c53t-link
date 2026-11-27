@@ -169,6 +169,20 @@ for function, text, unit in (("AC V", "0.0000", ("V", "")), ("AC mA", "0.008", (
           "%d of %d" % (len(good), len(rows)))
     check("%s idle: the screen's %s is among them" % (function, text), any(d["text"].strip() == text for d in rows))
 check("AC V with the probes shorted: 0 Hz", all(event(fn, f, s)["frequency_hz"] == 0 for _, fn, f, s in ac_idle if fn == "AC V"))
+
+# AC V at three frequencies set on the instrument's own generator (2026-11-27): 40 frames each, all
+# with the leading 1 of the five-digit display, on the lowest range. The frame's last two bytes are
+# the frequency, most significant first, and stock's state has the same number.
+ac_gen = meter_lines("meter_acv_generator.txt")
+check("AC V from the generator: 120 frames, all AC V, all with the leading 1 and the lowest-range bit",
+      len(ac_gen) == 120 and {fn for _, fn, _, _ in ac_gen} == {"AC V"}
+      and all(f[2] & 0x08 and f[8] == 0x82 for _, _, f, _ in ac_gen))
+check("AC V from the generator: what was printed is what the frame and stock's state say",
+      all(t == "%s V %dHz" % (event(fn, f, s)["text"].strip(), event(fn, f, s)["frequency_hz"]) and event(fn, f, s)["consistent"]
+          for t, fn, f, s in ac_gen), str(ac_gen[0][0]))
+check("AC V from the generator: 20, 400 and 1000 Hz in the frame's last two bytes, and five readings in all",
+      [sorted({f[10] << 8 | f[11] for _, _, f, _ in ac_gen[k:k + 40]}) for k in (0, 40, 80)] == [[20], [400], [1000]]
+      and sorted({event(fn, f, s)["text"].strip() for _, fn, f, s in ac_gen}) == ["1.0377", "1.0474", "1.0475", "1.0535", "1.0536"])
 check("no frequency outside AC V", all(event(fn, f, s)["frequency_hz"] is None for _, fn, f, s in second if fn != "AC V"))
 
 # 8. AC V with the probes in the hand: a couple of volts of mains hum, and the frequency stock
