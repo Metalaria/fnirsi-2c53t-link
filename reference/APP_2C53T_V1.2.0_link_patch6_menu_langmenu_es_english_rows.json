@@ -1,10 +1,10 @@
 {
   "stock_sha256": "a17c5c35c97bb898f15672a1747bc1041d8ed507c16999ddba0d1e4e2ec0c760",
-  "image_sha256": "98b5d1b7eb6058c619a99da3198689ce1392433e7e94f7e190a15564c9a0f2d9",
-  "image_len": 756668,
+  "image_sha256": "48446457059b075fc5bd91519b3482613c2882378c33eaa595aa3cbcb551006f",
+  "image_len": 756680,
   "cave_addr": "0x080be700",
-  "cave_len": 5308,
-  "cave_sha256": "5229e2f56e4a4b00ef63bdb5039de0b30eec7acecbfa3249700101395d3b1477",
+  "cave_len": 5320,
+  "cave_sha256": "117d735e30e3a1387885d97ac9ed8cb133c1355abcd8af1def1b9b5be837ceda",
   "hooks": [
     "0x0802a994",
     "0x0803e49a"
@@ -178,9 +178,37 @@
       "text": "Corriente CA (A)"
     },
     {
+      "slot": "0x0804c5ec",
+      "was": "0x080bbe46",
+      "at": "0x080bfab1",
+      "font": 18,
+      "box": [
+        54,
+        22
+      ],
+      "lines": [
+        "Frec."
+      ],
+      "text": "Frec."
+    },
+    {
+      "slot": "0x0804c5f0",
+      "was": "0x080bca28",
+      "at": "0x080bfab7",
+      "font": 18,
+      "box": [
+        54,
+        22
+      ],
+      "lines": [
+        "Ciclo"
+      ],
+      "text": "Ciclo"
+    },
+    {
       "slot": "0x0804c5f4",
       "was": "0x080bc085",
-      "at": "0x080bfab1",
+      "at": "0x080bfabd",
       "font": 18,
       "box": [
         54,
@@ -194,7 +222,7 @@
     {
       "slot": "0x0804c6f4",
       "was": "0x080bc29f",
-      "at": "0x080bfab9",
+      "at": "0x080bfac5",
       "font": 18,
       "box": [
         100,
@@ -208,7 +236,7 @@
     {
       "slot": "0x0804c700",
       "was": "0x080bca5f",
-      "at": "0x080bfaca",
+      "at": "0x080bfad6",
       "font": 18,
       "box": [
         100,
@@ -222,7 +250,7 @@
     {
       "slot": "0x0804c704",
       "was": "0x080bca6c",
-      "at": "0x080bfad3",
+      "at": "0x080bfadf",
       "font": 18,
       "box": [
         100,
@@ -236,7 +264,7 @@
     {
       "slot": "0x0804c708",
       "was": "0x080bbd34",
-      "at": "0x080bfae4",
+      "at": "0x080bfaf0",
       "font": 18,
       "box": [
         100,
@@ -251,7 +279,7 @@
     {
       "slot": "0x0804c70c",
       "was": "0x080bc6f2",
-      "at": "0x080bfaf7",
+      "at": "0x080bfb03",
       "font": 18,
       "box": [
         100,
@@ -266,7 +294,7 @@
     {
       "slot": "0x0804c718",
       "was": "0x080bc6c9",
-      "at": "0x080bfb0a",
+      "at": "0x080bfb16",
       "font": 18,
       "box": [
         100,
@@ -280,7 +308,7 @@
     {
       "slot": "0x0804c890",
       "was": "0x080bb933",
-      "at": "0x080bfb15",
+      "at": "0x080bfb21",
       "font": 18,
       "box": [
         76,
@@ -295,7 +323,7 @@
     {
       "slot": "0x0804c894",
       "was": "0x080bb983",
-      "at": "0x080bfb24",
+      "at": "0x080bfb30",
       "font": 18,
       "box": [
         76,
@@ -310,7 +338,7 @@
     {
       "slot": "0x0804c898",
       "was": "0x080bca39",
-      "at": "0x080bfb33",
+      "at": "0x080bfb3f",
       "font": 18,
       "box": [
         76,
@@ -325,7 +353,7 @@
     {
       "slot": "0x080141ac",
       "was": "0x080bba5a",
-      "at": "0x080bfb46",
+      "at": "0x080bfb52",
       "font": 18,
       "box": [
         100,
@@ -339,7 +367,7 @@
     {
       "slot": "0x080141b0",
       "was": "0x080bba2a",
-      "at": "0x080bfb4d",
+      "at": "0x080bfb59",
       "font": 18,
       "box": [
         100,
@@ -353,7 +381,7 @@
     {
       "slot": "0x080141b4",
       "was": "0x080bba3d",
-      "at": "0x080bfb54",
+      "at": "0x080bfb60",
       "font": 18,
       "box": [
         100,
@@ -367,7 +395,7 @@
     {
       "slot": "0x0804c7d8",
       "was": "0x080bba31",
-      "at": "0x080bfb62",
+      "at": "0x080bfb6e",
       "font": 18,
       "box": [
         100,
@@ -381,7 +409,7 @@
     {
       "slot": "0x0804c7dc",
       "was": "0x080bba37",
-      "at": "0x080bfb68",
+      "at": "0x080bfb74",
       "font": 18,
       "box": [
         100,
@@ -395,7 +423,7 @@
     {
       "slot": "0x0804c7e0",
       "was": "0x080bba5a",
-      "at": "0x080bfb46",
+      "at": "0x080bfb52",
       "font": 18,
       "box": [
         100,
@@ -409,7 +437,7 @@
     {
       "slot": "0x0804c7f8",
       "was": "0x080bc184",
-      "at": "0x080bfb70",
+      "at": "0x080bfb7c",
       "font": 18,
       "box": [
         66,
@@ -423,7 +451,7 @@
     {
       "slot": "0x0804c3e8",
       "was": "0x080bbc4c",
-      "at": "0x080bfb77",
+      "at": "0x080bfb83",
       "font": 20,
       "box": [
         100,
@@ -437,7 +465,7 @@
     {
       "slot": "0x0804bf28",
       "was": "0x080bbaa0",
-      "at": "0x080bfb7d",
+      "at": "0x080bfb89",
       "font": 15,
       "box": [
         36,
@@ -451,7 +479,7 @@
     {
       "slot": "0x0804bf2c",
       "was": "0x080bba4c",
-      "at": "0x080bfb83",
+      "at": "0x080bfb8f",
       "font": 15,
       "box": [
         36,
@@ -465,7 +493,7 @@
     {
       "slot": "0x0804bf30",
       "was": "0x080bb9f8",
-      "at": "0x080bfb88",
+      "at": "0x080bfb94",
       "font": 15,
       "box": [
         36,
@@ -479,7 +507,7 @@
     {
       "slot": "0x0804bf34",
       "was": "0x080bba05",
-      "at": "0x080bfb90",
+      "at": "0x080bfb9c",
       "font": 15,
       "box": [
         36,
@@ -493,7 +521,7 @@
     {
       "slot": "0x0804bf38",
       "was": "0x080bb9f2",
-      "at": "0x080bfb98",
+      "at": "0x080bfba4",
       "font": 15,
       "box": [
         36,
@@ -507,7 +535,7 @@
     {
       "slot": "0x0804bf3c",
       "was": "0x080bb9ff",
-      "at": "0x080bfb9e",
+      "at": "0x080bfbaa",
       "font": 15,
       "box": [
         36,
@@ -521,7 +549,7 @@
     {
       "slot": "0x0804bf40",
       "was": "0x080bbab7",
-      "at": "0x080bfba4",
+      "at": "0x080bfbb0",
       "font": 15,
       "box": [
         36,
@@ -535,7 +563,7 @@
     {
       "slot": "0x0804bf44",
       "was": "0x080bba6b",
-      "at": "0x080bfbab",
+      "at": "0x080bfbb7",
       "font": 15,
       "box": [
         36,
@@ -549,7 +577,7 @@
     {
       "slot": "0x0804bf50",
       "was": "0x080bbaa6",
-      "at": "0x080bfbb2",
+      "at": "0x080bfbbe",
       "font": 15,
       "box": [
         36,
@@ -563,7 +591,7 @@
     {
       "slot": "0x0804bf54",
       "was": "0x080bba47",
-      "at": "0x080bfbb7",
+      "at": "0x080bfbc3",
       "font": 15,
       "box": [
         36,
@@ -680,6 +708,10 @@
     "0x0804c525",
     "0x0804c528",
     "0x0804c529",
+    "0x0804c5ec",
+    "0x0804c5ed",
+    "0x0804c5f0",
+    "0x0804c5f1",
     "0x0804c5f4",
     "0x0804c5f5",
     "0x0804c6f4",

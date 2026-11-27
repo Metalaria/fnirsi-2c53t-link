@@ -14,7 +14,7 @@ that can stream what it measures.
 | Generator (patch 4): any waveform of 100 samples, played by stock's own generator | yes |
 | Languages (`--languages`): the six that stock still carries but no longer offers, by pressing OK on the second row | yes |
 | Languages (`--language-menu`): the same eight as entries of Settings > Language, one each | yes |
-| Texts (`--texts`): Spanish texts that stock cuts or mistranslates | yes: the sixteen of `texts/es.txt` and the eighteen of `texts/es-english-rows.txt` |
+| Texts (`--texts`): Spanish texts that stock cuts or mistranslates | yes: the eighteen of `texts/es.txt` and the eighteen of `texts/es-english-rows.txt` |
 | Names of the added menu entries in a language (`--menu-names`) | yes: four of the five Spanish names of the example below are in a photograph of the unit's list; the fifth, "Onda USB", is below what it shows |
 | Menu (patch 5, `--menu-wave`): waveforms added to the generator's own list, chosen on the instrument | yes |
 
@@ -76,9 +76,10 @@ that file since were flashed later that morning, with the same checks; the owner
 remark was that the added entries were still in English, which is what `--menu-names` is
 for. The image with those names (`3cc7e0c8…5308`) followed, and after it one with the
 eighteen texts of `texts/es-english-rows.txt` (`537feee8…0b09`) and one that adds three
-entries of the oscilloscope's menu to `texts/es.txt` (`98b5d1b7…f2d9`). That last one is on
-the unit now, its sixteenth update: the flash reads back as built and the calibration table
-is unchanged.
+entries of the oscilloscope's menu to `texts/es.txt` (`98b5d1b7…f2d9`), which is the state the
+tag `v1.6.0` describes. On 2026-11-27 two labels of the generator were shortened in that file
+(`48446457…006f`). That one is on the unit now, its seventeenth update: the flash reads back
+as built and the calibration table is unchanged.
 
 > **One unit is not a guarantee.** The board revision of that unit is unknown and nothing
 > has been tried on another. If you flash this, read [Safety](#safety) first and keep the
@@ -192,8 +193,8 @@ that does not hold the pointer expected, a character without a glyph, a word wid
 box, and more lines than the box is high. The emulator suite then runs stock's routine
 itself on every text and checks that each line is drawn, and nothing outside the box.
 
-`texts/es.txt` has sixteen: the multimeter's six titles (Tensión continua, Tensión alterna,
-Corriente CC (mA), ...), the generator's amplitude label, six of its waveform names
+`texts/es.txt` has eighteen: the multimeter's six titles (Tensión continua, Tensión alterna,
+Corriente CC (mA), ...), the generator's three labels (Frec., Ciclo, Amplit.), six of its waveform names
 (the sawtooth, the two staircases, the two exponentials and the sinc pulse), and three
 entries of the oscilloscope's menu that stock breaks in the middle of a word (Ajustes de
 CH1, Ajustes de CH2, Ajustes de disparo). The texts in

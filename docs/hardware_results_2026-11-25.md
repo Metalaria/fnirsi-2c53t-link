@@ -610,8 +610,8 @@ Photographs taken with the same image on the unit, the instrument in Spanish.
 
 The image with the three texts of the oscilloscope's menu added to the one above
 (`98b5d1b7…f2d9`, 756668 bytes, as in
-`reference/APP_2C53T_V1.2.0_link_patch6_menu_langmenu_es_english_rows.json`), flashed over
-it (sixteenth update). Before it, `fnlink.py verify` gave MATCH for the image above.
+`reference/APP_2C53T_V1.2.0_link_patch6_menu_langmenu_es_english_rows.json` at the tag
+`v1.6.0`), flashed over it (sixteenth update). Before it, `fnlink.py verify` gave MATCH for the image above.
 
 | | |
 |---|---|
@@ -984,6 +984,41 @@ measurement just before, and nothing of note on CH2 (1.4 mV peak to peak).
 
 Still not in any log: a long press of any key, SAVE in the oscilloscope, the keys inside
 the menus that CH1, CH2, TRIGGER and PRM open, and the arrows with the cursors on.
+
+## Two more labels for the generator, and the calibration table by counts, 2026-11-27
+
+The owner chose "Frec." and "Ciclo" for the two labels of the generator that the unit
+showed broken where the box ends ("Frecuen / cia", "Ciclo de / trabajo"). With them in
+`texts/es.txt` the image of the example with every option is `48446457…006f`, 756680
+bytes, twelve more than the one before, which are the two strings (as in
+`reference/APP_2C53T_V1.2.0_link_patch6_menu_langmenu_es_english_rows.json`). It differs
+from that one in the two new pointers and in the pointers and the bytes of the texts
+that follow them in the cave, and in nothing else; 136 bytes of stock are changed where
+that one changes 132. `test/test_link_emu.py` passes on it (241 checks). Flashed the
+same morning (seventeenth update):
+
+| | |
+|---|---|
+| `fnlink.py verify` | MATCH (756680 bytes) |
+| Settings and calibration page | against a dump taken before flashing: the calibration table is identical (`9cbf9bf5…ff00d`); 4 bytes of settings and 202 of the scratch area differ |
+| The generator's settings | a photograph, Square Wave at 1 kHz: "Frec.", "Ciclo" and "Amplit.", each on one line beside its value and unit |
+
+The dump taken before flashing was also read with the two commands added that morning,
+which describe the table in the terms of OpenScope-2C53T's PR #70 and print no value of
+it:
+
+| | |
+|---|---|
+| Signature, the first byte of the page | `0x55` |
+| CH2's half of the last of the 60 words | neither 0 nor `0xFFFF` |
+| CH1's 60 values | all from 1 to 4095; each of the 30 uppers above its baseline |
+| CH2's 60 values | the same |
+| The 8 bytes after the 60 words, `0x128`-`0x12F` | none is `0xFF` |
+| Stock's copy in RAM, 240 bytes from `0x20000358` read twice with stock running | the two reads identical; CH1's 60 values and CH2's 60 are the page's, 60 of 60 each |
+
+So this unit has no value that fails to fit in 12 bits, which is what that PR's
+discussion reports for one upper of another unit, and what stock keeps in RAM is the
+page's two halves, one after the other, as that PR's header has it.
 
 ## Not answered
 

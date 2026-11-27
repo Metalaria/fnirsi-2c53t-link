@@ -24,8 +24,12 @@
 # The generator's three settings: table at 0x0804C5BC, three labels for each language, drawn
 # in the 18 px font in a box of 54 x 22 (0x08015988), 32 px apart. Stock's Spanish for the
 # third is one pixel too wide: its last letter goes to a second line, which for the last row
-# is the bottom edge of the screen. The first two also take two lines, but theirs are on the
-# screen, so they are left as they are.
+# is the bottom edge of the screen. The first two take two lines as well, and theirs are on
+# the screen, but cut where the box ends and not at a syllable ("Frecuen / cia", "Ciclo de /
+# trabajo" on the unit); these are the usual abbreviations and fit in one. On the unit since
+# 2026-11-27.
+0x0804C5EC 0x080BBE46 18 54 22 Frec.
+0x0804C5F0 0x080BCA28 18 54 22 Ciclo
 0x0804C5F4 0x080BC085 18 54 22 Amplit.
 
 # The generator's waveforms: table at 0x0804C61C, thirteen names for each language, drawn in
