@@ -15,7 +15,7 @@ that can stream what it measures.
 | Languages (`--languages`): the six that stock still carries but no longer offers, by pressing OK on the second row | yes |
 | Languages (`--language-menu`): the same eight as entries of Settings > Language, one each | yes |
 | Texts (`--texts`): Spanish texts that stock cuts or mistranslates | yes: the sixteen of `texts/es.txt` and the eighteen of `texts/es-english-rows.txt` |
-| Names of the added menu entries in a language (`--menu-names`) | emulated only |
+| Names of the added menu entries in a language (`--menu-names`) | yes: four of the five Spanish names of the example below are in a photograph of the unit's list; the fifth, "Onda USB", is below what it shows |
 | Menu (patch 5, `--menu-wave`): waveforms added to the generator's own list, chosen on the instrument | yes |
 
 **Status: runs on one unit.** On 2026-11-23 both images were flashed on a retail 2C53T
@@ -74,8 +74,11 @@ of `texts/es.txt` as it was then, the image was flashed the same morning, reads 
 built, and the titles are whole on the unit. The generator's label and names added to
 that file since were flashed later that morning, with the same checks; the owner's one
 remark was that the added entries were still in English, which is what `--menu-names` is
-for. The image with those names (`3cc7e0c8…5308`) is the one on the unit now: the flash
-reads back as built and the calibration table is unchanged.
+for. The image with those names (`3cc7e0c8…5308`) followed, and after it one with the
+eighteen texts of `texts/es-english-rows.txt` (`537feee8…0b09`) and one that adds three
+entries of the oscilloscope's menu to `texts/es.txt` (`98b5d1b7…f2d9`). That last one is on
+the unit now, its sixteenth update: the flash reads back as built and the calibration table
+is unchanged.
 
 > **One unit is not a guarantee.** The board revision of that unit is unknown and nothing
 > has been tried on another. If you flash this, read [Safety](#safety) first and keep the
