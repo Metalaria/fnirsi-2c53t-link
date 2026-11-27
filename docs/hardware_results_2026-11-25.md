@@ -1020,6 +1020,32 @@ So this unit has no value that fails to fit in 12 bits, which is what that PR's
 discussion reports for one upper of another unit, and what stock keeps in RAM is the
 page's two halves, one after the other, as that PR's header has it.
 
+## AC voltage at three frequencies from the instrument's own generator, 2026-11-27
+
+OpenScope-2C53T's maintainer asked (its issue #101) what stock displays in AC V away
+from mains frequency, with the instrument's generator as the source. The generator's
+output was wired to the meter's inputs and the instrument put in the multimeter, AC
+voltage; the generator goes on playing there. Its frequency was set on the instrument to
+20 Hz, 400 Hz and 1 kHz, the waveform and amplitude as asked for (sine, 3.0 V; they were
+not read back), and `fnlink.py meter --count 40` run at each:
+[`test/data/meter_acv_generator.txt`](../test/data/meter_acv_generator.txt).
+
+| Set to | Frames | Stock's reading | Frequency in the frame and in stock's state | A second multimeter (Brymen), read by the owner |
+|---|---|---|---|---|
+| 20 Hz | 40 | 1.0377 V in all | 20 | 1.053 V |
+| 400 Hz | 40 | 1.0536 V in 3, 1.0535 V in 37 | 400 | 1.054 V |
+| 1 kHz | 40 | 1.0474 V in 24, 1.0475 V in 16 | 1000 | 1.053 V |
+
+All 120 frames have bit 3 of byte 2, the leading 1 of the five-digit display, and byte 8
+at `0x82`, the lowest range. The frequency is bytes 10 and 11 of the frame, most
+significant first (`00 14`, `01 90`, `03 E8`), and bytes 18 and 19 of stock's state. A
+sine of 3.0 V peak to peak is 1.061 V RMS.
+
+Replayed through OpenScope-2C53T's decoder built on a host, as for their #101: its `main`
+(`e5fdee0`) gives `---` for all 120, refusing them for want of a frequency between 45
+and 65 Hz; the branch of their PR #97 (`700fbb1`) gives the same without its
+function-confirmed flag and, with it, stock's reading and the frequency for all 120.
+
 ## Not answered
 
 - What needs a write to the instrument's memory (the 20M limit; the per-channel "FFT" flag
