@@ -291,6 +291,16 @@ captured time base, the record through a 16-tap interpolator when zoomed in, and
 when zoomed out; the rules, checked on 56 snapshots, are in
 [`hardware_results_2026-11-25.md`](hardware_results_2026-11-25.md). (unit, code)
 
+The cursors, from the code alone: state `+0x23A` says which are on. SELECT takes the arrows'
+nibble to 3 only when that byte is not zero and state `+0x34` is not 1 (`0x0800D39E`); in
+that mode the right arrow branches on the byte's values 1, 2 and 3 and takes one from the
+signed 16-bit word at `+0x234`, `+0x238` or, at 3, `+0x232` (`0x0800B4E2`; at 3 bit 7 of the
+arrows' byte chooses another branch). `0x08025FC0`, which the arrow handlers end in, does
+nothing when `+0x34` is not zero; with bit 0 of `+0x23A` set it writes three floats at
+`+0x23C`, `+0x240` and `+0x244`, starting from `+0x232` and `+0x234` less the horizontal
+position (`+0x1A`). None of it has been seen on the unit: `fnlink.py keys` reads `+0x230`
+to `+0x25F` since 2026-11-27 so that a log can say. (code)
+
 ## Signal generator
 
 Settings from `0x20000F50` (ram: five dumps, one setting changed between each, compared with
