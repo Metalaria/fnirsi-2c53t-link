@@ -886,7 +886,104 @@ trigger level, 1. It started at 10 µs per division (index 9) and ended at 20 µ
 
 What these logs do not have: the screen where the mode is chosen (the link is lost while
 it is up, so the arrows there cannot be logged), a long press of any key, SAVE in the
-oscilloscope (it stores a capture, so it was left out), and any of this with CH2 on.
+oscilloscope (it stores a capture, so it was left out), and any of this with CH2 on. The
+next section has the first and the last of those, the generator's left arrow and MOVE
+again.
+
+## The keys, what the first guided logs left open, 2026-11-27
+
+Three more guided logs, the `guided_generator_digit`, `guided_multimeter_move` and
+`guided_oscilloscope_ch2` files of
+[`sessions/2026-11-26_keys/`](../sessions/2026-11-26_keys/README.md), for the three things
+the section above ends on. A change came 0.9 to 2.9 s after its request.
+
+**The digit of the generator's frequency.** Square Wave at 1 kHz, the blue key twice to
+reach `ms[0xF69]` = 2, and then:
+
+| Key | What the log has |
+|---|---|
+| left | `ms[0xF6B]` `00` to `10` |
+| up, down | 1000 to 1010 Hz, back to 1000 |
+| left | `ms[0xF6B]` `10` to `20` |
+| up, down | 1000 to 1100 Hz, back to 1000 |
+| right, right | `ms[0xF6B]` `20` to `10`, `10` to `00` |
+| up, down | 1000 to 1001 Hz, back to 1000 |
+| a short MENU, twice | `ms[0xF69]` 2 to 1, 1 to 0 |
+
+So left and right move the digit, kept in the high nibble of `ms[0xF6B]` and counted from
+the right, and up and down add and take one unit of that digit. It agrees with the
+unguided log; the guided log of the day before, where the request for left was followed
+by no change, is the one that differs.
+
+**MOVE in the multimeter.** From the voltage entry, DC:
+
+| Key | What the log has |
+|---|---|
+| MOVE | function 1 to 2 (DC to AC Voltage), variant 1 to 2 |
+| MOVE | function 2 to 1, variant 2 to 1 |
+| right | entry 1 to 2, function 3 (Continuity), variant 2 |
+| MOVE | function 3 to 4 (Diode), variant 2 to 1 |
+| MOVE | function 4 to 3, variant 1 to 2 |
+| AUTO | entry 2 to 0, Automatic |
+
+MOVE switches between the two variants of the entry, both ways. Nothing changed in the
+five waits of 5 s between those keys. The first of these changes is the one the log of the
+day before has 3.65 s after its request for MOVE; here no other key was asked for near it.
+
+**The screen where the mode is chosen** (the owner, at the unit; the link is lost there):
+from "Multímetro", the right arrow goes to "Osciloscopio", "Generador de señal" and
+"Configuración", in that order, the instrument being in Spanish.
+
+**The oscilloscope with both channels on**, running, 200 µs per division, CH1 at range
+index 2 and CH2 at 0, the trigger on CH1:
+
+| Arrows' byte | Key | What the log has |
+|---|---|---|
+| `0x00` | up, down | CH1's range 2 to 3, 3 to 2; the trigger level 1 to -37, -37 to 0 |
+| | MOVE | the arrows' byte `0x00` to `0x80` |
+| `0x80` | up, down | CH2's range 0 to 1, 1 to 0; the trigger level unchanged |
+| | MOVE, SELECT | `0x80` to `0x00`, `0x00` to `0x01` |
+| `0x01` | up, down | CH1's position -74 to -73 and back, the trigger level 0 to 1 and back |
+| | MOVE | `0x01` to `0x81` |
+| `0x81` | up, down | CH2's position -45 to -44 and back; the trigger level unchanged |
+| | MOVE, SELECT | `0x81` to `0x01`, `0x01` to `0x02` |
+| `0x02` | up, down | the trigger level 0 to 1 and back |
+| | MOVE | `0x02` to `0x82` |
+| `0x82` | up, down | the trigger level 0 to 1 and back |
+| | MOVE, SELECT | `0x82` to `0x02`, `0x02` to `0x00` |
+| `0x00` | right, left | the time base 13 to 12, 12 to 13 |
+
+So with both channels on MOVE switches bit 7 of the arrows' byte, which is the channel
+the up and down arrows act on, as the code had it; with CH1 alone the same key changed
+nothing. The trigger level went with CH1's range and position and not with CH2's, the
+trigger being on CH1, and in mode 2 it moved whichever channel the bit said. `ms[0x15]`
+read `0x02` throughout. The counters in `ms[0x28..0x29]`, `ms[0x2A..0x2B]` and
+`ms[0x2C]` ran as with one channel, the last one for CH2's position as for CH1's.
+
+AUTO, last, took 7.20 s from the first change to the last, against 5.76 s in the watch
+of 2026-11-26 with both channels on:
+
+| After the first change | `ms[0x2F]` | What else changed |
+|---|---|---|
+| 0 | `01` | both couplings 1 to 0, CH1's range 2 to 0, both positions to 0, time base 13 to 4, `ms[0x31]` 0 to `0x11` |
+| 0.45 to 2.26 s | `01` | CH1's range 1, 2, 3, 4, 5, one step about every 0.45 s |
+| 2.72 s | `02` | |
+| 3.30 s | `03` | time base 4 to 13 |
+| 3.43 s | `11` | |
+| 3.81 s | `21` | CH1's range 5 to 6 |
+| 4.27 s | `32` | CH2's coupling back to 1 |
+| 4.72 s | `F3` | CH1's coupling back to 1, CH2's position 0 to -45 |
+| 5.16 s | `FF` | CH1's position 0 to 9 |
+| 7.20 s | `00` | trigger level 0 to 46 |
+
+The steps are those of the earlier watch except `22`, which this log, read every 64 ms
+or so, does not have between `21` and `32`. Step `01` lasted as long as CH1's range took
+to stop going up: to 2 then, to 5 now. CH2's range stayed at 0 in both. What was on the
+inputs: the generator's 1 kHz square on CH1, 342 mV peak to peak by stock's own
+measurement just before, and nothing of note on CH2 (1.4 mV peak to peak).
+
+Still not in any log: a long press of any key, SAVE in the oscilloscope, the keys inside
+the menus that CH1, CH2, TRIGGER and PRM open, and the arrows with the cursors on.
 
 ## Not answered
 

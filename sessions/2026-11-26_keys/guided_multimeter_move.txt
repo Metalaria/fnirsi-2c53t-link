@@ -1,0 +1,26 @@
+keys      2026-11-27T09:11:18  multimetro move
+20000F50   10  01010000e8030000321e
+20001020   56  14000000000101ff000000000400010101000000000000000000000000000000000000000000000000000000040404000000000000000000
+20001058   16  05640a00010004640100000000000000
+2000044C    1  00
+200000F8   56  01010200b6d30000000000000000000000000000010100010000000001000000000000000000000000000000000d01000000ff0000000000
+            11 keys, one every 5 s: press each one once when its line appears; it ends by itself
+    0.000 s  press     move
+    2.745 s  meter     [6] 01>02 [14] 01>02
+    5.056 s  press     espera
+   10.060 s  press     move
+   11.367 s  meter     [6] 02>01 [14] 02>01
+   15.033 s  press     espera
+   20.052 s  press     derecha
+   21.308 s  meter     [5] 01>02 [6] 01>03 [14] 01>02
+   25.030 s  press     move
+   27.966 s  meter     [6] 03>04 [14] 02>01
+   30.017 s  press     espera
+   35.002 s  press     move
+   36.574 s  meter     [6] 04>03 [14] 01>02
+   40.035 s  press     espera
+   45.009 s  press     auto
+   47.863 s  meter     [5] 02>00 [14] 02>01
+   48.179 s  meter     [6] 03>00 [14] 01>00
+   50.019 s  press     espera
+end       55.1 s, 849 reads of the five blocks

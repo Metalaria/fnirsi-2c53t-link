@@ -307,6 +307,8 @@ python -m pip install hidapi
 python fnlink.py info
 python fnlink.py dump-cal cal_0x08006000.bin     # 4 KB settings/calibration page, read twice
 python fnlink.py cal-info before.bin after.bin   # where two such dumps differ (no device needed)
+python fnlink.py cal-check cal_0x08006000.bin    # its signature and how many values of the table are out of range: places, never values
+python fnlink.py cal-ram cal_0x08006000.bin      # whether stock's copy of the table in RAM is what the page has: counts, never values
 python fnlink.py snapshot "stopped, 10us" 0x200000F8:56 0x20000EA8:96 --out session.txt
                                                  # labelled RAM blocks added to a text file, one call per step
 python fnlink.py watch 0x2000013D:1 --seconds 5  # one small block read over and over: every change, with its time

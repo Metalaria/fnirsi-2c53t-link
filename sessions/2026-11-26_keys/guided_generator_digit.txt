@@ -1,0 +1,36 @@
+keys      2026-11-27T09:09:20  generador digito
+20000F50   10  01010000e8030000321e
+20001020   56  14000000000000000000000000010100ff0000000000000000000000000000000000c07f0000c07f0000c07f000000000000000000000000
+20001058   16  05640a00010004640300010000000000
+2000044C    1  00
+200000F8   56  01010200b6d30000000000000000000000000000010100010000000001000000000000000000000000000000000d01000000ff0000000000
+            14 keys, one every 5 s: press each one once when its line appears; it ends by itself
+    0.000 s  press     azul
+    1.560 s  ui        [0xF69] 00>01
+    5.023 s  press     azul
+    6.270 s  ui        [0xF69] 01>02
+   10.010 s  press     izquierda
+   11.582 s  ui        [0xF6B] 00>10
+   15.059 s  press     arriba
+   16.416 s  generator [4] e8>f2   Square Wave (index 1), 1.01kHz, duty 50 %, 3.0 V
+   20.024 s  press     abajo
+   21.584 s  generator [4] f2>e8   Square Wave (index 1), 1kHz, duty 50 %, 3.0 V
+   25.035 s  press     izquierda
+   26.376 s  ui        [0xF6B] 10>20
+   30.047 s  press     arriba
+   32.327 s  generator [4] e8>4c [5] 03>04   Square Wave (index 1), 1.1kHz, duty 50 %, 3.0 V
+   35.042 s  press     abajo
+   36.412 s  generator [4] 4c>e8 [5] 04>03   Square Wave (index 1), 1kHz, duty 50 %, 3.0 V
+   40.048 s  press     derecha
+   41.925 s  ui        [0xF6B] 20>10
+   45.009 s  press     derecha
+   46.192 s  ui        [0xF6B] 10>00
+   50.008 s  press     arriba
+   51.514 s  generator [4] e8>e9   Square Wave (index 1), 1kHz, duty 50 %, 3.0 V
+   55.040 s  press     abajo
+   56.477 s  generator [4] e9>e8   Square Wave (index 1), 1kHz, duty 50 %, 3.0 V
+   60.003 s  press     menu corto
+   61.573 s  ui        [0xF69] 02>01
+   65.031 s  press     menu corto
+   66.418 s  ui        [0xF69] 01>00
+end       70.0 s, 1086 reads of the five blocks

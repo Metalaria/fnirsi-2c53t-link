@@ -849,6 +849,93 @@ check("guided oscilloscope: the blue key stops and runs, and AUTO's steps with C
       [c for k, c in g if k == "azul"] == [[("scope", "46", "01", "00")], [("scope", "46", "00", "01")]]
       and [n for k, c in g[27:] for b, f, o, n in c if f == "47"] == ["01", "02", "03", "11", "12", "13", "ff", "00"])
 
+g = guided("guided_generator_digit.txt")
+check("guided digit: at the third level left and right move the digit, the high nibble of ms[0xF6B]",
+      [(k, first(c, "ui", "F6B")) for k, c in g if k in ("izquierda", "derecha")]
+      == [("izquierda", ("00", "10")), ("izquierda", ("10", "20")), ("derecha", ("20", "10")), ("derecha", ("10", "00"))])
+check("guided digit: up and down change the frequency by 10, by 100 and by 1 according to the digit",
+      [c for k, c in g if k in ("arriba", "abajo")]
+      == [[("generator", "4", "e8", "f2")], [("generator", "4", "f2", "e8")],
+          [("generator", "4", "e8", "4c"), ("generator", "5", "03", "04")], [("generator", "4", "4c", "e8"), ("generator", "5", "04", "03")],
+          [("generator", "4", "e8", "e9")], [("generator", "4", "e9", "e8")]])
+g = guided("guided_multimeter_move.txt")
+check("guided MOVE: it switches the variant inside the entry: DC and AC voltage, continuity and diode",
+      [c for k, c in g if k == "move"]
+      == [[("meter", "6", "01", "02"), ("meter", "14", "01", "02")], [("meter", "6", "02", "01"), ("meter", "14", "02", "01")],
+          [("meter", "6", "03", "04"), ("meter", "14", "02", "01")], [("meter", "6", "04", "03"), ("meter", "14", "01", "02")]]
+      and first(dict(g)["auto"], "meter", "5") == ("02", "00") and all(not c for k, c in g if k == "espera"))
+g = guided("guided_oscilloscope_ch2.txt")
+check("guided CH2: with both channels on MOVE switches bit 7 of the arrows' byte, in each of the three modes",
+      [c for k, c in g if k == "move"]
+      == [[("arrows", "0", a, b)] for a, b in (("00", "80"), ("80", "00"), ("01", "81"), ("81", "01"), ("02", "82"), ("82", "02"))]
+      and fnlink.arrows_text(0x81).endswith("acting on CH2 (byte 0x81; SELECT changes it)"))
+check("guided CH2: up and down act on the channel of that bit: range and position of CH1, then of CH2",
+      [(k, c[0][1:]) for k, c in g if k in ("arriba", "abajo")][:8]
+      == [("arriba", ("2", "02", "03")), ("abajo", ("2", "03", "02")), ("arriba", ("3", "00", "01")), ("abajo", ("3", "01", "00")),
+          ("arriba", ("4", "b6", "b7")), ("abajo", ("4", "b7", "b6")), ("arriba", ("5", "d3", "d4")), ("abajo", ("5", "d4", "d3"))])
+check("guided CH2: the trigger level follows CH1, the trigger's channel, and not CH2; in mode 2 it moves with either",
+      [first(c, "scope", "28") for k, c in g if k in ("arriba", "abajo")]
+      == [("01", "db"), ("db", "00"), None, None, ("00", "01"), ("01", "00"), None, None, ("00", "01"), ("01", "00"), ("00", "01"), ("01", "00")])
+check("guided CH2: AUTO with both channels, the steps and the range of CH1 going up to 6",
+      [n for k, c in g[23:] for b, f, o, n in c if f == "47"] == ["01", "02", "03", "11", "21", "32", "f3", "ff", "00"]
+      and [n for k, c in g[23:] for b, f, o, n in c if f == "2"] == ["00", "01", "02", "03", "04", "05", "06"]
+      and first(g[23][1], "scope", "49") == ("00", "11"))
+
+
+# cal-check and cal-ram: a made-up page, never a unit's. CH1's values are 1000 + 10 i and CH2's 2000 + 10 i,
+# with three of them spoilt.
+made = bytearray(b"\xFF" * fnlink.CAL_LEN)
+made[0] = 0x55
+ch1 = [1000 + 10 * i for i in range(60)]
+ch2 = [2000 + 10 * i for i in range(60)]
+ch1[30] = 0xDC5B            # an upper above 12 bits: bank 0 range 0
+ch2[14] = 0                 # a baseline: bank 1 range 4
+ch2[44] = 1                 # its upper, below nothing but that baseline: still a pair in order
+ch2[59] = 0xFFFF            # the last word's high half
+for i in range(60):
+    struct.pack_into("<I", made, 0x038 + 4 * i, ch2[i] << 16 | ch1[i])
+made[0x128:0x130] = bytes([0xFF, 1, 2, 3, 4, 5, 6, 7])
+lines = fnlink.cal_check_lines(bytes(made))
+check("cal-check: the signature, the last word, and each spoilt value by its place",
+      lines[0].startswith("signature    0x55") and lines[1] == "last word    CH2's half is 0xFFFF"
+      and "CH1          59 of 60 values are 1 to 4095" in lines and "  above 4095 1: upper bank 0 range 0" in lines
+      and "CH2          58 of 60 values are 1 to 4095" in lines and "  0          1: baseline bank 1 range 4" in lines
+      and "  0xFFFF     1: upper bank 2 range 9" in lines, "\n".join(lines))
+check("cal-check: the pairs in order, and the eight bytes after the sixty words",
+      "  upper above its baseline in 30 of 30 pairs" in lines and lines[-1] == "after them   7 of the 8 bytes at 0x128-0x12F are not 0xFF", "\n".join(lines))
+check("cal-check: no value of the table in what it prints",
+      not any(str(v) in "\n".join(lines) or "%X" % v in "\n".join(lines).upper().replace("0XFFFF", "") for v in (1010, 2010, 0xDC5B, 1590)), "\n".join(lines))
+mirror = list(ch1) + list(ch2)
+mirror[30] = 0xDC5B & 0x0FFF
+mirror[60 + 3] = 7
+lines = fnlink.cal_ram_lines(bytes(made), struct.pack("<120H", *mirror))
+check("cal-ram: what RAM has against the page: the same, the low 12 bits, or something else, by place",
+      lines == ["CH1          59 of 60 values in RAM are the page's", "  its low 12 bits 1: upper bank 0 range 0",
+                "CH2          59 of 60 values in RAM are the page's", "  something else  1: baseline bank 0 range 3"], "\n".join(lines))
+mem = _Memory({})
+mem.mem[fnlink.CAL_RAM_ADDR] = bytearray(struct.pack("<120H", *mirror))
+with tempfile.TemporaryDirectory() as tmp:
+    dump = Path(tmp) / "made_up_page.bin"
+    dump.write_bytes(bytes(made))
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        rc = fnlink.main(["cal-ram", str(dump)], transport=mem)
+    buf2 = io.StringIO()
+    with contextlib.redirect_stdout(buf2):
+        rc2 = fnlink.main(["cal-check", str(dump)])
+check("cal-ram: reads the 240 bytes twice and nothing else, and prints the comparison",
+      rc == 0 and {r[0] for r in mem.requests} == {2} and sum(r[2] for r in mem.requests) == 480
+      and all(fnlink.CAL_RAM_ADDR <= r[1] < fnlink.CAL_RAM_ADDR + 240 for r in mem.requests)
+      and buf.getvalue().splitlines()[1:5] == lines, buf.getvalue())
+check("cal-check: the command, on a file, without a device",
+      rc2 == 0 and "signature    0x55 (first byte of the page)" in buf2.getvalue().splitlines()
+      and buf2.getvalue().rstrip().endswith("no value of the table is printed)"), buf2.getvalue())
+try:
+    fnlink.cal_ram_lines(bytes(made), bytes(100))
+    check("cal-ram: a copy of the wrong size is refused", False)
+except fnlink.LinkError:
+    check("cal-ram: a copy of the wrong size is refused", True)
+
 
 import build_link_image as builder  # noqa: E402
 

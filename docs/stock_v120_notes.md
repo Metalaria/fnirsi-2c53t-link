@@ -102,6 +102,16 @@ they carry nothing, but they make the sha256 of the page useless as a
 fingerprint of a unit's calibration. `fnlink.py dump-cal` therefore also prints the sha256 of
 the table alone, and `fnlink.py cal-info A B` says in which of these regions two dumps differ.
 
+OpenScope-2C53T's work on this table (its PR #70 and the comments on it) reads it as 60
+words from `0x038`, CH1 in the low half of each and CH2 in the high half, baselines in words
+0 to 29 and uppers in 30 to 59, three banks of ten ranges each, and has found on one unit an
+upper that does not fit in 12 bits. `fnlink.py cal-check FILE` reports, for a saved dump
+and in those terms, the signature byte, how many values are 0, `0xFFFF` or above 4095 and
+which ones by bank and range, and how many uppers are above their baseline; `fnlink.py
+cal-ram FILE` reads stock's copy from `0x20000358` and says how many of its values are the
+page's. Neither prints a value of the table. The layout is theirs and is not checked here
+against stock's code.
+
 ## Multimeter
 
 Meter chip on USART2, 9600 8N1. (code, emu)
@@ -263,6 +273,11 @@ coupling came back on entering `13`, the position was written during `13` and ag
 entering `FF`, and the trigger level with the return to 0. `ms[0x31]` went from 0 to
 `0x01`.
 
+A second press with both channels on, logged on 2026-11-27, took 7.20 s: CH1's range went
+up to 5 during step `01`, a step about every 0.45 s, and to 6 at `21`, where the first
+watch has it stop at 2 and go to 3. The other steps and what they write were the same;
+`22` was not read, at one reading every 64 ms.
+
 What the arrow keys do is the low nibble of state `+0x354` (`0x2000044C`): 0 changes the time
 base and the range, 1 moves the trace sideways and up and down, 2 moves it sideways and
 the trigger level up and down, 3 is for the cursors (unit, 2026-11-26, one key at a time
@@ -347,25 +362,28 @@ SELECT). The rows with a change are from the guided logs of `fnlink.py keys`
 "The keys, one at a time"); "nothing" is no change in the bytes that tool watches and the
 link not lost. Short presses, except where said.
 
-| Key | Multimeter | Generator | Oscilloscope (CH1 alone) |
+| Key | Multimeter | Generator | Oscilloscope |
 |---|---|---|---|
-| right, left | the next and the previous entry of the list of functions, going round at both ends (0 to 7 and 7 to 0) | nothing logged at any level (see below for the digit) | arrows' mode 0: the time base, right one index down. Modes 1 and 2: the horizontal position `ms[0x1A]`, right one up |
-| up, down | nothing | by level, `ms[0xF69]`: at 0 the previous and the next waveform; at 1 `ms[0xF6B]`, 0 to 2 with down; at 2 the frequency, one more and one less | mode 0: the range, up one index up. Mode 1: the channel's position `ms[4]`, the trigger level `ms[0x1C]` moving with it. Mode 2: the trigger level alone |
+| right, left | the next and the previous entry of the list of functions, going round at both ends (0 to 7 and 7 to 0) | at levels 0 and 1 nothing; at 2 the digit that up and down change, kept in the high nibble of `ms[0xF6B]`: left one up, right one down | arrows' mode 0: the time base, right one index down. Modes 1 and 2: the horizontal position `ms[0x1A]`, right one up |
+| up, down | nothing | by level, `ms[0xF69]`: at 0 the previous and the next waveform; at 1 `ms[0xF6B]`, 0 to 2 with down; at 2 the frequency, one unit of the chosen digit more and less (1, 10 and 100 Hz seen) | mode 0: the range, up one index up. Mode 1: the channel's position `ms[4]`, the trigger level `ms[0x1C]` moving with it. Mode 2: the trigger level alone |
 | blue | HOLD, byte 20 of the meter's state, to 1 | `ms[0xF69]` one up: 0 to 1, 1 to 2 | `ms[0x2E]` 1 to 0 (stopped) and back to 1 |
 | MENU | nothing | at 0 nothing; `ms[0xF69]` 2 to 1 and 1 to 0 | after CH1, CH2, TRIGGER or PRM, the link comes back |
 | SELECT | nothing | not asked for in the guided log; the owner: nothing | the arrows' mode: 0, 1, 2, 0 |
-| MOVE | in the voltage entry, DC to AC (function 1 to 2, variant 1 to 2) | not asked for | nothing |
+| MOVE | the other variant of the entry, both ways: DC and AC in the voltage entry, continuity and diode in entry 2 | not asked for | with CH1 alone nothing; with both channels on, bit 7 of the arrows' byte: the channel that up and down act on |
 | AUTO | back to entry 0, Automatic | not asked for; the owner: nothing | the sequence in `ms[0x2F]` ("The AUTO key", above) |
 | CH1, CH2, TRIGGER, PRM | nothing | not asked for | the link is lost until MENU |
 | SAVE | nothing | not asked for; the owner: nothing | not asked for: it stores a capture |
 
+Up and down in the oscilloscope act on CH1 unless bit 7 of the arrows' byte is set, and then
+on CH2 (range in mode 0, position in mode 1); the trigger level follows the range and the
+position of the trigger's channel only, and in mode 2 it moves whatever that bit says
+(unit, 2026-11-27, both channels on, trigger on CH1).
+
 Not in a log, from the owner at the unit: holding MENU for a few seconds, in the multimeter
 or in the generator, brings the screen where the mode is chosen; there left and right move
 between modes and the blue key enters the one shown (the link is lost while that screen
-is up). In the
-generator, with `ms[0xF69]` at 2, left and right go to the digit that up and down change:
-an unguided log has `ms[0xF6B]` going from `00` to `10` and the frequency then changing
-by 10, and the guided one has no change after the request for left.
+is up). In Spanish the modes are, going right: "Multímetro", "Osciloscopio", "Generador
+de señal" and "Configuración".
 
 ### Languages
 
