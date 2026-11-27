@@ -682,7 +682,8 @@ class _Memory:
         self.script, self.rounds, self.queue, self.requests = script, 0, [], []
         self.mem = {fnlink.GENERATOR_ADDR: bytearray(bytes.fromhex("01010000e8030000321e")),
                     fnlink.METER_STATE_ADDR: bytearray(56), fnlink.UI_ADDR: bytearray(bytes.fromhex("05640a00010004640300000000000000")),
-                    fnlink.ARROWS_ADDR: bytearray(1), fnlink.SCOPE_STATE_ADDR: bytearray(56)}
+                    fnlink.ARROWS_ADDR: bytearray(1), fnlink.SCOPE_STATE_ADDR: bytearray(56),
+                    fnlink.CURSORS_ADDR: bytearray(fnlink.CURSORS_LEN)}
 
     def write(self, rq):
         cmd, seq, n = rq[0], rq[1], rq[2]
@@ -706,7 +707,8 @@ class _Memory:
 
 script = {1: [(fnlink.GENERATOR_ADDR + 1, 0)],                                            # up arrow: the previous waveform
           2: [(fnlink.METER_STATE_ADDR + 8, 0x7F), (fnlink.METER_STATE_ADDR + 5, 1)],     # a reading moves, and the menu entry
-          3: [(fnlink.UI_ADDR + 8, 1), (fnlink.UI_ADDR + 9, 1), (fnlink.ARROWS_ADDR, 2)]}
+          3: [(fnlink.UI_ADDR + 8, 1), (fnlink.UI_ADDR + 9, 1), (fnlink.ARROWS_ADDR, 2)],
+          4: [(fnlink.CURSORS_ADDR + 2, 0xFF), (fnlink.CURSORS_ADDR + 3, 0xFF)]}             # a cursor one step to one side
 mem = _Memory(script)
 with tempfile.TemporaryDirectory() as tmp:
     log = Path(tmp) / "keys.txt"
@@ -715,8 +717,13 @@ with tempfile.TemporaryDirectory() as tmp:
         rc = fnlink.main(["keys", "--polls", "4", "--interval", "0", "--label", "test", "--out", str(log)], transport=mem)
     printed, saved = buf.getvalue().splitlines(), log.read_text().splitlines()
 changes = [x.split(" s  ", 1)[1] for x in printed if " s  " in x]
-check("keys: reads the five blocks each round, and nothing but reads", rc == 0 and mem.rounds == 5
-      and {r[0] for r in mem.requests} == {2} and len(mem.requests) == 5 * 5, str(mem.requests[:6]))
+check("keys: reads the six blocks each round, and nothing but reads", rc == 0 and mem.rounds == 5
+      and {r[0] for r in mem.requests} == {2} and len(mem.requests) == 6 * 5, str(mem.requests[:7]))
+check("keys: the scope's cursors are given as offsets of stock's state",
+      [x for x in changes if x.startswith("cursors")] == ["cursors   [0x232] 00>ff [0x233] 00>ff"], str(changes))
+check("keys: no block it reads holds any of the unit's calibration",
+      all(fnlink.private_region(addr, length) is None for _, addr, length, _, _ in fnlink.KEYS_BLOCKS)
+      and fnlink.private_region(fnlink.CURSORS_ADDR, fnlink.CURSORS_LEN + 1) is not None)
 check("keys: a change of waveform is a line with what the generator now says",
       any(x.startswith("generator [1] 01>00") and "Sine Wave (index 0), 1kHz, duty 50 %, 3.0 V" in x for x in changes), str(changes))
 check("keys: of the meter's state only the menu bytes are reported, not the reading",
@@ -726,7 +733,7 @@ check("keys: the menus' cursors are given as offsets of stock's state, with the 
       and any(x.startswith("arrows    [0] 00>02") and "move:" in x for x in changes), str(changes))
 check("keys: the log saved is what was printed, the starting blocks first",
       saved[:len(printed) - 1] == printed[:-1] and printed[1].startswith("20000F50   10  01010000e8030000321e")
-      and printed[0].startswith("keys      ") and printed[0].endswith("test") and len(changes) == 4, str(printed[:8]))
+      and printed[0].startswith("keys      ") and printed[0].endswith("test") and len(changes) == 5, str(printed[:8]))
 mem = _Memory({1: [(fnlink.UI_ADDR + 15, 0x2E)], 2: [(fnlink.UI_ADDR + 9, 1)]})
 with tempfile.TemporaryDirectory() as tmp:
     log = Path(tmp) / "guided.txt"

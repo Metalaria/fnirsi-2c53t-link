@@ -1008,11 +1008,19 @@ def arrows_text(value: int) -> str:
 UI_ADDR, UI_LEN = 0x20001058, 16        # ms[0xF60..0xF6F]: language, sound, system mode (0xF68), the menus' cursors
 KEYS_METER_BYTES = (5, 6, 14, 20)       # menu entry, function, variant, HOLD: the rest of the meter state moves with the reading
 KEYS_UI_BYTES = tuple(range(12))        # ms[0xF6F] moves about once a second with no key pressed (seen on the unit)
+# The oscilloscope's cursors, from the code alone until a log says otherwise: ms[0x23A] is which
+# cursors are on (SELECT only reaches the arrows' mode 3 when it is not zero, 0x0800D39E; the right
+# arrow in that mode branches on its values 1, 2 and 3, 0x0800B4E2), four signed 16-bit positions
+# at ms[0x232..0x239] (the same handler takes one from 0x232, 0x234 or 0x238), and floats from
+# ms[0x23C] that 0x08025FC0 writes from the positions. The block ends where stock's copy of the
+# calibration tables begins (ms[0x260]) and holds none of it.
+CURSORS_ADDR, CURSORS_LEN = 0x20000328, 48      # ms[0x230..0x25F]
 KEYS_BLOCKS = (("generator", GENERATOR_ADDR, GENERATOR_LEN, None, 0),
                ("meter", METER_STATE_ADDR, METER_STATE_LEN, KEYS_METER_BYTES, 0),
                ("ui", UI_ADDR, UI_LEN, KEYS_UI_BYTES, 0xF60),
                ("arrows", ARROWS_ADDR, 1, None, 0),
-               ("scope", SCOPE_STATE_ADDR, 56, None, 0))
+               ("scope", SCOPE_STATE_ADDR, 56, None, 0),
+               ("cursors", CURSORS_ADDR, CURSORS_LEN, None, 0x230))
 
 
 def keys_changes(name: str, old: bytes, new: bytes, only, base: int) -> list:
@@ -1051,7 +1059,7 @@ def _typed_line():
 
 def cmd_keys(link: Link, args) -> int:
     """Log every change of the generator's settings, the meter's menu bytes, the menus' cursors,
-    the arrows' mode and the scope state while the instrument is worked by hand."""
+    the arrows' mode, the scope state and the scope's cursors while the instrument is worked by hand."""
     out = []
 
     def say(line: str) -> None:
@@ -1121,7 +1129,7 @@ def cmd_keys(link: Link, args) -> int:
                 time.sleep(args.interval)
     except KeyboardInterrupt:
         pass
-    say("end       %.1f s, %d reads of the five blocks" % (time.monotonic() - start, polls))
+    say("end       %.1f s, %d reads of the %d blocks" % (time.monotonic() - start, polls, len(KEYS_BLOCKS)))
     if args.out:
         with args.out.open("a") as f:
             f.write("\n".join(out) + "\n\n")
