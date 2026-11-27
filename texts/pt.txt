@@ -8,7 +8,7 @@
 # drawn whole. Whether they read well is for someone who speaks the language to say:
 # corrections are welcome.
 #
-# Only what stock cuts is replaced: the multimeter's titles that do not fit their box of
+# First, what stock does not draw whole: the multimeter's titles that do not fit their box of
 # 216 x 29 (28 px font), and the generator's third label, whose second line falls off the
 # screen (box of 54 x 22, 18 px font).
 0x0804C530 0x080BBFC8 28 216 29 Tensão contínua
@@ -18,3 +18,31 @@
 0x0804C554 0x080BBFE6 28 216 29 Corrente CC (A)
 0x0804C558 0x080BBD8E 28 216 29 Corrente CA (A)
 0x0804C600 0x080BC117 18 54 22 Amplit.
+
+# Added on 2026-11-27, after going through stock's texts of this language in the four tables
+# whose boxes are known (docs/stock_v120_notes.md, "Languages"), as texts/es.txt does for
+# Spanish. Still not reviewed by a native speaker and not seen on a unit.
+
+# The generator's first two labels (box of 54 x 22, 18 px font, 32 px apart). Stock's second
+# takes three lines, cut inside the word, and the third is where the next label is drawn;
+# its first takes two, cut inside the word.
+0x0804C5F8 0x080BBE7A 18 54 22 Freq.
+0x0804C5FC 0x080BC988 18 54 22 Ciclo
+
+# The oscilloscope's menu (box of 76 x 36, 18 px font: two lines). Stock's three entries begin
+# with a word wider than the box, which the routine cuts after its tenth letter; of the third
+# the last two letters go to a third line, on the row of the next entry. "gatilho" is stock's
+# own word.
+0x0804C8B0 0x080BB946 18 76 36 Ajustes do CH1
+0x0804C8B4 0x080BB996 18 76 36 Ajustes do CH2
+0x0804C8B8 0x080BC99A 18 76 36 Ajustes de gatilho
+
+# The generator's waveforms (box of 100 x 36, 18 px font). These five replace names that are
+# not what the waveform is called: the two staircases (a "step wave" and a "reverse wave"),
+# the two exponentials (word for word "index up" and "decreasing index") and the sinc pulse
+# ("sink").
+0x0804C734 0x080BCEA5 18 100 36 Escada
+0x0804C738 0x080BBF40 18 100 36 Escada inversa
+0x0804C73C 0x080BBEBC 18 100 36 Subida exponencial
+0x0804C740 0x080BC28B 18 100 36 Descida exponencial
+0x0804C74C 0x080BC6C9 18 100 36 Pulso sinc

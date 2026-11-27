@@ -548,6 +548,33 @@ labels with their values, whole (Frec:, Ciclo+:, Anc+:, Anc-:, Vef:, Med:, besid
 Amp: and Vp-p:), and the panels of a channel and of the trigger as they were painted in
 emulation; the bar with "Simple" and the multimeter's boxes have not been reported.
 
+The same tables in Portuguese, German and Russian, laid out as the first pass does and
+painted by stock's routines in emulation (2026-11-27; none of it seen on a unit):
+
+- **The generator's labels** (one line fits the box; a second lands between the rows,
+  which are 32 px apart). Portuguese: the first is cut inside the word into two lines and
+  the second into three, the third of them, one letter, on top of the label below. German:
+  all three are cut inside the word, the first after its seventh letter. Russian: the second
+  and the third are.
+- **The oscilloscope's menu** (two lines fit). Portuguese: the three entries for the
+  channels and the trigger begin with a word wider than the box, cut after its tenth letter;
+  the trigger's takes three lines and the last two letters land on the row of the next
+  entry.
+  German: the first seven entries are single words wider than the box, each cut where it
+  stops fitting. Russian: the first, third, seventh and eighth are cut inside a word, and
+  the third takes three lines, the last on top of the next entry.
+- **The waveforms' names** fit in the three, in two lines at most.
+
+`texts/pt.txt`, `texts/de.txt` and `texts/ru.txt` replace those (the multimeter's titles
+and the amplitude label were already there), and with them the names of five waveforms in
+Portuguese and German and of one in Russian that are not what the waveform is called.
+A word that has to take two lines is written with a hyphen and a space where the language
+divides it ("Anzeige- modus"): the routine ends a line only at a space, so the hyphen is
+left at the end of the first line. The fonts have no э, small or capital, so Russian
+cannot be given the word for an exponential. With the three files and the Spanish ones the
+example image has 87 texts replaced, and stock's routine in emulation draws each whole and
+inside its box.
+
 ### The options of a setting (code, and stock's own routines run in emulation)
 
 The settings screen (system mode 4) has the list of seven settings on the left and the
