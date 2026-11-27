@@ -984,7 +984,8 @@ def cmd_watch(link: Link, args) -> int:
 # the SELECT key steps through (code: its handler, entry 4 of the key table at 0x08046548, adds one;
 # unit: SELECT took it 0, 1, 2, 0). 0, 1 and 2 were watched on the unit one key at a time, with
 # CH1 alone (sessions/2026-11-26_keys/guided_oscilloscope.txt); 3 is from the code alone. Bit 7 is
-# the channel the keys act on when both are shown (code). In mode 1 up/down change the channel's
+# the channel up/down act on when both are shown (code; unit: MOVE switches it, and with it set the
+# range and the position that changed were CH2's, guided_oscilloscope_ch2.txt). In mode 1 up/down change the channel's
 # position and ms[0x1C] with it; in mode 2 they change ms[0x1C] alone, which OpenScope-2C53T's map
 # of the structure calls the trigger level.
 ARROWS_ADDR = 0x2000044C
@@ -1320,6 +1321,86 @@ def cmd_cal_info(args) -> int:
     return 0 if same_table else 1
 
 
+# The calibration table as OpenScope-2C53T lays it out (its factory_cal notes and the discussion of
+# its PR #70; not checked here against stock's code): 60 words from 0x038, CH1 in the low half of
+# each word and CH2 in the high half, words 0-29 the baselines and 30-59 the uppers, each three
+# banks of ten ranges. Stock's copy in RAM, by the same notes: CH1's 60 values and then CH2's.
+# These commands answer what that discussion asks of a unit and never print a value of the table.
+CAL_WORDS, CAL_BANKS, CAL_RANGES = 60, 3, 10
+CAL_RAM_ADDR = 0x20000358
+
+
+def cal_halves(page: bytes) -> tuple:
+    """([CH1's 60 values], [CH2's 60 values]) of a dump of the page."""
+    if len(page) != CAL_LEN:
+        raise LinkError("a settings/calibration page is %d bytes, this is %d" % (CAL_LEN, len(page)))
+    words = struct.unpack_from("<%dI" % CAL_WORDS, page, CAL_TABLE.start)
+    return [w & 0xFFFF for w in words], [w >> 16 for w in words]
+
+
+def _cal_place(i: int) -> str:
+    return "%s bank %d range %d" % ("baseline" if i < 30 else "upper", (i % 30) // CAL_RANGES, i % CAL_RANGES)
+
+
+def cal_check_lines(page: bytes) -> list:
+    """What can be said of a dump's table without giving any of it: counts and places only."""
+    ch1, ch2 = cal_halves(page)
+    lines = ["signature    0x%02X (first byte of the page)" % page[0],
+             "last word    CH2's half is %s" % ("0" if ch2[-1] == 0 else "0xFFFF" if ch2[-1] == 0xFFFF else "neither 0 nor 0xFFFF")]
+    for name, values in (("CH1", ch1), ("CH2", ch2)):
+        kinds = (("0", [i for i, v in enumerate(values) if v == 0]),
+                 ("0xFFFF", [i for i, v in enumerate(values) if v == 0xFFFF]),
+                 ("above 4095", [i for i, v in enumerate(values) if 4095 < v < 0xFFFF]))
+        bad = sum(len(where) for _, where in kinds)
+        lines.append("%s          %d of %d values are 1 to 4095" % (name, CAL_WORDS - bad, CAL_WORDS))
+        for kind, where in kinds:
+            if where:
+                lines.append("  %-10s %d: %s" % (kind, len(where), "; ".join(_cal_place(i) for i in where)))
+        low = [i for i in range(30) if values[30 + i] <= values[i]]
+        lines.append("  upper above its baseline in %d of 30 pairs%s" % (
+            30 - len(low), "" if not low else "; not in: " + "; ".join("bank %d range %d" % (i // CAL_RANGES, i % CAL_RANGES) for i in low)))
+    tail = page[CAL_TABLE.start + 4 * CAL_WORDS:CAL_TABLE.stop]
+    lines.append("after them   %d of the %d bytes at 0x%03X-0x%03X are not 0xFF" % (
+        sum(1 for x in tail if x != 0xFF), len(tail), CAL_TABLE.start + 4 * CAL_WORDS, CAL_TABLE.stop - 1))
+    return lines
+
+
+def cal_ram_lines(page: bytes, ram: bytes) -> list:
+    """How stock's copy of the table in RAM compares with a dump of the page: counts and places only."""
+    if len(ram) != 4 * CAL_WORDS:
+        raise LinkError("stock's copy is %d bytes, this is %d" % (4 * CAL_WORDS, len(ram)))
+    copy = struct.unpack("<%dH" % (2 * CAL_WORDS), ram)
+    lines = []
+    for name, values, mirror in zip(("CH1", "CH2"), cal_halves(page), (copy[:CAL_WORDS], copy[CAL_WORDS:])):
+        same = [i for i in range(CAL_WORDS) if mirror[i] == values[i]]
+        low12 = [i for i in range(CAL_WORDS) if mirror[i] != values[i] and mirror[i] == values[i] & 0x0FFF]
+        other = [i for i in range(CAL_WORDS) if i not in same and i not in low12]
+        lines.append("%s          %d of %d values in RAM are the page's" % (name, len(same), CAL_WORDS))
+        for kind, where in (("its low 12 bits", low12), ("something else", other)):
+            if where:
+                lines.append("  %-15s %d: %s" % (kind, len(where), "; ".join(_cal_place(i) for i in where)))
+    return lines
+
+
+def cmd_cal_check(args) -> int:
+    """Answer, for a saved dump, what OpenScope-2C53T's calibration work asks of a unit. No device needed."""
+    print(args.file)
+    print("\n".join(cal_check_lines(args.file.read_bytes())))
+    print("             (counts and places; no value of the table is printed)")
+    return 0
+
+
+def cmd_cal_ram(link: Link, args) -> int:
+    """Compare stock's copy of the table in RAM, as it is now, with a saved dump of the page."""
+    page = args.file.read_bytes()
+    cal_halves(page)
+    ram = link.read_twice(CAL_RAM_ADDR, 4 * CAL_WORDS)
+    print("read         %d bytes from 0x%08X, twice, the same both times" % (len(ram), CAL_RAM_ADDR))
+    print("\n".join(cal_ram_lines(page, ram)))
+    print("             (counts and places; no value of the table is printed)")
+    return 0
+
+
 def cmd_verify(link: Link, args) -> int:
     image = args.image.read_bytes()
     t0 = time.time()
@@ -1474,6 +1555,14 @@ def main(argv=None, transport=None) -> int:
     p = sub.add_parser("cal-info", help="describe a saved dump-cal file, or compare two (no device needed)")
     p.add_argument("files", type=Path, nargs="+", metavar="FILE")
     p.set_defaults(fn=cmd_cal_info, offline=True)
+    p = sub.add_parser("cal-check", help="for a saved dump-cal file: the signature and how many values of the table are out of "
+                                         "range, with their places and without the values (no device needed)")
+    p.add_argument("file", type=Path, metavar="FILE")
+    p.set_defaults(fn=cmd_cal_check, offline=True)
+    p = sub.add_parser("cal-ram", help="compare stock's copy of the calibration table in RAM with a saved dump-cal file; "
+                                       "prints counts, not values")
+    p.add_argument("file", type=Path, metavar="FILE")
+    p.set_defaults(fn=cmd_cal_ram)
     p = sub.add_parser("verify", help="compare the MCU flash with an image file")
     p.add_argument("image", type=Path)
     p.set_defaults(fn=cmd_verify)

@@ -1,0 +1,554 @@
+keys      2026-11-27T09:14:26  osciloscopio con CH2
+20000F50   10  01010000e8030000321e
+20001020   56  14000000000000000000000004010100ff0000000000000000000000000000000000c07f0000c07f0000c07f040404000000000000000000
+20001058   16  05640a00010004640200000000000025
+2000044C    1  00
+200000F8   56  01010200b6d30000000000000000000000000000030200010000000001000000000000000000000000000000000d01000000ff0000000000
+            26 keys, one every 5 s: press each one once when its line appears; it ends by itself
+    0.000 s  press     arriba
+    1.512 s  scope     [2] 02>03 [28] 01>db [29] 00>ff
+    5.003 s  press     abajo
+    6.310 s  scope     [2] 03>02 [28] db>00 [29] ff>00
+   10.023 s  press     move
+   11.767 s  arrows    [0] 00>80   scale: left/right change the time base, up/down the volts per division, acting on CH2 (byte 0x80; SELECT changes it)
+   15.052 s  press     arriba
+   16.490 s  scope     [3] 00>01
+   20.006 s  press     abajo
+   21.243 s  scope     [3] 01>00
+   25.040 s  press     move
+   26.866 s  arrows    [0] 80>00   scale: left/right change the time base, up/down the volts per division (byte 0x00; SELECT changes it)
+   30.014 s  press     select
+   31.511 s  arrows    [0] 00>01   position: left/right move the trace sideways, up/down the channel's trace up and down (byte 0x01; SELECT changes it)
+   35.030 s  press     arriba
+   36.884 s  scope     [4] b6>b7 [28] 00>01 [44] 00>62
+   36.948 s  scope     [44] 62>5b
+   37.011 s  scope     [44] 5b>55
+   37.074 s  scope     [44] 55>4f
+   37.137 s  scope     [44] 4f>49
+   37.204 s  scope     [44] 49>42
+   37.270 s  scope     [44] 42>3b
+   37.333 s  scope     [44] 3b>35
+   37.396 s  scope     [44] 35>2f
+   37.461 s  scope     [44] 2f>28
+   37.528 s  scope     [44] 28>21
+   37.592 s  scope     [44] 21>1b
+   37.654 s  scope     [44] 1b>15
+   37.719 s  scope     [44] 15>0e
+   37.782 s  scope     [44] 0e>08
+   37.845 s  scope     [44] 08>02
+   37.913 s  scope     [44] 02>00
+   40.042 s  press     abajo
+   41.287 s  scope     [4] b7>b6 [28] 01>00 [44] 00>61
+   41.350 s  scope     [44] 61>5a
+   41.414 s  scope     [44] 5a>54
+   41.479 s  scope     [44] 54>4d
+   41.547 s  scope     [44] 4d>47
+   41.613 s  scope     [44] 47>40
+   41.677 s  scope     [44] 40>3a
+   41.740 s  scope     [44] 3a>33
+   41.805 s  scope     [44] 33>2d
+   41.868 s  scope     [44] 2d>26
+   41.933 s  scope     [44] 26>20
+   41.998 s  scope     [44] 20>19
+   42.064 s  scope     [44] 19>13
+   42.128 s  scope     [44] 13>0c
+   42.193 s  scope     [44] 0c>06
+   42.257 s  scope     [44] 06>00
+   45.032 s  press     move
+   46.865 s  arrows    [0] 01>81   position: left/right move the trace sideways, up/down the channel's trace up and down, acting on CH2 (byte 0x81; SELECT changes it)
+   50.024 s  press     arriba
+   51.271 s  scope     [5] d3>d4 [44] 00>62
+   51.339 s  scope     [44] 62>5b
+   51.403 s  scope     [44] 5b>55
+   51.468 s  scope     [44] 55>4e
+   51.532 s  scope     [44] 4e>48
+   51.595 s  scope     [44] 48>42
+   51.658 s  scope     [44] 42>3b
+   51.722 s  scope     [44] 3b>35
+   51.785 s  scope     [44] 35>2f
+   51.850 s  scope     [44] 2f>28
+   51.917 s  scope     [44] 28>21
+   51.978 s  scope     [44] 21>1b
+   52.040 s  scope     [44] 1b>15
+   52.103 s  scope     [44] 15>0f
+   52.168 s  scope     [44] 0f>08
+   52.230 s  scope     [44] 08>02
+   52.293 s  scope     [44] 02>00
+   55.013 s  press     abajo
+   56.212 s  scope     [5] d4>d3 [44] 00>61
+   56.277 s  scope     [44] 61>5a
+   56.341 s  scope     [44] 5a>54
+   56.404 s  scope     [44] 54>4e
+   56.467 s  scope     [44] 4e>47
+   56.534 s  scope     [44] 47>41
+   56.599 s  scope     [44] 41>3a
+   56.664 s  scope     [44] 3a>34
+   56.729 s  scope     [44] 34>2d
+   56.793 s  scope     [44] 2d>27
+   56.856 s  scope     [44] 27>21
+   56.921 s  scope     [44] 21>1a
+   56.984 s  scope     [44] 1a>14
+   57.048 s  scope     [44] 14>0d
+   57.112 s  scope     [44] 0d>07
+   57.176 s  scope     [44] 07>01
+   57.241 s  scope     [44] 01>00
+   60.030 s  press     move
+   61.871 s  arrows    [0] 81>01   position: left/right move the trace sideways, up/down the channel's trace up and down (byte 0x01; SELECT changes it)
+   65.030 s  press     select
+   66.462 s  arrows    [0] 01>02   move: left/right move the trace sideways, up/down the trigger level (byte 0x02; SELECT changes it)
+   70.046 s  press     arriba
+   71.635 s  scope     [28] 00>01 [42] 00>27 [43] 00>01
+   71.700 s  scope     [42] 27>20
+   71.761 s  scope     [42] 20>1a
+   71.824 s  scope     [42] 1a>14
+   71.885 s  scope     [42] 14>0e
+   71.946 s  scope     [42] 0e>07
+   72.007 s  scope     [42] 07>01
+   72.068 s  scope     [42] 01>fb [43] 01>00
+   72.130 s  scope     [42] fb>f5
+   72.191 s  scope     [42] f5>ef
+   72.255 s  scope     [42] ef>e9
+   72.315 s  scope     [42] e9>e3
+   72.376 s  scope     [42] e3>dc
+   72.438 s  scope     [42] dc>d6
+   72.503 s  scope     [42] d6>d0
+   72.563 s  scope     [42] d0>ca
+   72.623 s  scope     [42] ca>c4
+   72.687 s  scope     [42] c4>bd
+   72.748 s  scope     [42] bd>b7
+   72.809 s  scope     [42] b7>b1
+   72.871 s  scope     [42] b1>ab
+   72.932 s  scope     [42] ab>a5
+   72.993 s  scope     [42] a5>9f
+   73.055 s  scope     [42] 9f>99
+   73.117 s  scope     [42] 99>92
+   73.178 s  scope     [42] 92>8c
+   73.239 s  scope     [42] 8c>86
+   73.301 s  scope     [42] 86>80
+   73.365 s  scope     [42] 80>7a
+   73.426 s  scope     [42] 7a>73
+   73.489 s  scope     [42] 73>6d
+   73.552 s  scope     [42] 6d>67
+   73.617 s  scope     [42] 67>60
+   73.678 s  scope     [42] 60>5a
+   73.743 s  scope     [42] 5a>54
+   73.804 s  scope     [42] 54>4e
+   73.867 s  scope     [42] 4e>47
+   73.930 s  scope     [42] 47>41
+   73.994 s  scope     [42] 41>3b
+   74.058 s  scope     [42] 3b>34
+   74.120 s  scope     [42] 34>2e
+   74.184 s  scope     [42] 2e>28
+   74.245 s  scope     [42] 28>22
+   74.309 s  scope     [42] 22>1b
+   74.373 s  scope     [42] 1b>15
+   74.437 s  scope     [42] 15>0e
+   74.500 s  scope     [42] 0e>08
+   74.562 s  scope     [42] 08>02
+   74.626 s  scope     [42] 02>00
+   75.057 s  press     abajo
+   75.961 s  scope     [28] 01>00 [42] 00>2c [43] 00>01
+   76.024 s  scope     [42] 2c>26
+   76.095 s  scope     [42] 26>1f
+   76.159 s  scope     [42] 1f>18
+   76.220 s  scope     [42] 18>12
+   76.284 s  scope     [42] 12>0c
+   76.345 s  scope     [42] 0c>06
+   76.409 s  scope     [42] 06>ff [43] 01>00
+   76.472 s  scope     [42] ff>f9
+   76.537 s  scope     [42] f9>f2
+   76.602 s  scope     [42] f2>ec
+   76.666 s  scope     [42] ec>e5
+   76.728 s  scope     [42] e5>df
+   76.792 s  scope     [42] df>d9
+   76.855 s  scope     [42] d9>d3
+   76.916 s  scope     [42] d3>cc
+   76.981 s  scope     [42] cc>c6
+   77.046 s  scope     [42] c6>bf
+   77.109 s  scope     [42] bf>b9
+   77.171 s  scope     [42] b9>b3
+   77.235 s  scope     [42] b3>ad
+   77.298 s  scope     [42] ad>a6
+   77.363 s  scope     [42] a6>a0
+   77.426 s  scope     [42] a0>99
+   77.487 s  scope     [42] 99>93
+   77.548 s  scope     [42] 93>8d
+   77.613 s  scope     [42] 8d>87
+   77.675 s  scope     [42] 87>81
+   77.739 s  scope     [42] 81>7a
+   77.801 s  scope     [42] 7a>74
+   77.866 s  scope     [42] 74>6d
+   77.928 s  scope     [42] 6d>67
+   77.989 s  scope     [42] 67>61
+   78.049 s  scope     [42] 61>5b
+   78.113 s  scope     [42] 5b>55
+   78.174 s  scope     [42] 55>4f
+   78.237 s  scope     [42] 4f>48
+   78.299 s  scope     [42] 48>42
+   78.365 s  scope     [42] 42>3c
+   78.429 s  scope     [42] 3c>35
+   78.492 s  scope     [42] 35>2f
+   78.554 s  scope     [42] 2f>29
+   78.619 s  scope     [42] 29>22
+   78.680 s  scope     [42] 22>1c
+   78.743 s  scope     [42] 1c>16
+   78.804 s  scope     [42] 16>10
+   78.867 s  scope     [42] 10>09
+   78.930 s  scope     [42] 09>03
+   78.994 s  scope     [42] 03>00
+   80.030 s  press     move
+   82.081 s  arrows    [0] 02>82   move: left/right move the trace sideways, up/down the trigger level, acting on CH2 (byte 0x82; SELECT changes it)
+   85.022 s  press     arriba
+   86.615 s  scope     [28] 00>01 [42] 00>2b [43] 00>01
+   86.678 s  scope     [42] 2b>25
+   86.739 s  scope     [42] 25>1f
+   86.804 s  scope     [42] 1f>19
+   86.866 s  scope     [42] 19>12
+   86.927 s  scope     [42] 12>0c
+   86.990 s  scope     [42] 0c>06
+   87.053 s  scope     [42] 06>00
+   87.115 s  scope     [42] 00>f9 [43] 01>00
+   87.176 s  scope     [42] f9>f3
+   87.239 s  scope     [42] f3>ed
+   87.303 s  scope     [42] ed>e7
+   87.365 s  scope     [42] e7>e0
+   87.426 s  scope     [42] e0>da
+   87.487 s  scope     [42] da>d4
+   87.550 s  scope     [42] d4>ce
+   87.616 s  scope     [42] ce>c7
+   87.677 s  scope     [42] c7>c1
+   87.742 s  scope     [42] c1>bb
+   87.806 s  scope     [42] bb>b4
+   87.868 s  scope     [42] b4>ae
+   87.931 s  scope     [42] ae>a8
+   87.995 s  scope     [42] a8>a1
+   88.059 s  scope     [42] a1>9b
+   88.124 s  scope     [42] 9b>95
+   88.189 s  scope     [42] 95>8e
+   88.255 s  scope     [42] 8e>87
+   88.319 s  scope     [42] 87>81
+   88.382 s  scope     [42] 81>7b
+   88.447 s  scope     [42] 7b>74
+   88.511 s  scope     [42] 74>6e
+   88.577 s  scope     [42] 6e>67
+   88.645 s  scope     [42] 67>60
+   88.706 s  scope     [42] 60>5a
+   88.772 s  scope     [42] 5a>54
+   88.837 s  scope     [42] 54>4d
+   88.901 s  scope     [42] 4d>47
+   88.965 s  scope     [42] 47>40
+   89.026 s  scope     [42] 40>3a
+   89.090 s  scope     [42] 3a>34
+   89.153 s  scope     [42] 34>2e
+   89.218 s  scope     [42] 2e>27
+   89.284 s  scope     [42] 27>21
+   89.352 s  scope     [42] 21>1a
+   89.419 s  scope     [42] 1a>13
+   89.483 s  scope     [42] 13>0d
+   89.545 s  scope     [42] 0d>06
+   89.607 s  scope     [42] 06>00
+   90.048 s  press     abajo
+   91.667 s  scope     [28] 01>00 [42] 00>2a [43] 00>01
+   91.733 s  scope     [42] 2a>24
+   91.797 s  scope     [42] 24>1d
+   91.861 s  scope     [42] 1d>17
+   91.925 s  scope     [42] 17>10
+   91.988 s  scope     [42] 10>0a
+   92.051 s  scope     [42] 0a>04
+   92.115 s  scope     [42] 04>fd [43] 01>00
+   92.179 s  scope     [42] fd>f7
+   92.244 s  scope     [42] f7>f1
+   92.309 s  scope     [42] f1>ea
+   92.376 s  scope     [42] ea>e3
+   92.440 s  scope     [42] e3>dd
+   92.505 s  scope     [42] dd>d6
+   92.568 s  scope     [42] d6>d0
+   92.633 s  scope     [42] d0>ca
+   92.699 s  scope     [42] ca>c3
+   92.765 s  scope     [42] c3>bc
+   92.830 s  scope     [42] bc>b6
+   92.895 s  scope     [42] b6>af
+   92.958 s  scope     [42] af>a9
+   93.025 s  scope     [42] a9>a2
+   93.089 s  scope     [42] a2>9c
+   93.150 s  scope     [42] 9c>96
+   93.214 s  scope     [42] 96>90
+   93.280 s  scope     [42] 90>89
+   93.345 s  scope     [42] 89>82
+   93.406 s  scope     [42] 82>7c
+   93.472 s  scope     [42] 7c>76
+   93.536 s  scope     [42] 76>6f
+   93.599 s  scope     [42] 6f>69
+   93.661 s  scope     [42] 69>63
+   93.724 s  scope     [42] 63>5d
+   93.790 s  scope     [42] 5d>56
+   93.855 s  scope     [42] 56>4f
+   93.919 s  scope     [42] 4f>49
+   93.986 s  scope     [42] 49>42
+   94.052 s  scope     [42] 42>3c
+   94.117 s  scope     [42] 3c>35
+   94.181 s  scope     [42] 35>2f
+   94.245 s  scope     [42] 2f>28
+   94.307 s  scope     [42] 28>22
+   94.371 s  scope     [42] 22>1c
+   94.432 s  scope     [42] 1c>16
+   94.496 s  scope     [42] 16>0f
+   94.559 s  scope     [42] 0f>09
+   94.624 s  scope     [42] 09>03
+   94.689 s  scope     [42] 03>00
+   95.001 s  press     move
+   96.518 s  arrows    [0] 82>02   move: left/right move the trace sideways, up/down the trigger level (byte 0x02; SELECT changes it)
+  100.001 s  press     select
+  101.633 s  arrows    [0] 02>00   scale: left/right change the time base, up/down the volts per division (byte 0x00; SELECT changes it)
+  105.012 s  press     derecha
+  106.855 s  scope     [40] 00>26 [41] 00>01 [45] 0d>0c
+  106.918 s  scope     [40] 26>20
+  106.983 s  scope     [40] 20>1a
+  107.047 s  scope     [40] 1a>13
+  107.113 s  scope     [40] 13>0d
+  107.177 s  scope     [40] 0d>06
+  107.240 s  scope     [40] 06>00
+  107.303 s  scope     [40] 00>fa [41] 01>00
+  107.367 s  scope     [40] fa>f3
+  107.432 s  scope     [40] f3>ed
+  107.496 s  scope     [40] ed>e6
+  107.560 s  scope     [40] e6>e0
+  107.627 s  scope     [40] e0>d9
+  107.694 s  scope     [40] d9>d2
+  107.759 s  scope     [40] d2>cc
+  107.822 s  scope     [40] cc>c6
+  107.889 s  scope     [40] c6>bf
+  107.952 s  scope     [40] bf>b9
+  108.019 s  scope     [40] b9>b2
+  108.086 s  scope     [40] b2>ab
+  108.151 s  scope     [40] ab>a5
+  108.217 s  scope     [40] a5>9e
+  108.279 s  scope     [40] 9e>98
+  108.344 s  scope     [40] 98>91
+  108.411 s  scope     [40] 91>8b
+  108.477 s  scope     [40] 8b>84
+  108.540 s  scope     [40] 84>7e
+  108.605 s  scope     [40] 7e>77
+  108.668 s  scope     [40] 77>71
+  108.733 s  scope     [40] 71>6b
+  108.797 s  scope     [40] 6b>64
+  108.860 s  scope     [40] 64>5e
+  108.928 s  scope     [40] 5e>57
+  108.990 s  scope     [40] 57>51
+  109.057 s  scope     [40] 51>4a
+  109.122 s  scope     [40] 4a>44
+  109.185 s  scope     [40] 44>3d
+  109.250 s  scope     [40] 3d>37
+  109.313 s  scope     [40] 37>31
+  109.377 s  scope     [40] 31>2a
+  109.443 s  scope     [40] 2a>24
+  109.508 s  scope     [40] 24>1d
+  109.574 s  scope     [40] 1d>16
+  109.639 s  scope     [40] 16>10
+  109.703 s  scope     [40] 10>0a
+  109.766 s  scope     [40] 0a>03
+  109.830 s  scope     [40] 03>00
+  110.008 s  press     izquierda
+  111.502 s  scope     [40] 00>2a [41] 00>01 [45] 0c>0d
+  111.564 s  scope     [40] 2a>23
+  111.630 s  scope     [40] 23>1d
+  111.694 s  scope     [40] 1d>16
+  111.756 s  scope     [40] 16>10
+  111.819 s  scope     [40] 10>0a
+  111.881 s  scope     [40] 0a>04
+  111.944 s  scope     [40] 04>fd [41] 01>00
+  112.008 s  scope     [40] fd>f7
+  112.072 s  scope     [40] f7>f1
+  112.138 s  scope     [40] f1>ea
+  112.200 s  scope     [40] ea>e4
+  112.267 s  scope     [40] e4>dd
+  112.332 s  scope     [40] dd>d7
+  112.395 s  scope     [40] d7>d0
+  112.459 s  scope     [40] d0>ca
+  112.523 s  scope     [40] ca>c3
+  112.587 s  scope     [40] c3>bd
+  112.650 s  scope     [40] bd>b7
+  112.713 s  scope     [40] b7>b1
+  112.775 s  scope     [40] b1>aa
+  112.836 s  scope     [40] aa>a4
+  112.899 s  scope     [40] a4>9e
+  112.961 s  scope     [40] 9e>98
+  113.025 s  scope     [40] 98>91
+  113.088 s  scope     [40] 91>8b
+  113.153 s  scope     [40] 8b>84
+  113.214 s  scope     [40] 84>7e
+  113.275 s  scope     [40] 7e>78
+  113.337 s  scope     [40] 78>72
+  113.401 s  scope     [40] 72>6c
+  113.464 s  scope     [40] 6c>65
+  113.526 s  scope     [40] 65>5f
+  113.590 s  scope     [40] 5f>59
+  113.655 s  scope     [40] 59>52
+  113.722 s  scope     [40] 52>4c
+  113.788 s  scope     [40] 4c>45
+  113.853 s  scope     [40] 45>3e
+  113.919 s  scope     [40] 3e>38
+  113.981 s  scope     [40] 38>32
+  114.044 s  scope     [40] 32>2b
+  114.108 s  scope     [40] 2b>25
+  114.174 s  scope     [40] 25>1e
+  114.236 s  scope     [40] 1e>18
+  114.300 s  scope     [40] 18>12
+  114.365 s  scope     [40] 12>0b
+  114.429 s  scope     [40] 0b>05
+  114.492 s  scope     [40] 05>00
+  115.065 s  press     auto
+  117.576 s  scope     [0] 01>00 [1] 01>00 [2] 02>00 [4] b6>00 [5] d3>00 [45] 0d>04 [47] 00>01 [49] 00>11 [50] ff>02
+  117.642 s  scope     [50] 02>08
+  117.704 s  scope     [50] 08>0f
+  117.770 s  scope     [50] 0f>15
+  117.834 s  scope     [50] 15>1c
+  117.899 s  scope     [50] 1c>22
+  117.961 s  scope     [50] 22>28
+  118.026 s  scope     [2] 00>01 [50] 28>05
+  118.088 s  scope     [50] 05>0b
+  118.155 s  scope     [50] 0b>12
+  118.222 s  scope     [50] 12>18
+  118.287 s  scope     [50] 18>1f
+  118.351 s  scope     [50] 1f>25
+  118.414 s  scope     [50] 25>2c
+  118.477 s  scope     [2] 01>02 [50] 2c>04
+  118.540 s  scope     [50] 04>0a
+  118.606 s  scope     [50] 0a>11
+  118.669 s  scope     [50] 11>17
+  118.736 s  scope     [50] 17>1e
+  118.802 s  scope     [50] 1e>24
+  118.865 s  scope     [50] 24>2b
+  118.929 s  scope     [2] 02>03 [50] 2b>04
+  118.994 s  scope     [50] 04>0b
+  119.057 s  scope     [50] 0b>11
+  119.123 s  scope     [50] 11>18
+  119.188 s  scope     [50] 18>1e
+  119.253 s  scope     [50] 1e>25
+  119.317 s  scope     [50] 25>2b
+  119.381 s  scope     [2] 03>04 [50] 2b>04
+  119.446 s  scope     [50] 04>0b
+  119.512 s  scope     [50] 0b>11
+  119.578 s  scope     [50] 11>18
+  119.641 s  scope     [50] 18>1e
+  119.706 s  scope     [50] 1e>25
+  119.773 s  scope     [50] 25>2c
+  119.838 s  scope     [2] 04>05 [50] 2c>05
+  119.903 s  scope     [50] 05>0c
+  119.968 s  scope     [50] 0c>12
+  120.020 s  press     espera
+  120.037 s  scope     [50] 12>19
+  120.102 s  scope     [50] 19>1f
+  120.166 s  scope     [50] 1f>26
+  120.230 s  scope     [50] 26>2c
+  120.294 s  scope     [47] 01>02 [50] 2c>33
+  120.357 s  scope     [50] 33>39
+  120.421 s  scope     [50] 39>3f
+  120.489 s  scope     [50] 3f>46
+  120.556 s  scope     [50] 46>4d
+  120.623 s  scope     [50] 4d>54
+  120.689 s  scope     [50] 54>5a
+  120.751 s  scope     [50] 5a>60
+  120.815 s  scope     [50] 60>67
+  120.876 s  scope     [45] 04>0d [47] 02>03 [50] 67>6d
+  120.939 s  scope     [50] 6d>73
+  121.003 s  scope     [47] 03>11 [50] 73>06
+  121.069 s  scope     [50] 06>0c
+  121.133 s  scope     [50] 0c>13
+  121.197 s  scope     [50] 13>19
+  121.262 s  scope     [50] 19>1f
+  121.326 s  scope     [50] 1f>26
+  121.389 s  scope     [2] 05>06 [47] 11>21 [50] 26>04
+  121.452 s  scope     [50] 04>0a
+  121.517 s  scope     [50] 0a>11
+  121.582 s  scope     [50] 11>17
+  121.647 s  scope     [50] 17>1e
+  121.711 s  scope     [50] 1e>24
+  121.776 s  scope     [50] 24>2b
+  121.841 s  scope     [1] 00>01 [47] 21>32 [50] 2b>04
+  121.906 s  scope     [50] 04>0b
+  121.970 s  scope     [50] 0b>11
+  122.034 s  scope     [50] 11>18
+  122.098 s  scope     [50] 18>1e
+  122.161 s  scope     [50] 1e>24
+  122.226 s  scope     [50] 24>2b
+  122.293 s  scope     [0] 00>01 [5] 00>d3 [47] 32>f3 [50] 2b>05
+  122.358 s  scope     [50] 05>0b
+  122.423 s  scope     [50] 0b>12
+  122.486 s  scope     [50] 12>18
+  122.550 s  scope     [50] 18>1e
+  122.613 s  scope     [50] 1e>25
+  122.676 s  scope     [50] 25>2b
+  122.740 s  scope     [4] 00>09 [47] f3>ff [50] 2b>04
+  122.804 s  scope     [50] 04>0b
+  122.871 s  scope     [50] 0b>11
+  122.938 s  scope     [50] 11>18
+  123.000 s  scope     [50] 18>1e
+  123.064 s  scope     [50] 1e>25
+  123.125 s  scope     [50] 25>2b
+  123.188 s  scope     [50] 2b>31
+  123.252 s  scope     [50] 31>37
+  123.316 s  scope     [50] 37>3e
+  123.378 s  scope     [50] 3e>44
+  123.439 s  scope     [50] 44>4a
+  123.501 s  scope     [50] 4a>50
+  123.563 s  scope     [50] 50>57
+  123.627 s  scope     [50] 57>5d
+  123.692 s  scope     [50] 5d>63
+  123.756 s  scope     [50] 63>6a
+  123.820 s  scope     [50] 6a>70
+  123.885 s  scope     [50] 70>77
+  123.950 s  scope     [50] 77>7d
+  124.017 s  scope     [50] 7d>84
+  124.080 s  scope     [50] 84>8a
+  124.146 s  scope     [50] 8a>91
+  124.207 s  scope     [50] 91>97
+  124.271 s  scope     [50] 97>9d
+  124.334 s  scope     [50] 9d>a4
+  124.397 s  scope     [50] a4>aa
+  124.460 s  scope     [50] aa>b0
+  124.524 s  scope     [50] b0>b7
+  124.588 s  scope     [50] b7>bd
+  124.651 s  scope     [50] bd>c3
+  124.712 s  scope     [50] c3>c9
+  124.777 s  scope     [28] 00>2e [47] ff>00 [50] c9>02
+  124.838 s  scope     [50] 02>08
+  124.903 s  scope     [50] 08>0f
+  124.967 s  scope     [50] 0f>15
+  125.023 s  press     espera
+  125.051 s  scope     [50] 15>1d
+  125.147 s  scope     [50] 1d>27
+  125.250 s  scope     [50] 27>31
+  125.310 s  scope     [50] 31>37
+  125.372 s  scope     [50] 37>3d
+  125.434 s  scope     [50] 3d>44
+  125.495 s  scope     [50] 44>4a
+  125.555 s  scope     [50] 4a>50
+  125.621 s  scope     [50] 50>56
+  125.682 s  scope     [50] 56>5c
+  125.747 s  scope     [50] 5c>63
+  125.810 s  scope     [50] 63>69
+  125.873 s  scope     [50] 69>70
+  125.937 s  scope     [50] 70>76
+  126.000 s  scope     [50] 76>7c
+  126.065 s  scope     [50] 7c>83
+  126.151 s  scope     [50] 83>8b
+  126.229 s  scope     [50] 8b>93
+  126.295 s  scope     [50] 93>9a
+  126.356 s  scope     [50] 9a>a0
+  126.420 s  scope     [50] a0>a6
+  126.482 s  scope     [50] a6>ac
+  126.547 s  scope     [50] ac>b3
+  126.608 s  scope     [50] b3>b9
+  126.670 s  scope     [50] b9>bf
+  126.735 s  scope     [50] bf>c6
+  126.797 s  scope     [50] c6>cc
+  126.864 s  scope     [50] cc>d3
+  126.931 s  scope     [50] d3>d9
+  126.997 s  scope     [50] d9>e0
+  127.058 s  scope     [50] e0>e6
+  127.137 s  scope     [50] e6>ee
+  127.220 s  scope     [50] ee>f6
+  127.287 s  scope     [50] f6>fd
+  127.348 s  scope     [50] fd>ff
+end       130.1 s, 2021 reads of the five blocks
