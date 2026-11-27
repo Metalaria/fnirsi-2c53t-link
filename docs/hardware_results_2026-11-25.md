@@ -1026,8 +1026,8 @@ OpenScope-2C53T's maintainer asked (its issue #101) what stock displays in AC V 
 from mains frequency, with the instrument's generator as the source. The generator's
 output was wired to the meter's inputs and the instrument put in the multimeter, AC
 voltage; the generator goes on playing there. Its frequency was set on the instrument to
-20 Hz, 400 Hz and 1 kHz, the waveform and amplitude as asked for (sine, 3.0 V; they were
-not read back), and `fnlink.py meter --count 40` run at each:
+20 Hz, 400 Hz and 1 kHz, the waveform and amplitude as asked for (sine, 3.0 V; `status`
+read them back after the captures: Sine Wave, 3.0 V), and `fnlink.py meter --count 40` run at each:
 [`test/data/meter_acv_generator.txt`](../test/data/meter_acv_generator.txt).
 
 | Set to | Frames | Stock's reading | Frequency in the frame and in stock's state | A second multimeter (Brymen), read by the owner |
